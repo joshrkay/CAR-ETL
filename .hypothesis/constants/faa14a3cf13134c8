@@ -1,4 +1,0 @@
-# file: /Users/joshuakay/Downloads/CAR-ETL-main/src/ingestion/topic_manager.py
-# hypothesis_version: 6.150.0
-
-[1000, '-1', 'bootstrap.servers', 'cleanup.policy', 'compression.type', 'delete', 'retention.bytes', 'retention.ms', 'snappy']

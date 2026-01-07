@@ -1,4 +1,0 @@
-# file: /Users/joshuakay/Downloads/CAR-ETL-main/src/ingestion/models.py
-# hypothesis_version: 6.150.0
-
-[1000.0, 1000, 'CLOUD_SYNC', 'EMAIL', 'IngestionEvent', 'UPLOAD', 'file_hash', 'metadata', 'mime_type', 'original_filename', 'parent_id', 'permissions_blob', 's3_uri', 'source_path', 'source_type', 'tenant_id', 'timestamp']
