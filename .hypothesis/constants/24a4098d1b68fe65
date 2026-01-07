@@ -1,0 +1,4 @@
+# file: /Users/joshuakay/Downloads/CAR-ETL-main/src/ingestion/schema.py
+# hypothesis_version: 6.150.0
+
+['CLOUD_SYNC', 'EMAIL', 'Schema not loaded', 'UPLOAD', 'file_hash', 'ingestion_event.avsc', 'mime_type', 'original_filename', 'r', 's3_uri', 'schemas', 'source_type', 'tenant_id', 'timestamp', 'utf-8']
