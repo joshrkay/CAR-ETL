@@ -1,0 +1,66 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: ["CI/CD"]
+    types:
+      - completed
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  deploy-staging:
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      APP_ENV: staging
+      LOG_LEVEL: INFO
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: supabase/setup-cli@v1
+        with:
+          supabase-access-token: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - run: supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+      - run: flyctl deploy --app car-staging
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  deploy-production:
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && startsWith(github.event.workflow_run.head_ref, 'v')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      APP_ENV: production
+      LOG_LEVEL: INFO
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+      - uses: supabase/setup-cli@v1
+        with:
+          supabase-access-token: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - run: supabase db push --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+      - run: flyctl deploy --app car-production
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

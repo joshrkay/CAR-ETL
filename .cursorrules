@@ -53,3 +53,22 @@ This project enforces a strict Layered Architecture. You must respect these boun
 2. Check if this implementation violates strict layering or the Complexity Limit (<10).
 3. Output only the necessary code (no filler).
 4. Verify standard compliance (Tests, Types, Redaction) before finishing.
+## ARCHITECTURAL INVARIANTS (ABSOLUTE)
+
+- Tenant isolation is absolute. No cross-tenant reads or writes.
+- Canonical truth cannot be mutated by automation.
+- Excel imports and exports are proposal-only. Never authoritative.
+- Ingestion is append-only. Raw artifacts are immutable.
+- AI outputs are advisory, never authoritative.
+
+## DATA AUTHORITY RULE
+
+- Only Canonical Entity services may write canonical truth.
+- Search, RAG, Excel, and Extraction layers are derived-only.
+- Derived data must always reference provenance.
+
+## DETERMINISM & IDEMPOTENCY
+
+- All ingestion and workflow steps must be idempotent.
+- Temporal workflows must be deterministic.
+- Retries must not create duplicate records or side effects.
