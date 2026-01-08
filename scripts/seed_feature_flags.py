@@ -20,7 +20,6 @@ except ImportError:
 
 from supabase import create_client
 from src.auth.config import get_auth_config
-from src.features.models import FeatureFlagCreate, TenantFeatureFlagUpdate
 
 
 def seed_flags():
