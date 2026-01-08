@@ -11,7 +11,6 @@ from typing import Optional, Union
 from src.auth.config import AuthConfig, get_auth_config
 from src.auth.models import AuthContext, AuthError
 from src.auth.rate_limit import AuthRateLimiter, get_rate_limiter
-from src.exceptions import RateLimitError
 
 
 security = HTTPBearer(auto_error=False)
