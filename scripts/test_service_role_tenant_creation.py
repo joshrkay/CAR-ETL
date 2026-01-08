@@ -1,5 +1,4 @@
 """Test that service_role can create tenants."""
-import os
 import sys
 from pathlib import Path
 
@@ -16,6 +15,7 @@ try:
     else:
         load_dotenv(override=True)
 except ImportError:
+    # python-dotenv is optional; if it's not installed, rely on existing environment variables.
     pass
 
 from supabase import create_client
@@ -111,7 +111,7 @@ def test_service_role_tenant_creation():
     print("\n4. Testing tenant deletion with service_role...")
     
     try:
-        delete_result = supabase_service.table("tenants").delete().eq("id", tenant_id).execute()
+        supabase_service.table("tenants").delete().eq("id", tenant_id).execute()
         print(f"   [OK] Tenant deleted successfully")
         
         # Verify deletion

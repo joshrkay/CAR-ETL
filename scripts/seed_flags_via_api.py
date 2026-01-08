@@ -1,5 +1,4 @@
 """Seed feature flags via admin API endpoints."""
-import os
 import sys
 from pathlib import Path
 

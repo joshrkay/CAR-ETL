@@ -5,7 +5,7 @@ from uuid import UUID
 from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_current_user, require_role, get_service_client
+from src.dependencies import require_role, get_service_client
 from src.services.tenant_provisioning import TenantProvisioningService, ProvisioningError
 from pydantic import BaseModel, Field, EmailStr
 from typing import Literal

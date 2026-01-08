@@ -1,8 +1,6 @@
 """Seed feature flags via admin API for testing."""
-import os
 import sys
 from pathlib import Path
-from uuid import uuid4
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -17,11 +15,11 @@ try:
     else:
         load_dotenv()
 except ImportError:
-    pass
+    # `python-dotenv` is optional; if it's not installed, continue without loading a .env file.
+    sys.stderr.write("Warning: python-dotenv not installed; skipping loading .env file.\n")
 
 from supabase import create_client
 from src.auth.config import get_auth_config
-from src.features.models import FeatureFlagCreate, TenantFeatureFlagUpdate
 
 
 def seed_flags():
@@ -188,24 +186,20 @@ def set_tenant_override_example(supabase, flag_name: str, tenant_id: str, enable
         
         if existing.data:
             # Update
-            result = (
-                supabase.table("tenant_feature_flags")
-                .update({"enabled": enabled})
-                .eq("id", existing.data[0]["id"])
+            supabase.table("tenant_feature_flags") \
+                .update({"enabled": enabled}) \
+                .eq("id", existing.data[0]["id"]) \
                 .execute()
-            )
             print(f"  [OK] Updated tenant override for '{flag_name}'")
         else:
             # Create
-            result = (
-                supabase.table("tenant_feature_flags")
+            supabase.table("tenant_feature_flags") \
                 .insert({
                     "tenant_id": tenant_id,
                     "flag_id": flag_id,
                     "enabled": enabled,
-                })
+                }) \
                 .execute()
-            )
             print(f"  [OK] Created tenant override for '{flag_name}'")
         
         return True

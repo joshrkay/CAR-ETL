@@ -6,7 +6,7 @@ from uuid import UUID
 from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_current_user, require_role, get_supabase_client, get_feature_flags
+from src.dependencies import require_role, get_supabase_client, get_feature_flags
 from src.features.models import (
     FeatureFlag,
     FeatureFlagCreate,
