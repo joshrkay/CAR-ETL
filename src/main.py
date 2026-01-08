@@ -1,5 +1,5 @@
 """Example FastAPI application with auth middleware."""
-from fastapi import FastAPI, Depends, HTTPException, Request, Request
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from typing import Annotated
