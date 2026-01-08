@@ -13,7 +13,6 @@ from src.auth.middleware import AuthMiddleware
 from src.auth.models import AuthContext
 from src.auth.rbac import PERMISSIONS, has_permission
 from src.auth.decorators import require_permission, RequireAdmin, RequireAnalyst, RequireViewer
-from src.dependencies import get_current_user
 
 
 @pytest.fixture
