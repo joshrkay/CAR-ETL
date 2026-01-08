@@ -49,32 +49,78 @@ def test_real_login_flow():
     tenant_name = "Test Tenant"
     
     try:
-        # Check if tenant exists
-        tenant_result = (
-            supabase.table("tenants")
-            .select("*")
-            .eq("slug", tenant_slug)
-            .execute()
-        )
-        
-        if tenant_result.data:
-            tenant_id = tenant_result.data[0]["id"]
-            print(f"   Using existing tenant: {tenant_id}")
-        else:
-            # Create new tenant
+        # Try using PostgREST API first
+        try:
             tenant_result = (
                 supabase.table("tenants")
-                .insert({
-                    "slug": tenant_slug,
-                    "name": tenant_name,
-                })
+                .select("*")
+                .eq("slug", tenant_slug)
                 .execute()
             )
-            tenant_id = tenant_result.data[0]["id"]
-            print(f"   Created new tenant: {tenant_id}")
+            
+            if tenant_result.data:
+                tenant_id = tenant_result.data[0]["id"]
+                print(f"   Using existing tenant: {tenant_id}")
+            else:
+                # Create new tenant
+                tenant_result = (
+                    supabase.table("tenants")
+                    .insert({
+                        "slug": tenant_slug,
+                        "name": tenant_name,
+                    })
+                    .execute()
+                )
+                tenant_id = tenant_result.data[0]["id"]
+                print(f"   Created new tenant: {tenant_id}")
+        except Exception as api_error:
+            # If PostgREST fails, try using RPC or direct SQL
+            if "PGRST205" in str(api_error) or "schema cache" in str(api_error).lower():
+                print(f"   WARNING: PostgREST schema cache issue: {api_error}")
+                print("   Attempting to refresh schema cache via SQL...")
+                try:
+                    # Try to refresh schema cache using SQL
+                    refresh_result = supabase.rpc("exec_sql", {
+                        "query": "NOTIFY pgrst, 'reload schema';"
+                    }).execute()
+                    print("   Schema cache refresh triggered!")
+                    print("   Waiting 5 seconds for cache to update...")
+                    import time
+                    time.sleep(5)
+                    # Try again
+                    tenant_result = (
+                        supabase.table("tenants")
+                        .select("*")
+                        .eq("slug", tenant_slug)
+                        .execute()
+                    )
+                    if tenant_result.data:
+                        tenant_id = tenant_result.data[0]["id"]
+                        print(f"   Using existing tenant: {tenant_id}")
+                    else:
+                        tenant_result = (
+                            supabase.table("tenants")
+                            .insert({
+                                "slug": tenant_slug,
+                                "name": tenant_name,
+                            })
+                            .execute()
+                        )
+                        tenant_id = tenant_result.data[0]["id"]
+                        print(f"   Created new tenant: {tenant_id}")
+                except Exception as refresh_error:
+                    print(f"   Could not auto-refresh cache: {refresh_error}")
+                    print("   Please manually refresh PostgREST schema cache:")
+                    print("   1. Go to: https://supabase.com/dashboard/project/ueqzwqejpjmsspfiypgb/sql/new")
+                    print("   2. Run: NOTIFY pgrst, 'reload schema';")
+                    print("   3. Wait 10 seconds, then run this test again")
+                    return False
+            else:
+                raise api_error
     except Exception as e:
         print(f"   ERROR: Failed to create/get tenant: {e}")
         print("   Make sure the 'tenants' table exists in your database.")
+        print("   If tables exist, refresh PostgREST schema cache.")
         return False
     
     # Step 2: Create a test user in Supabase Auth
