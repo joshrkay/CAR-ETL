@@ -1,5 +1,4 @@
 """Test that service_role can create tenants."""
-import os
 import sys
 from pathlib import Path
 
