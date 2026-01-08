@@ -186,24 +186,20 @@ def set_tenant_override_example(supabase, flag_name: str, tenant_id: str, enable
         
         if existing.data:
             # Update
-            result = (
-                supabase.table("tenant_feature_flags")
-                .update({"enabled": enabled})
-                .eq("id", existing.data[0]["id"])
+            supabase.table("tenant_feature_flags") \
+                .update({"enabled": enabled}) \
+                .eq("id", existing.data[0]["id"]) \
                 .execute()
-            )
             print(f"  [OK] Updated tenant override for '{flag_name}'")
         else:
             # Create
-            result = (
-                supabase.table("tenant_feature_flags")
+            supabase.table("tenant_feature_flags") \
                 .insert({
                     "tenant_id": tenant_id,
                     "flag_id": flag_id,
                     "enabled": enabled,
-                })
+                }) \
                 .execute()
-            )
             print(f"  [OK] Created tenant override for '{flag_name}'")
         
         return True
