@@ -1,11 +1,10 @@
 """Unit tests for feature flag system."""
 import pytest
 from uuid import UUID, uuid4
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 from datetime import datetime, timedelta
 
-from src.features.service import FeatureFlagService, _shared_cache
-from src.features.models import FeatureFlagResponse
+from src.features.service import FeatureFlagService
 
 
 @pytest.fixture
@@ -73,7 +72,6 @@ async def test_is_enabled_flag_exists_with_default(flag_service, mock_supabase_c
 async def test_is_enabled_flag_exists_with_override(flag_service, mock_supabase_client):
     """Test is_enabled when flag exists with tenant override."""
     flag_id = uuid4()
-    tenant_id = flag_service.tenant_id
     
     # Mock flag lookup
     flag_result = Mock(data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": False}])
@@ -165,7 +163,6 @@ async def test_get_all_flags(flag_service, mock_supabase_client):
     """Test get_all_flags returns all flags with tenant overrides."""
     flag1_id = uuid4()
     flag2_id = uuid4()
-    tenant_id = flag_service.tenant_id
     
     # Mock flags lookup
     flags_result = Mock(
@@ -205,7 +202,6 @@ async def test_get_all_flags(flag_service, mock_supabase_client):
 async def test_get_flag_details(flag_service, mock_supabase_client):
     """Test get_flag_details returns detailed flag information."""
     flag_id = uuid4()
-    tenant_id = flag_service.tenant_id
     
     # Mock flag lookup
     flag_result = Mock(

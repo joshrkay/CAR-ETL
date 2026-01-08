@@ -10,7 +10,7 @@ from typing import Optional, Union
 
 from src.auth.config import AuthConfig, get_auth_config
 from src.auth.models import AuthContext, AuthError
-from src.auth.rate_limit import AuthRateLimiter, get_rate_limiter
+from src.auth.rate_limit import AuthRateLimiter
 from src.exceptions import RateLimitError
 
 
