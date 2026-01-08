@@ -1,6 +1,6 @@
 """Unit tests for document storage schema."""
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 from uuid import uuid4
 from supabase import Client
 from datetime import datetime

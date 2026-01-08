@@ -1,5 +1,5 @@
 """Example FastAPI application with auth middleware."""
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from typing import Annotated
@@ -149,26 +149,3 @@ async def experimental_feature(
     }
 
 
-@app.get("/documents")
-async def list_documents(
-    request: Request,
-    user: Annotated[AuthContext, Depends(get_current_user)],
-):
-    """
-    Example endpoint demonstrating RLS-enforced data access.
-    
-    The Supabase client from request.state.supabase uses the user's JWT token,
-    so RLS policies automatically filter results by tenant_id.
-    """
-    from src.dependencies import get_supabase_client
-    
-    supabase = get_supabase_client(request)
-    
-    # RLS automatically filters by tenant_id from JWT
-    # No need to manually filter - Supabase RLS handles it
-    result = supabase.table("documents").select("*").execute()
-    
-    return {
-        "documents": result.data,
-        "tenant_id": str(user.tenant_id),
-    }
