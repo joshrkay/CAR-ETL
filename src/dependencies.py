@@ -73,29 +73,6 @@ def require_any_role(roles: list[str]):
     return role_checker
 
 
-def require_permission(permission: str):
-    """
-    Dependency factory to require a specific permission.
-    
-    Usage:
-        @app.post("/documents/upload")
-        async def upload_endpoint(user: Annotated[AuthContext, Depends(require_permission("documents:create"))]):
-            ...
-    """
-    def permission_checker(user: AuthContext = Depends(get_current_user)) -> AuthContext:
-        if not user.has_permission(permission):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={
-                    "code": "INSUFFICIENT_PERMISSIONS",
-                    "message": f"Permission '{permission}' is required",
-                },
-            )
-        return user
-    
-    return permission_checker
-
-
 def get_supabase_client(request: Request) -> Client:
     """
     Get Supabase client from request state (created by middleware with user's JWT).
@@ -138,6 +115,24 @@ def get_feature_flags(
     """
     supabase = get_supabase_client(request)
     return FeatureFlagService(supabase, auth.tenant_id)
+
+
+def get_service_client() -> Client:
+    """
+    Get Supabase client with service_role key (bypasses RLS).
+    
+    WARNING: This client bypasses RLS and should ONLY be used for:
+    - Admin operations (tenant provisioning, system configuration)
+    - Background jobs
+    - Operations that require cross-tenant access
+    
+    NEVER use this for regular user requests.
+    
+    Returns:
+        Supabase client with service_role key (bypasses RLS)
+    """
+    from src.auth.client import create_service_client
+    return create_service_client()
 
 
 def get_audit_logger(

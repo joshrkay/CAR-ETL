@@ -50,7 +50,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def _should_skip_auth(self, request: Request) -> bool:
         """Check if authentication should be skipped for this path."""
-        skip_paths = ["/health", "/docs", "/openapi.json", "/redoc", "/public"]
+        skip_paths = ["/health", "/docs", "/openapi.json", "/redoc", "/public", "/api/v1/webhooks"]
         return any(request.url.path.startswith(path) for path in skip_paths)
 
     def _get_client_ip(self, request: Request) -> str:

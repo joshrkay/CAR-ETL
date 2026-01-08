@@ -41,7 +41,15 @@ Configure these secrets in your GitHub repository settings:
    - Value: Your Resend API key
    - Used for: Email service operations
 
-9. **FLY_API_TOKEN**
+9. **RESEND_WEBHOOK_SECRET**
+   - Value: Your Resend webhook signing secret (starts with `whsec_`)
+   - Used for: Verifying Resend inbound webhook signatures
+   - Get it from: Resend Dashboard → Webhooks → Your webhook → Signing Secret
+   - Example format: `whsec_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`
+   - Webhook URL: `https://www.etlai.xyz/api/v1/webhooks/email/inbound`
+   - **SECURITY WARNING**: Never commit real webhook secrets to version control. If a secret was previously exposed, rotate it immediately in the Resend dashboard.
+
+10. **FLY_API_TOKEN**
    - Value: Your Fly.io API token
    - Used for: Deploying applications to Fly.io
    - Get it from: `flyctl auth token` or https://fly.io/user/personal_access_tokens

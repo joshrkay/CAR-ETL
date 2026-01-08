@@ -13,7 +13,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Uplo
 from pydantic import BaseModel, Field
 
 from src.auth.models import AuthContext
-from src.dependencies import get_current_user, get_supabase_client, require_permission
+from src.auth.decorators import require_permission
+from src.dependencies import get_supabase_client
 from src.exceptions import CARException
 from src.services.file_validator import (
     ValidationResult,
