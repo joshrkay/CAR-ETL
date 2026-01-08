@@ -102,7 +102,7 @@ class TenantProvisioningService:
                 raise ProvisioningError(f"Failed to create storage bucket: {str(e)}")
             
             # Step 4: Setup bucket policies (documented, actual setup via migration)
-            logger.info(f"Bucket policies should be set via migration")
+            logger.info("Bucket policies should be set via migration")
             self.storage_service.setup_bucket_policies(tenant_id, bucket_name)
             
             # Step 5: Invite admin user via Supabase Auth
@@ -144,7 +144,7 @@ class TenantProvisioningService:
                 raise ProvisioningError(f"Failed to create admin user: {str(e)}")
             
             # Step 6: Create tenant_users row linking admin
-            logger.info(f"Linking admin user to tenant")
+            logger.info("Linking admin user to tenant")
             try:
                 tenant_user_result = (
                     self.client.table("tenant_users")
@@ -159,7 +159,7 @@ class TenantProvisioningService:
                 if not tenant_user_result.data:
                     raise ProvisioningError("Failed to link admin user to tenant")
                 
-                logger.info(f"Linked admin user to tenant")
+                logger.info("Linked admin user to tenant")
                 
             except Exception as e:
                 logger.error(f"Failed to link admin user: {e}")
