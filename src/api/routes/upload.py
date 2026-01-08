@@ -14,7 +14,8 @@ from pydantic import BaseModel, Field
 from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_supabase_client, require_permission
+from src.auth.decorators import require_permission
+from src.dependencies import get_supabase_client
 from src.services.bulk_upload import (
     BulkUploadService,
     FileProcessingResult,
