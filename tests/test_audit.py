@@ -6,7 +6,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 import jwt
-from hypothesis import given, strategies as st, settings
+from hypothesis import given, strategies as st, settings, HealthCheck
 from hypothesis.strategies import dictionaries, one_of
 
 from src.audit.logger import AuditLogger
@@ -361,7 +361,7 @@ class TestPropertyBasedAudit:
         ),
         resource_id=st.one_of(st.none(), st.text(max_size=500)),
     )
-    @settings(max_examples=100, deadline=5000)
+    @settings(max_examples=100, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_log_handles_arbitrary_inputs(
         self, mock_supabase_client, tenant_id, user_id, event_type, action, metadata, resource_id
     ):
@@ -398,7 +398,7 @@ class TestPropertyBasedAudit:
             st.text(min_size=1, max_size=1000).filter(lambda x: any(c in x for c in ["'", '"', ";", "--", "/*", "*/"])),  # SQL-like
         ),
     )
-    @settings(max_examples=50, deadline=5000)
+    @settings(max_examples=50, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_log_sanitizes_malicious_inputs(
         self, mock_supabase_client, tenant_id, user_id, malicious_input
     ):
@@ -428,7 +428,7 @@ class TestPropertyBasedAudit:
     @given(
         batch_size=st.integers(min_value=1, max_value=100),
     )
-    @settings(max_examples=20, deadline=10000)
+    @settings(max_examples=20, deadline=10000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_batch_flush_handles_large_batches(
         self, mock_supabase_client, tenant_id, user_id, batch_size
     ):
@@ -461,7 +461,7 @@ class TestPropertyBasedAudit:
         tenant_id_1=st.uuids(),
         tenant_id_2=st.uuids(),
     )
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_tenant_isolation_property(
         self, mock_supabase_client, tenant_id_1, tenant_id_2
     ):
@@ -497,9 +497,9 @@ class TestPropertyBasedAudit:
     
     @pytest.mark.asyncio
     @given(
-        metadata_size=st.integers(min_value=0, max_size=50),
+        metadata_size=st.integers(min_value=0, max_value=50),
     )
-    @settings(max_examples=20, deadline=5000)
+    @settings(max_examples=20, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_metadata_size_handling(
         self, mock_supabase_client, tenant_id, user_id, metadata_size
     ):
