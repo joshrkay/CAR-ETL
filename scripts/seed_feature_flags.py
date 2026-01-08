@@ -16,7 +16,8 @@ try:
     else:
         load_dotenv()
 except ImportError:
-    pass
+    # `python-dotenv` is optional; if it's not installed, continue without loading a .env file.
+    sys.stderr.write("Warning: python-dotenv not installed; skipping loading .env file.\n")
 
 from supabase import create_client
 from src.auth.config import get_auth_config
