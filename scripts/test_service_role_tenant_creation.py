@@ -15,6 +15,7 @@ try:
     else:
         load_dotenv(override=True)
 except ImportError:
+    # python-dotenv is optional; if it's not installed, rely on existing environment variables.
     pass
 
 from supabase import create_client
