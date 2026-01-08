@@ -5,7 +5,7 @@ from uuid import UUID
 from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_current_user, require_role, get_supabase_client
+from src.dependencies import get_current_user, require_role, get_service_client
 from src.services.tenant_provisioning import TenantProvisioningService, ProvisioningError
 from pydantic import BaseModel, Field, EmailStr
 from typing import Literal
@@ -43,7 +43,7 @@ class TenantResponse(BaseModel):
 @router.post("", response_model=TenantResponse, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     tenant_data: TenantCreate,
-    supabase: Annotated[Client, Depends(get_supabase_client)],
+    supabase: Annotated[Client, Depends(get_service_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
 ):
     """

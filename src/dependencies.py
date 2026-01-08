@@ -140,6 +140,24 @@ def get_feature_flags(
     return FeatureFlagService(supabase, auth.tenant_id)
 
 
+def get_service_client() -> Client:
+    """
+    Get Supabase client with service_role key (bypasses RLS).
+    
+    WARNING: This client bypasses RLS and should ONLY be used for:
+    - Admin operations (tenant provisioning, system configuration)
+    - Background jobs
+    - Operations that require cross-tenant access
+    
+    NEVER use this for regular user requests.
+    
+    Returns:
+        Supabase client with service_role key (bypasses RLS)
+    """
+    from src.auth.client import create_service_client
+    return create_service_client()
+
+
 def get_audit_logger(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_user)],
