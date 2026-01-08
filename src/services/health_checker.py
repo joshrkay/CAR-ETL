@@ -3,7 +3,7 @@ import time
 import logging
 import asyncio
 import httpx
-from typing import Dict, Literal
+from typing import Dict, Literal, Optional, Union
 from supabase import Client
 
 from src.auth.config import get_auth_config
@@ -19,12 +19,12 @@ Status = Literal["up", "down"]
 class HealthCheckResult:
     """Result of a single health check."""
     
-    def __init__(self, status: Status, latency_ms: int, error: str | None = None):
+    def __init__(self, status: Status, latency_ms: int, error: Optional[str] = None):
         self.status = status
         self.latency_ms = latency_ms
         self.error = error
     
-    def to_dict(self) -> Dict[str, str | int]:
+    def to_dict(self) -> Dict[str, Union[str, int]]:
         """Convert to dictionary for API response."""
         result = {
             "status": self.status,

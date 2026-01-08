@@ -73,6 +73,29 @@ def require_any_role(roles: list[str]):
     return role_checker
 
 
+def require_permission(permission: str):
+    """
+    Dependency factory to require a specific permission.
+    
+    Usage:
+        @app.post("/documents/upload")
+        async def upload_endpoint(user: Annotated[AuthContext, Depends(require_permission("documents:create"))]):
+            ...
+    """
+    def permission_checker(user: AuthContext = Depends(get_current_user)) -> AuthContext:
+        if not user.has_permission(permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "INSUFFICIENT_PERMISSIONS",
+                    "message": f"Permission '{permission}' is required",
+                },
+            )
+        return user
+    
+    return permission_checker
+
+
 def get_supabase_client(request: Request) -> Client:
     """
     Get Supabase client from request state (created by middleware with user's JWT).

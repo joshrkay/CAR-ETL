@@ -11,6 +11,7 @@ from src.api.routes.admin import flags as admin_flags
 from src.api.routes.admin import tenants as admin_tenants
 from src.api.routes import health as health_routes
 from src.api.routes import documents as document_routes
+from src.api.routes import upload as upload_routes
 from src.middleware.audit import AuditMiddleware
 from src.middleware.request_id import RequestIDMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
@@ -102,6 +103,7 @@ app.include_router(health_routes.router)
 app.include_router(admin_flags.router)
 app.include_router(admin_tenants.router)
 app.include_router(document_routes.router)
+app.include_router(upload_routes.router)
 
 
 @app.get("/me")

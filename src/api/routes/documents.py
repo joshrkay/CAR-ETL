@@ -6,19 +6,18 @@ This is the entry point for file ingestion into the CAR Platform.
 """
 
 import logging
-from typing import Annotated
+from typing import Annotated, Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
 
 from src.auth.models import AuthContext
-from src.auth.rbac import RequirePermission
-from src.dependencies import get_current_user, get_supabase_client
+from src.dependencies import get_current_user, get_supabase_client, require_permission
 from src.exceptions import CARException
 from src.services.file_validator import (
     ValidationResult,
-    create_validator_for_tenant,
+    FileValidator,
 )
 from supabase import Client
 
@@ -60,7 +59,7 @@ class DocumentUploadError(BaseModel):
     Upload a document file for ingestion into the CAR Platform.
     
     Security:
-    - Requires authentication and 'documents:create' permission
+    - Requires authentication and 'documents:write' permission
     - File content is validated (magic bytes, structure, size)
     - Tenant isolation is enforced via RLS
     - All uploads are audited
@@ -82,7 +81,7 @@ async def upload_document(
     request: Request,
     file: UploadFile = File(..., description="Document file to upload"),
     description: str = Form(None, description="Optional document description"),
-    auth: AuthContext = Depends(RequirePermission("documents:create")),
+    auth: AuthContext = Depends(require_permission("documents:write")),
     supabase: Client = Depends(get_supabase_client),
 ) -> DocumentUploadResponse:
     """
@@ -153,17 +152,13 @@ async def upload_document(
     )
     
     # Step 3: Validate file
-    validator = create_validator_for_tenant(
-        tenant_id=tenant_id,
-        tenant_max_file_size=tenant_max_size,
-    )
+    validator = FileValidator(max_file_size=tenant_max_size or DEFAULT_MAX_FILE_SIZE_BYTES)
     
     claimed_mime_type = file.content_type or "application/octet-stream"
     
     validation_result = validator.validate_file(
         content=content,
-        claimed_mime_type=claimed_mime_type,
-        tenant_id=tenant_id,
+        claimed_mime=claimed_mime_type,
     )
     
     # Step 4: Reject invalid files
@@ -299,7 +294,7 @@ async def store_document_metadata(
     filename: str,
     mime_type: str,
     file_size: int,
-    description: str | None,
+    description: Optional[str],
 ) -> None:
     """
     Store document metadata in database.
