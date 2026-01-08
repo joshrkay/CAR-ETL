@@ -7,16 +7,18 @@ from cachetools import TTLCache
 from src.features.models import FeatureFlagResponse
 
 
+# Cache configuration
+CACHE_TTL_SECONDS = 300  # 5 minutes
+CACHE_MAX_SIZE = 1000
+
 # Module-level shared cache with TTL support
 # This cache is shared across all FeatureFlagService instances and provides
 # thread-safe atomic operations with automatic expiration
-_shared_cache: TTLCache[Tuple[UUID, str], bool] = TTLCache(maxsize=1000, ttl=300)
+_shared_cache: TTLCache[Tuple[UUID, str], bool] = TTLCache(maxsize=CACHE_MAX_SIZE, ttl=CACHE_TTL_SECONDS)
 
 
 class FeatureFlagService:
     """Service for evaluating feature flags per tenant with caching."""
-    
-    CACHE_TTL_SECONDS = 300  # 5 minutes
     
     def __init__(self, supabase_client: Client, tenant_id: UUID):
         """
