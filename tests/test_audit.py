@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
-from uuid import uuid4, UUID
+from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 import jwt
