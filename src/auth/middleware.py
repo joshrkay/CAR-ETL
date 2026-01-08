@@ -10,7 +10,8 @@ from typing import Optional, Union
 
 from src.auth.config import AuthConfig, get_auth_config
 from src.auth.models import AuthContext, AuthError
-from src.auth.rate_limit import AuthRateLimiter, RateLimitError, get_rate_limiter
+from src.auth.rate_limit import AuthRateLimiter, get_rate_limiter
+from src.exceptions import RateLimitError
 
 
 security = HTTPBearer(auto_error=False)
@@ -31,17 +32,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         client_ip = self._get_client_ip(request)
         
-        try:
-            self.rate_limiter.check_rate_limit(client_ip)
-        except RateLimitError as e:
-            return JSONResponse(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                content={
-                    "error": "RATE_LIMIT_EXCEEDED",
-                    "message": f"Too many authentication attempts. Retry after {e.retry_after} seconds",
-                    "retry_after": e.retry_after,
-                },
-            )
+        # Check rate limit (raises RateLimitError if exceeded)
+        # ErrorHandlerMiddleware will catch and format the response
+        self.rate_limiter.check_rate_limit(client_ip)
 
         auth_error = await self._validate_token(request)
         if auth_error:
@@ -50,13 +43,10 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 content=auth_error.model_dump(),
             )
 
-        try:
-            response = await call_next(request)
-            if response.status_code < 400:
-                self.rate_limiter.reset_rate_limit(client_ip)
-            return response
-        except Exception:
-            return await call_next(request)
+        response = await call_next(request)
+        if response.status_code < 400:
+            self.rate_limiter.reset_rate_limit(client_ip)
+        return response
 
     def _should_skip_auth(self, request: Request) -> bool:
         """Check if authentication should be skipped for this path."""
@@ -125,7 +115,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if isinstance(auth_context, AuthError):
             return auth_context
 
+        # Create Supabase client with user's JWT token for RLS enforcement
+        from src.auth.client import create_user_client
+        user_client = create_user_client(token, self.config)
+        
+        # Attach auth context and user client to request state
         request.state.auth = auth_context
+        request.state.supabase = user_client
+        
         return None
 
     def _extract_auth_context(self, decoded: dict) -> Union[AuthContext, AuthError]:

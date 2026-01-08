@@ -4,17 +4,10 @@ from ipaddress import IPv4Address, IPv6Address
 from typing import Union
 from supabase import create_client, Client
 from src.auth.config import AuthConfig, get_auth_config
+from src.exceptions import RateLimitError
 
 
 IPAddress = Union[IPv4Address, IPv6Address, str]
-
-
-class RateLimitError(Exception):
-    """Raised when rate limit is exceeded."""
-
-    def __init__(self, retry_after: int):
-        self.retry_after = retry_after
-        super().__init__(f"Rate limit exceeded. Retry after {retry_after} seconds")
 
 
 class AuthRateLimiter:
