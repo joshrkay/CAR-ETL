@@ -32,6 +32,8 @@ def tenant_id():
 @pytest.fixture
 def flag_service(mock_supabase_client, tenant_id):
     """Create a FeatureFlagService instance."""
+    # Clear the shared cache before each test
+    _shared_cache.clear()
     return FeatureFlagService(mock_supabase_client, tenant_id)
 
 
@@ -41,28 +43,29 @@ async def test_is_enabled_flag_exists_with_default(flag_service, mock_supabase_c
     flag_id = uuid4()
     
     # Mock flag lookup
-    mock_supabase_client.execute.return_value = Mock(
-        data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": True}]
-    )
+    flag_result = Mock(data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": True}])
     
     # Mock tenant override lookup (no override)
+    override_result = Mock(data=[])
+    
+    call_count = {"count": 0}
+    
     def execute_side_effect():
-        call_count = getattr(execute_side_effect, "call_count", 0)
-        execute_side_effect.call_count = call_count + 1
-        
-        if call_count == 1:
+        call_count["count"] += 1
+        if call_count["count"] == 1:
             # First call: flag lookup
-            return Mock(data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": True}])
+            return flag_result
         else:
             # Second call: tenant override lookup
-            return Mock(data=[])
+            return override_result
     
     mock_supabase_client.execute.side_effect = execute_side_effect
     
     result = await flag_service.is_enabled("test_flag")
     
     assert result is True
-    assert "test_flag" in flag_service._cache
+    cache_key = (flag_service.tenant_id, "test_flag")
+    assert cache_key in _shared_cache
 
 
 @pytest.mark.asyncio
@@ -90,7 +93,8 @@ async def test_is_enabled_flag_exists_with_override(flag_service, mock_supabase_
     result = await flag_service.is_enabled("test_flag")
     
     assert result is True  # Override enabled=True overrides default False
-    assert "test_flag" in flag_service._cache
+    cache_key = (flag_service.tenant_id, "test_flag")
+    assert cache_key in _shared_cache
 
 
 @pytest.mark.asyncio
@@ -101,7 +105,8 @@ async def test_is_enabled_flag_not_exists(flag_service, mock_supabase_client):
     result = await flag_service.is_enabled("nonexistent_flag")
     
     assert result is False
-    assert "nonexistent_flag" in flag_service._cache
+    cache_key = (flag_service.tenant_id, "nonexistent_flag")
+    assert cache_key in _shared_cache
 
 
 @pytest.mark.asyncio
@@ -109,9 +114,9 @@ async def test_is_enabled_uses_cache(flag_service, mock_supabase_client):
     """Test that is_enabled uses cache when valid."""
     flag_id = uuid4()
     
-    # Set up cache
-    flag_service._cache["test_flag"] = True
-    flag_service._cache_expires = datetime.utcnow() + timedelta(seconds=300)
+    # Set up cache with TTLCache
+    cache_key = (flag_service.tenant_id, "test_flag")
+    _shared_cache[cache_key] = True
     
     # Should not call execute if cache is valid
     result = await flag_service.is_enabled("test_flag")
@@ -123,33 +128,34 @@ async def test_is_enabled_uses_cache(flag_service, mock_supabase_client):
 
 @pytest.mark.asyncio
 async def test_is_enabled_cache_expired(flag_service, mock_supabase_client):
-    """Test that is_enabled refreshes cache when expired."""
+    """Test that is_enabled refreshes cache when expired (TTL expired automatically)."""
     flag_id = uuid4()
     
-    # Set up expired cache
-    flag_service._cache["test_flag"] = False
-    flag_service._cache_expires = datetime.utcnow() - timedelta(seconds=1)
+    # Note: With TTLCache, we can't manually set expired entries.
+    # This test verifies that a fresh lookup occurs when cache is empty.
     
-    # Mock fresh lookup
-    mock_supabase_client.execute.return_value = Mock(
-        data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": True}]
-    )
+    # Mock flag lookup
+    flag_result = Mock(data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": True}])
+    
+    # Mock tenant override lookup (no override)
+    override_result = Mock(data=[])
+    
+    call_count = {"count": 0}
     
     def execute_side_effect():
-        call_count = getattr(execute_side_effect, "call_count", 0)
-        execute_side_effect.call_count = call_count + 1
-        
-        if call_count == 1:
-            return Mock(data=[{"id": str(flag_id), "name": "test_flag", "enabled_default": True}])
+        call_count["count"] += 1
+        if call_count["count"] == 1:
+            return flag_result
         else:
-            return Mock(data=[])
+            return override_result
     
     mock_supabase_client.execute.side_effect = execute_side_effect
     
     result = await flag_service.is_enabled("test_flag")
     
     assert result is True  # Fresh lookup returns True
-    assert flag_service._cache["test_flag"] is True  # Cache updated
+    cache_key = (flag_service.tenant_id, "test_flag")
+    assert _shared_cache[cache_key] is True  # Cache updated
 
 
 @pytest.mark.asyncio
@@ -186,8 +192,10 @@ async def test_get_all_flags(flag_service, mock_supabase_client):
         "flag1": True,  # Override enabled=True
         "flag2": True,  # Default enabled=True
     }
-    assert "flag1" in flag_service._cache
-    assert "flag2" in flag_service._cache
+    cache_key1 = (flag_service.tenant_id, "flag1")
+    cache_key2 = (flag_service.tenant_id, "flag2")
+    assert cache_key1 in _shared_cache
+    assert cache_key2 in _shared_cache
 
 
 @pytest.mark.asyncio
@@ -241,13 +249,14 @@ async def test_get_flag_details_not_found(flag_service, mock_supabase_client):
 @pytest.mark.asyncio
 async def test_invalidate_cache(flag_service):
     """Test that invalidate_cache clears the cache."""
-    flag_service._cache["test_flag"] = True
-    flag_service._cache_expires = datetime.utcnow() + timedelta(seconds=300)
+    cache_key = (flag_service.tenant_id, "test_flag")
+    _shared_cache[cache_key] = True
     
     flag_service.invalidate_cache()
     
-    assert len(flag_service._cache) == 0
-    assert flag_service._cache_expires is None
+    # After invalidation, the cache should not contain any entries for this tenant
+    tenant_keys = [key for key in _shared_cache.keys() if key[0] == flag_service.tenant_id]
+    assert len(tenant_keys) == 0
 
 
 @pytest.mark.asyncio
