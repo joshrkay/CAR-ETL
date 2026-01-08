@@ -1,7 +1,7 @@
 """Unit tests for feature flag system."""
 import pytest
 from uuid import UUID, uuid4
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock
 from datetime import datetime, timedelta
 
 from src.features.service import FeatureFlagService
