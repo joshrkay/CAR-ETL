@@ -1,5 +1,4 @@
 """Test script for tenant provisioning API endpoint."""
-import os
 import sys
 from pathlib import Path
 from typing import Dict, Any
