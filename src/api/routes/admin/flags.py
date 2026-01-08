@@ -1,11 +1,12 @@
 """Admin endpoints for feature flag management."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Annotated, List
 from uuid import UUID
 from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_current_user, require_role, get_supabase_client
+from src.dependencies import require_role, get_supabase_client, get_feature_flags
 from src.features.models import (
     FeatureFlag,
     FeatureFlagCreate,
@@ -13,6 +14,8 @@ from src.features.models import (
     FeatureFlagResponse,
 )
 from src.features.service import FeatureFlagService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin/flags", tags=["admin", "feature-flags"])
 
@@ -57,7 +60,7 @@ async def create_flag(
     """
     Create a new feature flag (admin only).
     
-    Requires Admin role.
+    Requires Admin role. Non-admins cannot modify flags.
     """
     try:
         # Check if flag with this name already exists
@@ -123,8 +126,35 @@ async def set_tenant_override(
     """
     Set tenant-specific feature flag override (admin only).
     
-    Requires Admin role.
+    Requires Admin role. Non-admins cannot modify flags.
+    Enforces tenant isolation - admins can only modify flags for their own tenant.
     """
+    # CRITICAL: Enforce tenant isolation - admins can only modify their own tenant's flags
+    # Convert to string for robust comparison (handles UUID objects and string representations)
+    if str(tenant_id) != str(auth.tenant_id):
+        logger.warning(
+            "Cross-tenant access attempt blocked",
+            extra={
+                "event_type": "CROSS_TENANT_ACCESS_DENIED",
+                "user_id": str(auth.user_id),
+                "user_tenant_id": str(auth.tenant_id),
+                "requested_tenant_id": str(tenant_id),
+                "flag_name": flag_name,
+                "endpoint": "set_tenant_override",
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "CROSS_TENANT_ACCESS_DENIED",
+                "message": "Tenant isolation is absolute. Admins can only modify feature flags for their own tenant.",
+            },
+        )
+    
+    # After validation, use auth.tenant_id (not URL parameter) for all operations
+    # This ensures we never accidentally use an unvalidated tenant_id
+    validated_tenant_id = auth.tenant_id
+    
     try:
         # Get the flag ID
         flag_result = (
@@ -150,7 +180,7 @@ async def set_tenant_override(
         existing = (
             supabase.table("tenant_feature_flags")
             .select("id")
-            .eq("tenant_id", str(tenant_id))
+            .eq("tenant_id", str(validated_tenant_id))
             .eq("flag_id", str(flag_id))
             .limit(1)
             .execute()
@@ -169,19 +199,20 @@ async def set_tenant_override(
             result = (
                 supabase.table("tenant_feature_flags")
                 .insert({
-                    "tenant_id": str(tenant_id),
+                    "tenant_id": str(validated_tenant_id),
                     "flag_id": str(flag_id),
                     "enabled": override_data.enabled,
                 })
                 .execute()
             )
         
-        # Invalidate cache for this tenant (if service instance exists)
-        # Note: In a real app, you might want to use a cache invalidation service
+        # Invalidate shared cache for this tenant and flag
+        flag_service = FeatureFlagService(supabase, validated_tenant_id)
+        flag_service.invalidate_cache(flag_name)
         
         return {
             "flag_name": flag_name,
-            "tenant_id": str(tenant_id),
+            "tenant_id": str(validated_tenant_id),
             "enabled": override_data.enabled,
             "message": "Tenant override updated successfully",
         }
@@ -209,8 +240,35 @@ async def delete_tenant_override(
     Delete tenant-specific feature flag override (admin only).
     
     This will cause the tenant to fall back to the default flag value.
-    Requires Admin role.
+    Requires Admin role. Non-admins cannot modify flags.
+    Enforces tenant isolation - admins can only delete flags for their own tenant.
     """
+    # CRITICAL: Enforce tenant isolation - admins can only modify their own tenant's flags
+    # Convert to string for robust comparison (handles UUID objects and string representations)
+    if str(tenant_id) != str(auth.tenant_id):
+        logger.warning(
+            "Cross-tenant access attempt blocked",
+            extra={
+                "event_type": "CROSS_TENANT_ACCESS_DENIED",
+                "user_id": str(auth.user_id),
+                "user_tenant_id": str(auth.tenant_id),
+                "requested_tenant_id": str(tenant_id),
+                "flag_name": flag_name,
+                "endpoint": "delete_tenant_override",
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "CROSS_TENANT_ACCESS_DENIED",
+                "message": "Tenant isolation is absolute. Admins can only modify feature flags for their own tenant.",
+            },
+        )
+    
+    # After validation, use auth.tenant_id (not URL parameter) for all operations
+    # This ensures we never accidentally use an unvalidated tenant_id
+    validated_tenant_id = auth.tenant_id
+    
     try:
         # Get the flag ID
         flag_result = (
@@ -236,10 +294,14 @@ async def delete_tenant_override(
         result = (
             supabase.table("tenant_feature_flags")
             .delete()
-            .eq("tenant_id", str(tenant_id))
+            .eq("tenant_id", str(validated_tenant_id))
             .eq("flag_id", str(flag_id))
             .execute()
         )
+        
+        # Invalidate shared cache for this tenant and flag
+        flag_service = FeatureFlagService(supabase, validated_tenant_id)
+        flag_service.invalidate_cache(flag_name)
         
         return None
         
@@ -259,7 +321,6 @@ async def delete_tenant_override(
 async def get_flag_details(
     flag_name: str,
     flags: Annotated[FeatureFlagService, Depends(get_feature_flags)],
-    auth: Annotated[AuthContext, Depends(get_current_user)],
 ):
     """
     Get details about a specific feature flag for the current tenant.

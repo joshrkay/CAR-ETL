@@ -1,6 +1,6 @@
 """FastAPI dependencies for authentication and feature flags."""
 from fastapi import Request, HTTPException, status, Depends
-from typing import Annotated
+from typing import Annotated, Union
 from src.auth.models import AuthContext
 from src.features.service import FeatureFlagService
 from supabase import Client
@@ -73,24 +73,51 @@ def require_any_role(roles: list[str]):
     return role_checker
 
 
+def require_permission(permission: str):
+    """
+    Dependency factory to require a specific permission.
+    
+    Usage:
+        @app.post("/documents/upload")
+        async def upload_endpoint(user: Annotated[AuthContext, Depends(require_permission("documents:create"))]):
+            ...
+    """
+    def permission_checker(user: AuthContext = Depends(get_current_user)) -> AuthContext:
+        if not user.has_permission(permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "INSUFFICIENT_PERMISSIONS",
+                    "message": f"Permission '{permission}' is required",
+                },
+            )
+        return user
+    
+    return permission_checker
+
+
 def get_supabase_client(request: Request) -> Client:
     """
-    Get or create Supabase client.
+    Get Supabase client from request state (created by middleware with user's JWT).
     
-    Creates client from config if not in request state.
+    This client uses the user's JWT token and respects RLS policies.
+    The client is created by AuthMiddleware and attached to request.state.supabase.
+    
+    Raises:
+        HTTPException: If client is not in request state (user not authenticated)
     """
-    client: Client | None = getattr(request.state, "supabase", None)
+    client: Union[Client, None] = getattr(request.state, "supabase", None)
     
     if not client:
-        from supabase import create_client
-        from src.auth.config import get_auth_config
-        
-        config = get_auth_config()
-        client = create_client(
-            config.supabase_url,
-            config.supabase_service_key,
+        # Client should be created by AuthMiddleware
+        # If it's missing, user is not authenticated
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": "NOT_AUTHENTICATED",
+                "message": "Supabase client not available. User must be authenticated.",
+            },
         )
-        request.state.supabase = client
     
     return client
 
@@ -111,3 +138,37 @@ def get_feature_flags(
     """
     supabase = get_supabase_client(request)
     return FeatureFlagService(supabase, auth.tenant_id)
+
+
+def get_audit_logger(
+    request: Request,
+    auth: Annotated[AuthContext, Depends(get_current_user)],
+):
+    """
+    Dependency to get audit logger for current tenant and user.
+    
+    Usage:
+        from src.audit.logger import AuditLogger
+        from src.audit.models import EventType, ActionType, ResourceType
+        
+        @app.post("/documents")
+        async def upload_document(
+            logger: AuditLogger = Depends(get_audit_logger),
+        ):
+            # ... upload logic ...
+            await logger.log(
+                event_type=EventType.DOCUMENT_UPLOAD,
+                action=ActionType.CREATE,
+                resource_type=ResourceType.DOCUMENT,
+                resource_id=doc_id,
+            )
+            await logger.flush()  # Ensure event is persisted
+    """
+    from src.audit.logger import AuditLogger
+    
+    supabase = get_supabase_client(request)
+    return AuditLogger(
+        supabase=supabase,
+        tenant_id=auth.tenant_id,
+        user_id=auth.user_id,
+    )

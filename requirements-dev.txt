@@ -5,3 +5,4 @@ httpx>=0.25.0
 ruff>=0.1.0
 mypy>=1.7.0
 types-pyjwt>=2.8.0
+hypothesis>=6.92.0

@@ -1,10 +1,17 @@
 """Feature flag service with caching."""
 from uuid import UUID
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 from supabase import Client
+import threading
 
 from src.features.models import FeatureFlagResponse
+
+
+# Module-level shared cache: {(tenant_id, flag_name): (value, expires_at)}
+# This cache is shared across all FeatureFlagService instances for the same tenant
+_shared_cache: Dict[Tuple[UUID, str], Tuple[bool, datetime]] = {}
+_cache_lock = threading.Lock()  # Thread-safe cache access
 
 
 class FeatureFlagService:
@@ -22,35 +29,75 @@ class FeatureFlagService:
         """
         self.client = supabase_client
         self.tenant_id = tenant_id
-        self._cache: Dict[str, bool] = {}
-        self._cache_expires: Optional[datetime] = None
     
-    def _is_cache_valid(self) -> bool:
-        """Check if cache is still valid."""
-        if self._cache_expires is None:
-            return False
-        return datetime.utcnow() < self._cache_expires
+    def _get_cache_key(self, flag_name: str) -> Tuple[UUID, str]:
+        """Get cache key for a flag."""
+        return (self.tenant_id, flag_name)
     
-    def _invalidate_cache(self) -> None:
-        """Invalidate the cache."""
-        self._cache.clear()
-        self._cache_expires = None
+    def _is_cache_valid(self, flag_name: str) -> bool:
+        """Check if cache entry is still valid."""
+        cache_key = self._get_cache_key(flag_name)
+        with _cache_lock:
+            if cache_key not in _shared_cache:
+                return False
+            _, expires_at = _shared_cache[cache_key]
+            return datetime.utcnow() < expires_at
+    
+    def _get_cached_value(self, flag_name: str) -> Optional[bool]:
+        """Get cached value if valid."""
+        if not self._is_cache_valid(flag_name):
+            return None
+        cache_key = self._get_cache_key(flag_name)
+        with _cache_lock:
+            value, _ = _shared_cache.get(cache_key, (None, None))
+            return value
+    
+    def _set_cached_value(self, flag_name: str, value: bool) -> None:
+        """Set cached value with TTL."""
+        cache_key = self._get_cache_key(flag_name)
+        expires_at = datetime.utcnow() + timedelta(seconds=self.CACHE_TTL_SECONDS)
+        with _cache_lock:
+            _shared_cache[cache_key] = (value, expires_at)
+    
+    def _invalidate_cache(self, flag_name: Optional[str] = None) -> None:
+        """
+        Invalidate cache for a specific flag or all flags for this tenant.
+        
+        Args:
+            flag_name: If provided, invalidate only this flag. If None, invalidate all flags for tenant.
+        """
+        with _cache_lock:
+            if flag_name:
+                cache_key = self._get_cache_key(flag_name)
+                _shared_cache.pop(cache_key, None)
+            else:
+                # Invalidate all cache entries for this tenant
+                keys_to_remove = [
+                    key for key in _shared_cache.keys()
+                    if key[0] == self.tenant_id
+                ]
+                for key in keys_to_remove:
+                    _shared_cache.pop(key, None)
     
     async def is_enabled(self, flag_name: str) -> bool:
         """
         Check if a feature flag is enabled for the current tenant.
         
+        Uses shared caching to avoid database queries on every check.
+        Cache TTL: 5 minutes. Cache is shared across all service instances for the same tenant.
+        
         Args:
             flag_name: Name of the feature flag
             
         Returns:
-            True if enabled, False otherwise
+            True if enabled, False otherwise (fail closed)
         """
-        # Check cache first
-        if self._is_cache_valid() and flag_name in self._cache:
-            return self._cache[flag_name]
+        # Check shared cache first - avoid database query if cache is valid
+        cached_value = self._get_cached_value(flag_name)
+        if cached_value is not None:
+            return cached_value
         
-        # Cache miss or expired - fetch from database
+        # Cache miss or expired - fetch from database (only when needed)
         try:
             # Get the flag definition
             flag_result = (
@@ -86,11 +133,8 @@ class FeatureFlagService:
                     # Use default
                     result = default_enabled
             
-            # Update cache
-            if not self._is_cache_valid():
-                self._cache_expires = datetime.utcnow() + timedelta(seconds=self.CACHE_TTL_SECONDS)
-            
-            self._cache[flag_name] = result
+            # Update shared cache
+            self._set_cached_value(flag_name, result)
             return result
             
         except Exception as e:
@@ -141,12 +185,9 @@ class FeatureFlagService:
                 else:
                     result[flag_name] = flag.get("enabled_default", False)
             
-            # Update cache
-            if not self._is_cache_valid():
-                self._cache_expires = datetime.utcnow() + timedelta(seconds=self.CACHE_TTL_SECONDS)
-            
+            # Update shared cache for all flags
             for flag_name, enabled in result.items():
-                self._cache[flag_name] = enabled
+                self._set_cached_value(flag_name, enabled)
             
             return result
             
@@ -208,6 +249,11 @@ class FeatureFlagService:
         except Exception:
             return None
     
-    def invalidate_cache(self) -> None:
-        """Manually invalidate the cache (useful after admin updates)."""
-        self._invalidate_cache()
+    def invalidate_cache(self, flag_name: Optional[str] = None) -> None:
+        """
+        Manually invalidate the cache (useful after admin updates).
+        
+        Args:
+            flag_name: If provided, invalidate only this flag. If None, invalidate all flags for tenant.
+        """
+        self._invalidate_cache(flag_name)
