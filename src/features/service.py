@@ -1,17 +1,16 @@
 """Feature flag service with caching."""
 from uuid import UUID
-from datetime import datetime, timedelta
 from typing import Dict, Optional, Tuple
 from supabase import Client
-import threading
+from cachetools import TTLCache
 
 from src.features.models import FeatureFlagResponse
 
 
-# Module-level shared cache: {(tenant_id, flag_name): (value, expires_at)}
-# This cache is shared across all FeatureFlagService instances for the same tenant
-_shared_cache: Dict[Tuple[UUID, str], Tuple[bool, datetime]] = {}
-_cache_lock = threading.Lock()  # Thread-safe cache access
+# Module-level shared cache with TTL support
+# This cache is shared across all FeatureFlagService instances and provides
+# thread-safe atomic operations with automatic expiration
+_shared_cache: TTLCache[Tuple[UUID, str], bool] = TTLCache(maxsize=1000, ttl=300)
 
 
 class FeatureFlagService:
@@ -34,30 +33,15 @@ class FeatureFlagService:
         """Get cache key for a flag."""
         return (self.tenant_id, flag_name)
     
-    def _is_cache_valid(self, flag_name: str) -> bool:
-        """Check if cache entry is still valid."""
-        cache_key = self._get_cache_key(flag_name)
-        with _cache_lock:
-            if cache_key not in _shared_cache:
-                return False
-            _, expires_at = _shared_cache[cache_key]
-            return datetime.utcnow() < expires_at
-    
     def _get_cached_value(self, flag_name: str) -> Optional[bool]:
-        """Get cached value if valid."""
-        if not self._is_cache_valid(flag_name):
-            return None
+        """Get cached value if valid. TTLCache handles expiration automatically."""
         cache_key = self._get_cache_key(flag_name)
-        with _cache_lock:
-            value, _ = _shared_cache.get(cache_key, (None, None))
-            return value
+        return _shared_cache.get(cache_key)
     
     def _set_cached_value(self, flag_name: str, value: bool) -> None:
-        """Set cached value with TTL."""
+        """Set cached value with TTL. TTLCache handles expiration automatically."""
         cache_key = self._get_cache_key(flag_name)
-        expires_at = datetime.utcnow() + timedelta(seconds=self.CACHE_TTL_SECONDS)
-        with _cache_lock:
-            _shared_cache[cache_key] = (value, expires_at)
+        _shared_cache[cache_key] = value
     
     def _invalidate_cache(self, flag_name: Optional[str] = None) -> None:
         """
@@ -66,18 +50,17 @@ class FeatureFlagService:
         Args:
             flag_name: If provided, invalidate only this flag. If None, invalidate all flags for tenant.
         """
-        with _cache_lock:
-            if flag_name:
-                cache_key = self._get_cache_key(flag_name)
-                _shared_cache.pop(cache_key, None)
-            else:
-                # Invalidate all cache entries for this tenant
-                keys_to_remove = [
-                    key for key in _shared_cache.keys()
-                    if key[0] == self.tenant_id
-                ]
-                for key in keys_to_remove:
-                    _shared_cache.pop(key, None)
+        if flag_name:
+            cache_key = self._get_cache_key(flag_name)
+            _shared_cache.pop(cache_key, None)
+        else:
+            # Invalidate all cache entries for this tenant
+            keys_to_remove = [
+                key for key in list(_shared_cache.keys())
+                if key[0] == self.tenant_id
+            ]
+            for key in keys_to_remove:
+                _shared_cache.pop(key, None)
     
     async def is_enabled(self, flag_name: str) -> bool:
         """
