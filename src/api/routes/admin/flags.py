@@ -207,7 +207,6 @@ async def set_tenant_override(
             )
         
         # Invalidate shared cache for this tenant and flag
-        from src.features.service import FeatureFlagService
         flag_service = FeatureFlagService(supabase, validated_tenant_id)
         flag_service.invalidate_cache(flag_name)
         
@@ -301,7 +300,6 @@ async def delete_tenant_override(
         )
         
         # Invalidate shared cache for this tenant and flag
-        from src.features.service import FeatureFlagService
         flag_service = FeatureFlagService(supabase, validated_tenant_id)
         flag_service.invalidate_cache(flag_name)
         

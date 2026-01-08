@@ -1,601 +1,487 @@
-"""Unit tests for secure file validation with malicious file samples."""
+"""
+Unit Tests for File Validator Service
+
+Tests include:
+- Magic byte validation
+- Office document structural validation
+- Size limit enforcement
+- Malicious file detection
+- Property-based fuzzing tests
+"""
+
 import pytest
 import zipfile
-import io
-from unittest.mock import Mock, patch
-from uuid import UUID, uuid4
-
+from io import BytesIO
 from src.services.file_validator import (
-    FileValidatorService,
+    FileValidator,
     ValidationResult,
-    validate_magic_bytes,
-    MAGIC_BYTES,
-    DEFAULT_MAX_FILE_SIZE_BYTES,
+    validate_file_with_tenant_config,
+    DEFAULT_MAX_FILE_SIZE,
 )
 
 
-@pytest.fixture
-def mock_supabase_client():
-    """Create a mock Supabase client."""
-    client = Mock()
-    client.table = Mock(return_value=client)
-    client.select = Mock(return_value=client)
-    client.eq = Mock(return_value=client)
-    client.limit = Mock(return_value=client)
-    client.execute = Mock(return_value=Mock(data=[{"settings": {}}]))
-    return client
+class TestMagicByteValidation:
+    """Test magic byte verification for various file types."""
+
+    def test_valid_pdf(self):
+        """Valid PDF with correct magic bytes."""
+        content = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is True
+        assert result.mime_type == "application/pdf"
+        assert result.file_size == len(content)
+        assert len(result.errors) == 0
+
+    def test_valid_png(self):
+        """Valid PNG with correct magic bytes."""
+        content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
+        validator = FileValidator()
+        result = validator.validate_file(content, "image/png")
+        
+        assert result.valid is True
+        assert result.mime_type == "image/png"
+        assert len(result.errors) == 0
+
+    def test_valid_jpeg(self):
+        """Valid JPEG with correct magic bytes."""
+        content = b"\xff\xd8\xff\xe0\x00\x10JFIF"
+        validator = FileValidator()
+        result = validator.validate_file(content, "image/jpeg")
+        
+        assert result.valid is True
+        assert result.mime_type == "image/jpeg"
+        assert len(result.errors) == 0
+
+    def test_valid_text_plain(self):
+        """Text files have no magic byte requirements."""
+        content = b"This is plain text content"
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is True
+        assert result.mime_type == "text/plain"
+        assert len(result.errors) == 0
+
+    def test_valid_csv(self):
+        """CSV files have no magic byte requirements."""
+        content = b"col1,col2,col3\nval1,val2,val3"
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/csv")
+        
+        assert result.valid is True
+        assert result.mime_type == "text/csv"
+        assert len(result.errors) == 0
+
+    def test_invalid_magic_bytes_pdf_as_jpeg(self):
+        """PDF disguised as JPEG should fail."""
+        content = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"
+        validator = FileValidator()
+        result = validator.validate_file(content, "image/jpeg")
+        
+        assert result.valid is False
+        assert "Magic bytes do not match" in result.errors[0]
+
+    def test_invalid_magic_bytes_text_as_pdf(self):
+        """Text file disguised as PDF should fail."""
+        content = b"This is not a PDF"
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is False
+        assert "Magic bytes do not match" in result.errors[0]
+
+    def test_empty_file(self):
+        """Empty files should fail validation."""
+        content = b""
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is False
+        assert any("size" in error.lower() or "magic" in error.lower() for error in result.errors)
 
 
-@pytest.fixture
-def validator_service(mock_supabase_client):
-    """Create a FileValidatorService instance."""
-    return FileValidatorService(mock_supabase_client)
+class TestOfficeDocumentValidation:
+    """Test Office Open XML document validation."""
 
-
-@pytest.fixture
-def tenant_id():
-    """Create a test tenant ID."""
-    return uuid4()
-
-
-# ============================================================================
-# VALID FILE SAMPLES
-# ============================================================================
-
-def create_valid_pdf() -> bytes:
-    """Create a minimal valid PDF."""
-    return b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\nxref\n0 1\ntrailer\n<<\n/Root 1 0 R\n>>\nstartxref\n10\n%%EOF"
-
-
-def create_valid_png() -> bytes:
-    """Create a minimal valid PNG."""
-    # PNG signature + minimal IHDR chunk
-    png_signature = b"\x89PNG\r\n\x1a\n"
-    ihdr = b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
-    iend = b"\x00\x00\x00\x00IEND\xaeB`\x82"
-    return png_signature + ihdr + iend
-
-
-def create_valid_jpeg() -> bytes:
-    """Create a minimal valid JPEG."""
-    # JPEG SOI marker + minimal structure
-    return b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xd9"
-
-
-def create_valid_docx() -> bytes:
-    """Create a minimal valid DOCX (Office Open XML)."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?>
+    def _create_valid_docx(self) -> bytes:
+        """Create a minimal valid DOCX file."""
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add [Content_Types].xml
+            content_types = '''<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>""")
-        zip_file.writestr("_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>""")
-        zip_file.writestr("word/document.xml", """<?xml version="1.0" encoding="UTF-8"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body><w:p><w:r><w:t>Test</w:t></w:r></w:p></w:body>
-</w:document>""")
-    return buffer.getvalue()
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>'''
+            zip_file.writestr('[Content_Types].xml', content_types)
+            
+            # Add minimal document.xml
+            zip_file.writestr('word/document.xml', '<?xml version="1.0"?><document/>')
+        
+        return buffer.getvalue()
 
-
-def create_valid_xlsx() -> bytes:
-    """Create a minimal valid XLSX (Office Open XML)."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?>
+    def _create_valid_xlsx(self) -> bytes:
+        """Create a minimal valid XLSX file."""
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add [Content_Types].xml
+            content_types = '''<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-</Types>""")
-        zip_file.writestr("_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>""")
-        zip_file.writestr("xl/workbook.xml", """<?xml version="1.0" encoding="UTF-8"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets>
-</workbook>""")
-    return buffer.getvalue()
+    <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+    <Default Extension="xml" ContentType="application/xml"/>
+    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+</Types>'''
+            zip_file.writestr('[Content_Types].xml', content_types)
+            
+            # Add minimal workbook.xml
+            zip_file.writestr('xl/workbook.xml', '<?xml version="1.0"?><workbook/>')
+        
+        return buffer.getvalue()
 
+    def test_valid_docx(self):
+        """Valid DOCX with correct structure."""
+        content = self._create_valid_docx()
+        validator = FileValidator()
+        result = validator.validate_file(
+            content,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        assert result.valid is True
+        assert len(result.errors) == 0
 
-# ============================================================================
-# MALICIOUS FILE SAMPLES
-# ============================================================================
+    def test_valid_xlsx(self):
+        """Valid XLSX with correct structure."""
+        content = self._create_valid_xlsx()
+        validator = FileValidator()
+        result = validator.validate_file(
+            content,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        assert result.valid is True
+        assert len(result.errors) == 0
 
-def create_fake_pdf_with_executable() -> bytes:
-    """Create a file claiming to be PDF but contains executable content."""
-    # Starts with PDF magic bytes but contains shell script
-    return b"%PDF\n#!/bin/bash\necho 'malicious code'\nrm -rf /\n"
+    def test_docx_missing_content_types(self):
+        """DOCX without [Content_Types].xml should fail."""
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.writestr('word/document.xml', '<?xml version="1.0"?><document/>')
+        
+        content = buffer.getvalue()
+        validator = FileValidator()
+        result = validator.validate_file(
+            content,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        assert result.valid is False
+        assert any("[Content_Types].xml" in error for error in result.errors)
 
-
-def create_fake_png_with_script() -> bytes:
-    """Create a file claiming to be PNG but contains script."""
-    # Starts with PNG magic bytes but contains JavaScript
-    return b"\x89PNG\r\n\x1a\n<script>alert('XSS')</script>"
-
-
-def create_fake_jpeg_with_php() -> bytes:
-    """Create a file claiming to be JPEG but contains PHP code."""
-    return b"\xff\xd8\xff<?php system($_GET['cmd']); ?>"
-
-
-def create_zip_bomb() -> bytes:
-    """Create a ZIP file that expands to massive size (ZIP bomb)."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        # Create a file that decompresses to a large size
-        # In real attack, this would be much larger
-        large_content = b"0" * (10 * 1024 * 1024)  # 10MB of zeros
-        zip_file.writestr("bomb.txt", large_content)
-    return buffer.getvalue()
-
-
-def create_fake_docx_missing_content_types() -> bytes:
-    """Create a ZIP file claiming to be DOCX but missing [Content_Types].xml."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr("malicious.exe", b"MZ\x90\x00")  # PE executable header
-    return buffer.getvalue()
-
-
-def create_fake_docx_with_executable() -> bytes:
-    """Create a DOCX that contains an executable file."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr("[Content_Types].xml", """<?xml version="1.0"?>
+    def test_docx_wrong_content_type(self):
+        """DOCX with XLSX content type should fail."""
+        buffer = BytesIO()
+        with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            # Add [Content_Types].xml with XLSX content type
+            content_types = '''<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="exe" ContentType="application/x-msdownload"/>
-</Types>""")
-        zip_file.writestr("payload.exe", b"MZ\x90\x00\x03\x00\x00\x00\x04\x00")
-    return buffer.getvalue()
-
-
-def create_file_with_wrong_extension_content() -> bytes:
-    """Create a file with wrong MIME type (e.g., .exe claiming to be .pdf)."""
-    # PE executable header (Windows .exe)
-    return b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff"
-
-
-def create_double_extension_attack() -> bytes:
-    """Create a file that tries to exploit double extension (e.g., file.pdf.exe)."""
-    # Starts with PDF magic bytes but is actually executable
-    return b"%PDF-1.4\n" + b"MZ\x90\x00" * 100
-
-
-def create_null_byte_injection() -> bytes:
-    """Create a file with null bytes to bypass string checks."""
-    return b"%PDF\x00\x00\x00<script>alert(1)</script>"
-
-
-def create_oversized_file() -> bytes:
-    """Create a file that exceeds size limits."""
-    return b"%PDF-1.4\n" + b"0" * (DEFAULT_MAX_FILE_SIZE_BYTES + 1)
-
-
-# ============================================================================
-# TESTS: Standalone validate_magic_bytes function
-# ============================================================================
-
-def test_validate_magic_bytes_valid_pdf():
-    """Test magic byte validation for valid PDF."""
-    content = create_valid_pdf()
-    assert validate_magic_bytes(content, "application/pdf") is True
-
-
-def test_validate_magic_bytes_valid_png():
-    """Test magic byte validation for valid PNG."""
-    content = create_valid_png()
-    assert validate_magic_bytes(content, "image/png") is True
-
-
-def test_validate_magic_bytes_valid_jpeg():
-    """Test magic byte validation for valid JPEG."""
-    content = create_valid_jpeg()
-    assert validate_magic_bytes(content, "image/jpeg") is True
-
-
-def test_validate_magic_bytes_text_plain():
-    """Test that text files have no magic byte validation."""
-    content = b"Hello, world!"
-    assert validate_magic_bytes(content, "text/plain") is True
-
-
-def test_validate_magic_bytes_text_csv():
-    """Test that CSV files have no magic byte validation."""
-    content = b"name,age\nJohn,30"
-    assert validate_magic_bytes(content, "text/csv") is True
-
-
-def test_validate_magic_bytes_fake_pdf():
-    """Test that fake PDF (executable) is rejected."""
-    content = create_fake_pdf_with_executable()
-    # Should pass because it starts with %PDF, but content is malicious
-    # This is why we need additional validation
-    assert validate_magic_bytes(content, "application/pdf") is True
-
-
-def test_validate_magic_bytes_wrong_type():
-    """Test that wrong MIME type is rejected."""
-    pdf_content = create_valid_pdf()
-    assert validate_magic_bytes(pdf_content, "image/png") is False
-
-
-def test_validate_magic_bytes_executable_claimed_as_pdf():
-    """Test that executable claiming to be PDF is rejected."""
-    content = create_file_with_wrong_extension_content()
-    assert validate_magic_bytes(content, "application/pdf") is False
-
-
-# ============================================================================
-# TESTS: FileValidatorService - Valid Files
-# ============================================================================
-
-def test_validate_valid_pdf(validator_service, tenant_id, mock_supabase_client):
-    """Test validation of valid PDF file."""
-    content = create_valid_pdf()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.mime_type == "application/pdf"
-    assert len(result.errors) == 0
-
-
-def test_validate_valid_png(validator_service, tenant_id):
-    """Test validation of valid PNG file."""
-    content = create_valid_png()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="image/png",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.mime_type == "image/png"
-    assert len(result.errors) == 0
-
-
-def test_validate_valid_jpeg(validator_service, tenant_id):
-    """Test validation of valid JPEG file."""
-    content = create_valid_jpeg()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="image/jpeg",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.mime_type == "image/jpeg"
-    assert len(result.errors) == 0
-
-
-def test_validate_valid_docx(validator_service, tenant_id):
-    """Test validation of valid DOCX file."""
-    content = create_valid_docx()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    assert len(result.errors) == 0
-
-
-def test_validate_valid_xlsx(validator_service, tenant_id):
-    """Test validation of valid XLSX file."""
-    content = create_valid_xlsx()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.mime_type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    assert len(result.errors) == 0
-
-
-def test_validate_text_file(validator_service, tenant_id):
-    """Test validation of text file (no magic bytes)."""
-    content = b"Hello, world!\nThis is a text file."
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="text/plain",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.mime_type == "text/plain"
-    assert len(result.errors) == 0
-
-
-# ============================================================================
-# TESTS: FileValidatorService - Malicious Files
-# ============================================================================
-
-def test_validate_fake_pdf_executable(validator_service, tenant_id):
-    """Test that fake PDF containing executable is rejected."""
-    content = create_fake_pdf_with_executable()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    # Magic bytes pass, but file structure might be invalid
-    # This test ensures we're checking magic bytes at minimum
-    assert result.mime_type == "application/pdf"
-    # Note: This might pass magic bytes but fail other checks
-
-
-def test_validate_wrong_mime_type(validator_service, tenant_id):
-    """Test that wrong MIME type is rejected."""
-    pdf_content = create_valid_pdf()
-    result = validator_service.validate_file(
-        content=pdf_content,
-        claimed_mime="image/png",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert "Magic bytes do not match" in result.errors[0]
-
-
-def test_validate_executable_claimed_as_pdf(validator_service, tenant_id):
-    """Test that executable claiming to be PDF is rejected."""
-    content = create_file_with_wrong_extension_content()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("Magic bytes do not match" in error for error in result.errors)
-
-
-def test_validate_fake_docx_missing_content_types(validator_service, tenant_id):
-    """Test that DOCX missing [Content_Types].xml is rejected."""
-    content = create_fake_docx_missing_content_types()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("missing [Content_Types].xml" in error for error in result.errors)
-
-
-def test_validate_fake_docx_with_executable(validator_service, tenant_id):
-    """Test that DOCX containing executable is detected."""
-    content = create_fake_docx_with_executable()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        tenant_id=tenant_id,
-    )
-    
-    # Should pass structure validation (has [Content_Types].xml)
-    # But in production, you'd want additional scanning
-    assert result.mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    # Note: This passes our current validation but contains executable
-
-
-def test_validate_invalid_zip_structure(validator_service, tenant_id):
-    """Test that invalid ZIP structure is rejected."""
-    # Corrupted ZIP file
-    content = b"PK\x03\x04" + b"corrupted" * 100
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("not a valid ZIP archive" in error or "missing [Content_Types].xml" in error for error in result.errors)
-
-
-# ============================================================================
-# TESTS: Size Limits
-# ============================================================================
-
-def test_validate_file_size_within_limit(validator_service, tenant_id):
-    """Test that file within size limit passes."""
-    content = b"%PDF-1.4\n" + b"0" * 1024  # Small file
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.file_size == len(content)
-
-
-def test_validate_file_size_exceeds_default(validator_service, tenant_id, mock_supabase_client):
-    """Test that file exceeding default size limit is rejected."""
-    # Mock tenant with default settings
-    mock_supabase_client.execute.return_value = Mock(data=[{"settings": {}}])
-    
-    content = create_oversized_file()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("exceeds maximum" in error for error in result.errors)
-    assert result.file_size > DEFAULT_MAX_FILE_SIZE_BYTES
-
-
-def test_validate_file_size_tenant_custom_limit(validator_service, tenant_id, mock_supabase_client):
-    """Test that tenant custom size limit is respected."""
-    # Mock tenant with custom max_file_size (50MB)
-    custom_max_mb = 50
-    custom_max_bytes = custom_max_mb * 1024 * 1024
-    mock_supabase_client.execute.return_value = Mock(
-        data=[{"settings": {"max_file_size": custom_max_mb}}]
-    )
-    
-    # File larger than custom limit but smaller than default
-    content = b"%PDF-1.4\n" + b"0" * (custom_max_bytes + 1)
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("exceeds maximum" in error for error in result.errors)
-    assert result.file_size > custom_max_bytes
-
-
-def test_validate_file_size_tenant_limit_in_bytes(validator_service, tenant_id, mock_supabase_client):
-    """Test that tenant size limit provided in bytes is handled."""
-    # Mock tenant with max_file_size in bytes (large number)
-    custom_max_bytes = 200 * 1024 * 1024  # 200MB
-    mock_supabase_client.execute.return_value = Mock(
-        data=[{"settings": {"max_file_size": custom_max_bytes}}]
-    )
-    
-    # File within limit
-    content = b"%PDF-1.4\n" + b"0" * (100 * 1024 * 1024)  # 100MB
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-
-
-def test_validate_file_size_tenant_not_found(validator_service, tenant_id, mock_supabase_client):
-    """Test that default size limit is used when tenant not found."""
-    # Mock tenant not found
-    mock_supabase_client.execute.return_value = Mock(data=[])
-    
-    content = create_oversized_file()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("exceeds maximum" in error for error in result.errors)
-
-
-def test_validate_file_size_tenant_settings_error(validator_service, tenant_id, mock_supabase_client):
-    """Test that default size limit is used when tenant settings query fails."""
-    # Mock exception when querying tenant
-    mock_supabase_client.execute.side_effect = Exception("Database error")
-    
-    content = create_oversized_file()
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/pdf",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("exceeds maximum" in error for error in result.errors)
-
-
-# ============================================================================
-# TESTS: Edge Cases
-# ============================================================================
-
-def test_validate_empty_file(validator_service, tenant_id):
-    """Test validation of empty file."""
-    content = b""
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="text/plain",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is True
-    assert result.file_size == 0
-
-
-def test_validate_unknown_mime_type(validator_service, tenant_id):
-    """Test validation with unknown MIME type."""
-    content = b"some content"
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/unknown",
-        tenant_id=tenant_id,
-    )
-    
-    # Unknown MIME type has no magic bytes, so passes magic byte check
-    # But might fail other validations
-    assert result.mime_type == "application/unknown"
-
-
-def test_validate_multiple_errors(validator_service, tenant_id, mock_supabase_client):
-    """Test that multiple validation errors are collected."""
-    # Mock tenant with very small limit
-    mock_supabase_client.execute.return_value = Mock(
-        data=[{"settings": {"max_file_size": 100}}]  # 100 bytes
-    )
-    
-    # File that's too large AND wrong MIME type
-    pdf_content = create_valid_pdf()
-    result = validator_service.validate_file(
-        content=pdf_content,
-        claimed_mime="image/png",  # Wrong type
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert len(result.errors) >= 1  # At least magic bytes error
-    assert any("Magic bytes do not match" in error for error in result.errors)
-
-
-def test_validate_docx_not_office_xml(validator_service, tenant_id):
-    """Test that non-Office ZIP file claiming to be DOCX is rejected."""
-    # Regular ZIP file (not Office Open XML)
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr("test.txt", b"Hello")
-    content = buffer.getvalue()
-    
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("missing [Content_Types].xml" in error for error in result.errors)
-
-
-def test_validate_xlsx_not_office_xml(validator_service, tenant_id):
-    """Test that non-Office ZIP file claiming to be XLSX is rejected."""
-    # Regular ZIP file (not Office Open XML)
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        zip_file.writestr("data.csv", b"name,value\nA,1")
-    content = buffer.getvalue()
-    
-    result = validator_service.validate_file(
-        content=content,
-        claimed_mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        tenant_id=tenant_id,
-    )
-    
-    assert result.valid is False
-    assert any("missing [Content_Types].xml" in error for error in result.errors)
+    <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+</Types>'''
+            zip_file.writestr('[Content_Types].xml', content_types)
+        
+        content = buffer.getvalue()
+        validator = FileValidator()
+        result = validator.validate_file(
+            content,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        assert result.valid is False
+        assert any("Content types do not match" in error for error in result.errors)
+
+    def test_corrupted_zip_as_docx(self):
+        """Corrupted ZIP disguised as DOCX should fail."""
+        content = b"PK\x03\x04CORRUPTED_DATA_NOT_VALID_ZIP"
+        validator = FileValidator()
+        result = validator.validate_file(
+            content,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        assert result.valid is False
+        assert any("ZIP" in error or "Office document" in error for error in result.errors)
+
+
+class TestSizeLimitValidation:
+    """Test file size limit enforcement."""
+
+    def test_file_within_default_limit(self):
+        """File within default 100MB limit."""
+        content = b"A" * (50 * 1024 * 1024)  # 50MB
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is True
+        assert result.file_size == len(content)
+
+    def test_file_exceeds_default_limit(self):
+        """File exceeding default 100MB limit."""
+        content = b"A" * (101 * 1024 * 1024)  # 101MB
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is False
+        assert any("exceeds maximum" in error for error in result.errors)
+
+    def test_file_within_custom_limit(self):
+        """File within custom size limit."""
+        content = b"A" * (5 * 1024 * 1024)  # 5MB
+        validator = FileValidator(max_file_size=10 * 1024 * 1024)  # 10MB limit
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is True
+
+    def test_file_exceeds_custom_limit(self):
+        """File exceeding custom size limit."""
+        content = b"A" * (15 * 1024 * 1024)  # 15MB
+        validator = FileValidator(max_file_size=10 * 1024 * 1024)  # 10MB limit
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is False
+        assert any("exceeds maximum" in error for error in result.errors)
+
+    def test_tenant_config_size_limit(self):
+        """Test tenant-specific size limit."""
+        content = b"A" * (15 * 1024 * 1024)  # 15MB
+        result = validate_file_with_tenant_config(
+            content,
+            "text/plain",
+            tenant_max_size=10 * 1024 * 1024  # 10MB tenant limit
+        )
+        
+        assert result.valid is False
+        assert any("exceeds maximum" in error for error in result.errors)
+
+    def test_tenant_config_default_size(self):
+        """Test with no tenant-specific limit (uses default)."""
+        content = b"A" * (50 * 1024 * 1024)  # 50MB
+        result = validate_file_with_tenant_config(content, "text/plain")
+        
+        assert result.valid is True
+
+
+class TestMaliciousFileDetection:
+    """Test detection of malicious file samples."""
+
+    def test_exe_disguised_as_pdf(self):
+        """Executable with .pdf extension should fail."""
+        # Windows PE executable header
+        content = b"MZ\x90\x00\x03\x00\x00\x00"
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is False
+        assert any("Magic bytes" in error for error in result.errors)
+
+    def test_html_disguised_as_docx(self):
+        """HTML file disguised as DOCX should fail."""
+        content = b"<!DOCTYPE html><html><body>Malicious</body></html>"
+        validator = FileValidator()
+        result = validator.validate_file(
+            content,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+        
+        assert result.valid is False
+        assert len(result.errors) > 0
+
+    def test_script_disguised_as_csv(self):
+        """Script disguised as CSV (CSV has no magic bytes, so this passes)."""
+        content = b"#!/bin/bash\nrm -rf /"
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/csv")
+        
+        # Note: CSV has no magic byte validation, this is expected behavior
+        # Content filtering should be done at a different layer
+        assert result.valid is True
+
+    def test_zip_bomb_detection_via_size(self):
+        """Massive file should be rejected by size limit."""
+        content = b"A" * (500 * 1024 * 1024)  # 500MB
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is False
+        assert any("exceeds maximum" in error for error in result.errors)
+
+    def test_null_bytes_in_pdf(self):
+        """PDF with embedded null bytes."""
+        content = b"%PDF-1.4\n\x00\x00\x00\x00malicious content"
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        # Magic bytes are correct, so this passes basic validation
+        # Content inspection is a separate concern
+        assert result.valid is True
+
+
+class TestUnsupportedMimeTypes:
+    """Test handling of unsupported MIME types."""
+
+    def test_unsupported_mime_type(self):
+        """Unsupported MIME type should be rejected."""
+        content = b"Some content"
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/x-executable")
+        
+        assert result.valid is False
+        assert any("Unsupported MIME type" in error for error in result.errors)
+
+    def test_empty_mime_type(self):
+        """Empty MIME type should be rejected."""
+        content = b"Some content"
+        validator = FileValidator()
+        result = validator.validate_file(content, "")
+        
+        assert result.valid is False
+        assert any("Unsupported MIME type" in error for error in result.errors)
+
+
+class TestEdgeCases:
+    """Test edge cases and boundary conditions."""
+
+    def test_single_byte_file(self):
+        """Single byte file."""
+        content = b"A"
+        validator = FileValidator()
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is True
+        assert result.file_size == 1
+
+    def test_exactly_max_size(self):
+        """File exactly at maximum size."""
+        max_size = 1024
+        content = b"A" * max_size
+        validator = FileValidator(max_file_size=max_size)
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is True
+        assert result.file_size == max_size
+
+    def test_one_byte_over_max(self):
+        """File one byte over maximum size."""
+        max_size = 1024
+        content = b"A" * (max_size + 1)
+        validator = FileValidator(max_file_size=max_size)
+        result = validator.validate_file(content, "text/plain")
+        
+        assert result.valid is False
+        assert any("exceeds maximum" in error for error in result.errors)
+
+    def test_partial_magic_bytes(self):
+        """File with partial magic bytes should fail."""
+        content = b"%PD"  # Incomplete PDF magic
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is False
+
+    def test_magic_bytes_at_wrong_position(self):
+        """Magic bytes not at start of file should fail."""
+        content = b"GARBAGE%PDF-1.4"
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is False
+
+
+class TestPropertyBasedValidation:
+    """Property-based tests for critical validation paths."""
+
+    def test_size_validation_property(self):
+        """Property: File size in result always matches actual content length."""
+        test_cases = [
+            (b"", "text/plain"),
+            (b"A", "text/plain"),
+            (b"A" * 100, "text/plain"),
+            (b"A" * 10000, "text/plain"),
+            (b"%PDF" * 1000, "application/pdf"),
+        ]
+        
+        validator = FileValidator()
+        for content, mime_type in test_cases:
+            result = validator.validate_file(content, mime_type)
+            assert result.file_size == len(content)
+
+    def test_validation_idempotency(self):
+        """Property: Validating same file multiple times gives same result."""
+        content = b"%PDF-1.4\nTest content"
+        validator = FileValidator()
+        
+        result1 = validator.validate_file(content, "application/pdf")
+        result2 = validator.validate_file(content, "application/pdf")
+        result3 = validator.validate_file(content, "application/pdf")
+        
+        assert result1.valid == result2.valid == result3.valid
+        assert result1.errors == result2.errors == result3.errors
+        assert result1.file_size == result2.file_size == result3.file_size
+
+    def test_error_accumulation(self):
+        """Property: Multiple violations result in multiple errors."""
+        # Too large AND wrong magic bytes
+        content = b"NOTPDF" * (50 * 1024 * 1024)  # 300MB of garbage
+        validator = FileValidator()
+        result = validator.validate_file(content, "application/pdf")
+        
+        assert result.valid is False
+        assert len(result.errors) >= 2  # Should have both size and magic byte errors
+
+    def test_unicode_content_handling(self):
+        """Property: Validator handles unicode content in text files."""
+        test_cases = [
+            b"Hello \xe2\x9c\x93 World",  # UTF-8
+            b"\xef\xbb\xbfBOM test",  # UTF-8 BOM
+            "Ελληνικά".encode('utf-8'),  # Greek
+            "日本語".encode('utf-8'),  # Japanese
+            "🚀 Rocket".encode('utf-8'),  # Emoji
+        ]
+        
+        validator = FileValidator()
+        for content in test_cases:
+            result = validator.validate_file(content, "text/plain")
+            assert result.valid is True
+            assert result.file_size == len(content)
+
+
+class TestValidationResultModel:
+    """Test ValidationResult model behavior."""
+
+    def test_validation_result_structure(self):
+        """ValidationResult has correct structure."""
+        result = ValidationResult(
+            valid=True,
+            mime_type="application/pdf",
+            file_size=1024,
+            errors=[]
+        )
+        
+        assert result.valid is True
+        assert result.mime_type == "application/pdf"
+        assert result.file_size == 1024
+        assert result.errors == []
+
+    def test_validation_result_with_errors(self):
+        """ValidationResult can contain multiple errors."""
+        result = ValidationResult(
+            valid=False,
+            mime_type="application/pdf",
+            file_size=1024,
+            errors=["Error 1", "Error 2", "Error 3"]
+        )
+        
+        assert result.valid is False
+        assert len(result.errors) == 3

@@ -1,214 +1,187 @@
-"""Secure file validation service with magic byte checking and size limits."""
+"""
+File Validation Service - Ingestion Plane
+
+Validates uploaded files using magic byte verification and structural checks.
+Enforces size limits and MIME type integrity.
+
+Security Layer: Defense in depth - never trust file extensions or client-provided MIME types.
+"""
+
 import zipfile
-import io
-import logging
+from io import BytesIO
 from typing import Optional
-from uuid import UUID
-from pydantic import BaseModel, Field
-from supabase import Client
+from pydantic import BaseModel
 
-logger = logging.getLogger(__name__)
 
-# Default max file size: 100MB
-DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
+# Maximum file size in bytes (100MB default)
+DEFAULT_MAX_FILE_SIZE = 100 * 1024 * 1024
 
-# Magic bytes for file type validation
-MAGIC_BYTES = {
+# Magic byte signatures for supported file types
+MAGIC_BYTES: dict[str, Optional[list[bytes]]] = {
     "application/pdf": [b"%PDF"],
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [b"PK\x03\x04"],
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [b"PK\x03\x04"],
     "image/png": [b"\x89PNG"],
     "image/jpeg": [b"\xff\xd8\xff"],
     "text/plain": None,  # No magic bytes
-    "text/csv": None,  # No magic bytes
+    "text/csv": None,
 }
 
-
-def validate_magic_bytes(content: bytes, claimed_mime: str) -> bool:
-    """
-    Verify file content matches claimed MIME type.
-    
-    Args:
-        content: File content bytes
-        claimed_mime: Claimed MIME type
-        
-    Returns:
-        True if magic bytes match or no validation required, False otherwise
-    """
-    expected = MAGIC_BYTES.get(claimed_mime)
-    if expected is None:
-        return True  # No validation for text files
-    return any(content.startswith(magic) for magic in expected)
+# Office Open XML content types for DOCX/XLSX validation
+OFFICE_CONTENT_TYPES = {
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+}
 
 
 class ValidationResult(BaseModel):
     """Result of file validation."""
-    
-    valid: bool = Field(..., description="Whether file passed validation")
-    mime_type: str = Field(..., description="Detected/claimed MIME type")
-    file_size: int = Field(..., description="File size in bytes")
-    errors: list[str] = Field(default_factory=list, description="List of validation errors")
+    valid: bool
+    mime_type: str
+    file_size: int
+    errors: list[str] = []
 
 
-class FileValidatorService:
-    """Service for validating uploaded files with security checks."""
+class FileValidator:
+    """
+    Validates file content integrity and security.
     
-    def __init__(self, supabase_client: Client):
+    Responsibilities:
+    - Magic byte verification
+    - Office Open XML structural validation
+    - Size limit enforcement
+    """
+
+    def __init__(self, max_file_size: int = DEFAULT_MAX_FILE_SIZE):
         """
-        Initialize file validator service.
+        Initialize validator with size limit.
         
         Args:
-            supabase_client: Supabase client for fetching tenant settings
+            max_file_size: Maximum allowed file size in bytes
         """
-        self.client = supabase_client
-    
-    def _get_tenant_max_file_size(self, tenant_id: UUID) -> int:
+        self.max_file_size = max_file_size
+
+    def validate_file(self, content: bytes, claimed_mime: str) -> ValidationResult:
         """
-        Get max file size for tenant from settings.
+        Validate file content against claimed MIME type.
         
         Args:
-            tenant_id: Tenant UUID
-            
-        Returns:
-            Max file size in bytes (defaults to DEFAULT_MAX_FILE_SIZE_BYTES)
-        """
-        try:
-            result = (
-                self.client.table("tenants")
-                .select("settings")
-                .eq("id", str(tenant_id))
-                .limit(1)
-                .execute()
-            )
-            
-            if not result.data:
-                logger.warning(f"Tenant {tenant_id} not found, using default max file size")
-                return DEFAULT_MAX_FILE_SIZE_BYTES
-            
-            settings = result.data[0].get("settings", {})
-            max_size = settings.get("max_file_size")
-            
-            if max_size is None:
-                return DEFAULT_MAX_FILE_SIZE_BYTES
-            
-            # Convert to bytes if provided in MB
-            if isinstance(max_size, int):
-                # Assume bytes if reasonable, otherwise assume MB
-                if max_size < 1024:
-                    return max_size * 1024 * 1024  # Convert MB to bytes
-                return max_size
-            
-            logger.warning(f"Invalid max_file_size for tenant {tenant_id}, using default")
-            return DEFAULT_MAX_FILE_SIZE_BYTES
-            
-        except Exception as e:
-            logger.error(f"Error fetching tenant settings for {tenant_id}: {e}")
-            return DEFAULT_MAX_FILE_SIZE_BYTES
-    
-    def _validate_magic_bytes(self, content: bytes, claimed_mime: str) -> Optional[str]:
-        """
-        Verify file content matches claimed MIME type via magic bytes.
-        
-        Args:
-            content: File content bytes
-            claimed_mime: Claimed MIME type
-            
-        Returns:
-            Error message if validation fails, None if passes
-        """
-        expected = MAGIC_BYTES.get(claimed_mime)
-        
-        if expected is None:
-            # No magic bytes for this type (text files)
-            return None
-        
-        if not any(content.startswith(magic) for magic in expected):
-            return f"Magic bytes do not match claimed MIME type '{claimed_mime}'"
-        
-        return None
-    
-    def _validate_office_open_xml(self, content: bytes, mime_type: str) -> Optional[str]:
-        """
-        Validate DOCX/XLSX files are valid Office Open XML (ZIP with [Content_Types].xml).
-        
-        Args:
-            content: File content bytes
-            mime_type: MIME type (must be DOCX or XLSX)
-            
-        Returns:
-            Error message if validation fails, None if passes
-        """
-        office_mime_types = [
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        ]
-        
-        if mime_type not in office_mime_types:
-            return None  # Not an Office Open XML file
-        
-        try:
-            with zipfile.ZipFile(io.BytesIO(content), 'r') as zip_file:
-                # Check for [Content_Types].xml (required for Office Open XML)
-                if "[Content_Types].xml" not in zip_file.namelist():
-                    return "Invalid Office Open XML: missing [Content_Types].xml"
-                
-                # Verify it's a valid ZIP structure
-                zip_file.testzip()
-                
-        except zipfile.BadZipFile:
-            return "Invalid Office Open XML: not a valid ZIP archive"
-        except Exception as e:
-            logger.error(f"Error validating Office Open XML: {e}")
-            return f"Error validating Office Open XML: {str(e)}"
-        
-        return None
-    
-    def validate_file(
-        self,
-        content: bytes,
-        claimed_mime: str,
-        tenant_id: UUID,
-    ) -> ValidationResult:
-        """
-        Validate file content with security checks.
-        
-        Performs:
-        1. Magic byte validation
-        2. Office Open XML structure validation (for DOCX/XLSX)
-        3. Size limit check (tenant-configurable)
-        
-        Args:
-            content: File content bytes
-            claimed_mime: Claimed MIME type
-            tenant_id: Tenant UUID for size limit lookup
+            content: Raw file bytes
+            claimed_mime: Client-provided MIME type
             
         Returns:
             ValidationResult with validation status and errors
         """
         errors: list[str] = []
         file_size = len(content)
-        
+
         # Check size limit
-        max_size = self._get_tenant_max_file_size(tenant_id)
-        if file_size > max_size:
-            errors.append(
-                f"File size {file_size} bytes exceeds maximum {max_size} bytes "
-                f"({max_size / (1024 * 1024):.1f} MB)"
+        if not self._validate_size(file_size):
+            errors.append(f"File size {file_size} exceeds maximum {self.max_file_size} bytes")
+
+        # Check MIME type is supported
+        if claimed_mime not in MAGIC_BYTES:
+            errors.append(f"Unsupported MIME type: {claimed_mime}")
+            return ValidationResult(
+                valid=False,
+                mime_type=claimed_mime,
+                file_size=file_size,
+                errors=errors
             )
-        
+
         # Validate magic bytes
-        magic_error = self._validate_magic_bytes(content, claimed_mime)
-        if magic_error:
-            errors.append(magic_error)
-        
-        # Validate Office Open XML structure (for DOCX/XLSX)
-        ooxml_error = self._validate_office_open_xml(content, claimed_mime)
-        if ooxml_error:
-            errors.append(ooxml_error)
-        
+        if not self._validate_magic_bytes(content, claimed_mime):
+            errors.append(f"Magic bytes do not match claimed MIME type: {claimed_mime}")
+
+        # Additional validation for Office documents
+        if claimed_mime in OFFICE_CONTENT_TYPES:
+            office_errors = self._validate_office_document(content, claimed_mime)
+            errors.extend(office_errors)
+
         return ValidationResult(
             valid=len(errors) == 0,
             mime_type=claimed_mime,
             file_size=file_size,
-            errors=errors,
+            errors=errors
         )
+
+    def _validate_size(self, file_size: int) -> bool:
+        """Check if file size is within limit."""
+        return 0 < file_size <= self.max_file_size
+
+    def _validate_magic_bytes(self, content: bytes, claimed_mime: str) -> bool:
+        """
+        Verify file content matches claimed MIME type.
+        
+        Args:
+            content: Raw file bytes
+            claimed_mime: Claimed MIME type
+            
+        Returns:
+            True if magic bytes match or no validation required
+        """
+        expected = MAGIC_BYTES.get(claimed_mime)
+        if expected is None:
+            return True  # No validation for text files
+
+        if len(content) == 0:
+            return False
+
+        return any(content.startswith(magic) for magic in expected)
+
+    def _validate_office_document(self, content: bytes, claimed_mime: str) -> list[str]:
+        """
+        Validate Office Open XML document structure.
+        
+        Checks for presence of [Content_Types].xml to verify legitimate Office document.
+        
+        Args:
+            content: Raw file bytes
+            claimed_mime: Claimed MIME type (DOCX or XLSX)
+            
+        Returns:
+            List of validation errors (empty if valid)
+        """
+        errors: list[str] = []
+
+        try:
+            with zipfile.ZipFile(BytesIO(content), 'r') as zip_file:
+                # Check for [Content_Types].xml
+                if '[Content_Types].xml' not in zip_file.namelist():
+                    errors.append("Missing [Content_Types].xml - not a valid Office Open XML document")
+                    return errors
+
+                # Read and verify content types
+                content_types_xml = zip_file.read('[Content_Types].xml').decode('utf-8')
+                expected_content_type = OFFICE_CONTENT_TYPES[claimed_mime]
+
+                if expected_content_type not in content_types_xml:
+                    errors.append(f"Content types do not match claimed MIME type: {claimed_mime}")
+
+        except zipfile.BadZipFile:
+            errors.append("Corrupted ZIP structure - not a valid Office document")
+        except Exception as e:
+            errors.append(f"Office document validation failed: {str(e)}")
+
+        return errors
+
+
+def validate_file_with_tenant_config(
+    content: bytes,
+    claimed_mime: str,
+    tenant_max_size: Optional[int] = None
+) -> ValidationResult:
+    """
+    Validate file with tenant-specific configuration.
+    
+    Args:
+        content: Raw file bytes
+        claimed_mime: Client-provided MIME type
+        tenant_max_size: Optional tenant-specific size limit
+        
+    Returns:
+        ValidationResult with validation status
+    """
+    max_size = tenant_max_size if tenant_max_size is not None else DEFAULT_MAX_FILE_SIZE
+    validator = FileValidator(max_file_size=max_size)
+    return validator.validate_file(content, claimed_mime)
