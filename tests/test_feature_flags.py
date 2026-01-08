@@ -5,7 +5,6 @@ from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime, timedelta
 
 from src.features.service import FeatureFlagService
-from src.features.models import FeatureFlagResponse
 
 
 @pytest.fixture
