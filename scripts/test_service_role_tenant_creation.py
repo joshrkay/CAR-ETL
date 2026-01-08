@@ -111,7 +111,7 @@ def test_service_role_tenant_creation():
     print("\n4. Testing tenant deletion with service_role...")
     
     try:
-        delete_result = supabase_service.table("tenants").delete().eq("id", tenant_id).execute()
+        supabase_service.table("tenants").delete().eq("id", tenant_id).execute()
         print(f"   [OK] Tenant deleted successfully")
         
         # Verify deletion
