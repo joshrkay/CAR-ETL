@@ -583,9 +583,6 @@ class TestSensitiveDataProtection:
         """Test that middleware only logs safe metadata fields."""
         middleware = AuditMiddleware(app=MagicMock())
         
-        # Middleware should only log these safe fields in metadata:
-        safe_fields = {"method", "status_code", "duration_ms"}
-        
         # Verify _log_request only uses safe fields
         # This is verified by code inspection - middleware doesn't access request.body
         assert hasattr(middleware, "_log_request")
