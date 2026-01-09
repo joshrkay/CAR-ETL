@@ -2,7 +2,6 @@
 import logging
 import asyncio
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
 import httpx
 from src.connectors.google_drive.oauth import GoogleDriveOAuth, GoogleDriveOAuthError
 
@@ -113,7 +112,7 @@ class GoogleDriveClient:
                                     json_data=json_data,
                                     retry_on_auth_error=False,
                                 )
-                            except GoogleDriveOAuthError as e:
+                            except GoogleDriveOAuthError:
                                 error_text = response.text.lower()
                                 if "invalid_grant" in error_text or "revoked" in error_text:
                                     logger.error(
@@ -283,7 +282,7 @@ class GoogleDriveClient:
             params["supportsAllDrives"] = "true"
             params["includeItemsFromAllDrives"] = "true"
         
-        endpoint = f"/changes" if not page_token else "/changes"
+        endpoint = "/changes"
         response = await self._make_request("GET", endpoint, params=params)
         
         changes = response.get("changes", [])

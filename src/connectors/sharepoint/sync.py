@@ -203,7 +203,6 @@ class SharePointSync:
         """Download and store a file item from SharePoint."""
         file_id = item.get("id")
         file_name = item.get("name")
-        file_size = item.get("size", 0)
         
         if not file_id or not file_name:
             return

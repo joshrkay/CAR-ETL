@@ -8,11 +8,10 @@ import logging
 import os
 from uuid import UUID
 from fastapi import APIRouter, Request, HTTPException, status, Header
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, Annotated
 
-from src.services.email_parser import EmailParser, ParsedEmail
+from src.services.email_parser import EmailParser
 from src.services.email_ingestion import EmailIngestionService
 from src.services.email_rate_limiter import EmailRateLimiter
 from src.services.resend_verifier import ResendVerifier

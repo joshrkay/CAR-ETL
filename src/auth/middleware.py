@@ -1,5 +1,5 @@
 """FastAPI middleware for JWT authentication with custom claims."""
-from fastapi import Request, HTTPException, status
+from fastapi import Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -11,7 +11,6 @@ from typing import Optional, Union
 from src.auth.config import AuthConfig, get_auth_config
 from src.auth.models import AuthContext, AuthError
 from src.auth.rate_limit import AuthRateLimiter
-from src.exceptions import RateLimitError
 
 
 security = HTTPBearer(auto_error=False)

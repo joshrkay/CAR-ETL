@@ -92,7 +92,7 @@ class AuditLogger:
         try:
             # Use Supabase client with user's JWT (RLS enforced)
             # RLS policy ensures tenant_id matches JWT claims
-            result = self.supabase.table("audit_logs").insert(self._buffer).execute()
+            self.supabase.table("audit_logs").insert(self._buffer).execute()
             
             # Clear buffer on success
             buffer_size = len(self._buffer)

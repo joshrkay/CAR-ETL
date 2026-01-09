@@ -6,7 +6,6 @@ This service must be called before any data persistence or transmission.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
