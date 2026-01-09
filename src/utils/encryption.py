@@ -24,7 +24,9 @@ def get_encryption_key() -> bytes:
     
     if encryption_key_env:
         try:
-            return base64.urlsafe_b64decode(encryption_key_env.encode())
+            # ENCRYPTION_KEY should be base64-encoded (from Fernet.generate_key().decode())
+            # Return as-is (already base64-encoded bytes string)
+            return encryption_key_env.encode()
         except Exception:
             raise ValueError("ENCRYPTION_KEY must be a valid base64-encoded key")
     

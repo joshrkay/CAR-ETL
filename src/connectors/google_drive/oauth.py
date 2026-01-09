@@ -1,4 +1,4 @@
-"""OAuth2 flow for Microsoft Graph API authentication."""
+"""OAuth2 flow for Google Drive API authentication."""
 import os
 import logging
 from typing import Optional, Dict, Any
@@ -9,62 +9,61 @@ from uuid import uuid4
 logger = logging.getLogger(__name__)
 
 
-class SharePointOAuthError(Exception):
-    """OAuth-specific error for SharePoint authentication."""
+class GoogleDriveOAuthError(Exception):
+    """OAuth-specific error for Google Drive authentication."""
     pass
 
 
-class SharePointOAuth:
-    """Handles OAuth2 flow for Microsoft Graph API."""
+class GoogleDriveOAuth:
+    """Handles OAuth2 flow for Google Drive API."""
     
-    # Microsoft OAuth endpoints
-    AUTHORIZATION_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-    TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+    # Google OAuth endpoints
+    AUTHORIZATION_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+    TOKEN_URL = "https://oauth2.googleapis.com/token"
     
-    # Required scopes for SharePoint access
+    # Required scopes for Google Drive access
     REQUIRED_SCOPES = [
-        "Files.Read.All",
-        "Sites.Read.All",
-        "offline_access",
+        "https://www.googleapis.com/auth/drive.readonly",
+        "https://www.googleapis.com/auth/drive.metadata.readonly",
     ]
     
     def __init__(self, client_id: str, client_secret: str, redirect_uri: str):
         """
-        Initialize SharePoint OAuth handler.
+        Initialize Google Drive OAuth handler.
         
         Args:
-            client_id: Azure AD application client ID
-            client_secret: Azure AD application client secret
-            redirect_uri: OAuth redirect URI (must match Azure AD registration)
+            client_id: Google OAuth application client ID
+            client_secret: Google OAuth application client secret
+            redirect_uri: OAuth redirect URI (must match Google Cloud Console registration)
         """
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
     
     @classmethod
-    def from_env(cls) -> "SharePointOAuth":
+    def from_env(cls) -> "GoogleDriveOAuth":
         """
         Create OAuth handler from environment variables.
         
         Environment variables:
-            SHAREPOINT_CLIENT_ID: Azure AD application client ID
-            SHAREPOINT_CLIENT_SECRET: Azure AD application client secret
-            SHAREPOINT_REDIRECT_URI: OAuth redirect URI
+            GOOGLE_CLIENT_ID: Google OAuth application client ID
+            GOOGLE_CLIENT_SECRET: Google OAuth application client secret
+            GOOGLE_REDIRECT_URI: OAuth redirect URI
             
         Returns:
-            SharePointOAuth instance
+            GoogleDriveOAuth instance
             
         Raises:
             ValueError: If required environment variables are missing
         """
-        client_id = os.getenv("SHAREPOINT_CLIENT_ID")
-        client_secret = os.getenv("SHAREPOINT_CLIENT_SECRET")
-        redirect_uri = os.getenv("SHAREPOINT_REDIRECT_URI")
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+        redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
         
         if not all([client_id, client_secret, redirect_uri]):
             raise ValueError(
                 "Missing required environment variables: "
-                "SHAREPOINT_CLIENT_ID, SHAREPOINT_CLIENT_SECRET, SHAREPOINT_REDIRECT_URI"
+                "GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI"
             )
         
         return cls(
@@ -90,8 +89,9 @@ class SharePointOAuth:
             "client_id": self.client_id,
             "response_type": "code",
             "redirect_uri": self.redirect_uri,
-            "response_mode": "query",
             "scope": " ".join(self.REQUIRED_SCOPES),
+            "access_type": "offline",
+            "prompt": "consent",
             "state": state,
         }
         
@@ -113,7 +113,7 @@ class SharePointOAuth:
             Dictionary containing access_token, refresh_token, expires_in, etc.
             
         Raises:
-            SharePointOAuthError: If token exchange fails
+            GoogleDriveOAuthError: If token exchange fails
         """
         data = {
             "client_id": self.client_id,
@@ -135,7 +135,7 @@ class SharePointOAuth:
                 token_data = response.json()
                 
                 if "access_token" not in token_data:
-                    raise SharePointOAuthError("Token response missing access_token")
+                    raise GoogleDriveOAuthError("Token response missing access_token")
                 
                 return token_data
                 
@@ -148,10 +148,10 @@ class SharePointOAuth:
                     "error": error_detail,
                 },
             )
-            raise SharePointOAuthError(f"Token exchange failed: {error_detail}")
+            raise GoogleDriveOAuthError(f"Token exchange failed: {error_detail}")
         except Exception as e:
             logger.error("Unexpected error during token exchange", exc_info=True)
-            raise SharePointOAuthError(f"Token exchange failed: {str(e)}")
+            raise GoogleDriveOAuthError(f"Token exchange failed: {str(e)}")
     
     async def refresh_access_token(self, refresh_token: str) -> Dict[str, Any]:
         """
@@ -164,7 +164,7 @@ class SharePointOAuth:
             Dictionary containing new access_token, refresh_token, expires_in, etc.
             
         Raises:
-            SharePointOAuthError: If token refresh fails
+            GoogleDriveOAuthError: If token refresh fails
         """
         data = {
             "client_id": self.client_id,
@@ -185,7 +185,7 @@ class SharePointOAuth:
                 token_data = response.json()
                 
                 if "access_token" not in token_data:
-                    raise SharePointOAuthError("Token response missing access_token")
+                    raise GoogleDriveOAuthError("Token response missing access_token")
                 
                 return token_data
                 
@@ -198,7 +198,7 @@ class SharePointOAuth:
                     "error": error_detail,
                 },
             )
-            raise SharePointOAuthError(f"Token refresh failed: {error_detail}")
+            raise GoogleDriveOAuthError(f"Token refresh failed: {error_detail}")
         except Exception as e:
             logger.error("Unexpected error during token refresh", exc_info=True)
-            raise SharePointOAuthError(f"Token refresh failed: {str(e)}")
+            raise GoogleDriveOAuthError(f"Token refresh failed: {str(e)}")
