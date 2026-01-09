@@ -1,7 +1,7 @@
 """Google Drive API client for file operations."""
 import logging
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 import httpx
 from src.connectors.google_drive.oauth import GoogleDriveOAuth, GoogleDriveOAuthError
 
@@ -146,7 +146,7 @@ class GoogleDriveClient:
                             raise RateLimitError("Rate limit exceeded after retries")
                     
                     response.raise_for_status()
-                    return response.json()
+                    return cast(Dict[str, Any], response.json())
                     
             except httpx.HTTPStatusError as e:
                 if e.response.status_code == 429 and attempt < max_retries - 1:
@@ -267,7 +267,7 @@ class GoogleDriveClient:
         Returns:
             Dictionary with changes list and next page token
         """
-        params = {
+        params: Dict[str, Any] = {
             "pageSize": 1000,
             "fields": "nextPageToken, newStartPageToken, changes(file(id, name, mimeType, modifiedTime, size, trashed, parents), changeType, removed)",
         }
@@ -275,7 +275,8 @@ class GoogleDriveClient:
         if page_token:
             params["pageToken"] = page_token
         else:
-            params["fields"] = params["fields"] + ", startPageToken"
+            fields_value = params.get("fields", "")
+            params["fields"] = fields_value + ", startPageToken"
         
         if drive_id:
             params["driveId"] = drive_id
@@ -320,7 +321,8 @@ class GoogleDriveClient:
         endpoint = "/changes/startPageToken"
         response = await self._make_request("GET", endpoint, params=params)
         
-        return response.get("startPageToken", "")
+        token = response.get("startPageToken", "")
+        return cast(str, token)
     
     async def download_file(self, file_id: str, drive_id: Optional[str] = None) -> bytes:
         """

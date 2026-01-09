@@ -2,7 +2,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from typing import Annotated
+from typing import Annotated, Any, Dict
 from src.auth.middleware import AuthMiddleware
 from src.auth.models import AuthContext
 from src.dependencies import get_current_user, require_role, get_feature_flags
@@ -37,7 +37,7 @@ app.add_middleware(ErrorHandlerMiddleware)
 # Register exception handlers for route handlers
 # (Middleware also catches exceptions, but handlers are more idiomatic for FastAPI)
 @app.exception_handler(CARException)
-async def car_exception_handler(request: Request, exc: CARException):
+async def car_exception_handler(request: Request, exc: CARException) -> JSONResponse:
     """
     Handle CAR Platform custom exceptions.
     
@@ -76,7 +76,7 @@ async def car_exception_handler(request: Request, exc: CARException):
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle FastAPI request validation errors."""
     request_id = getattr(request.state, "request_id", None)
     
@@ -122,7 +122,7 @@ app.add_api_route(
 
 
 @app.get("/me")
-async def get_current_user_info(user: Annotated[AuthContext, Depends(get_current_user)]):
+async def get_current_user_info(user: Annotated[AuthContext, Depends(get_current_user)]) -> Dict[str, Any]:
     """Get current authenticated user info."""
     return {
         "user_id": str(user.user_id),
@@ -134,7 +134,7 @@ async def get_current_user_info(user: Annotated[AuthContext, Depends(get_current
 
 
 @app.get("/admin")
-async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]):
+async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]) -> Dict[str, Any]:
     """Admin-only endpoint."""
     return {
         "message": "Admin access granted",
@@ -146,7 +146,7 @@ async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admi
 async def experimental_feature(
     flags: Annotated[FeatureFlagService, Depends(get_feature_flags)],
     user: Annotated[AuthContext, Depends(get_current_user)],
-):
+) -> Dict[str, Any]:
     """
     Example endpoint using feature flags.
     

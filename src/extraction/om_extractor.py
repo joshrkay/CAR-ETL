@@ -12,7 +12,7 @@ from typing import Dict, Any, List, Optional
 try:
     from openai import AsyncOpenAI
 except ImportError:  # pragma: no cover - handled at runtime if dependency missing
-    AsyncOpenAI = None  # type: ignore
+    AsyncOpenAI = None
 from pydantic import BaseModel, Field
 
 from src.extraction.normalizers import normalize_field_value

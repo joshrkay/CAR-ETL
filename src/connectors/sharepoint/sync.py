@@ -1,7 +1,7 @@
 """Delta sync logic for SharePoint files."""
 import logging
 import hashlib
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from supabase import Client
@@ -54,7 +54,7 @@ class SharePointSync:
         Returns:
             Dictionary with sync statistics (files_synced, files_updated, errors)
         """
-        stats = {
+        stats: Dict[str, Any] = {
             "files_synced": 0,
             "files_updated": 0,
             "files_skipped": 0,
@@ -175,10 +175,12 @@ class SharePointSync:
             .execute()
         )
         
-        if not result.data:
+        if not result.data:  # type: ignore[union-attr]
             raise SharePointSyncError("Connector not found")
         
-        return result.data
+        # Type narrowing: result.data is not None after the check above
+        assert result.data is not None  # type: ignore[union-attr]
+        return cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
     
     async def _find_existing_document(self, source_path: str) -> Optional[Dict[str, Any]]:
         """Find existing document by source_path."""
@@ -192,7 +194,11 @@ class SharePointSync:
             .execute()
         )
         
-        return result.data if result.data else None
+        if result.data:  # type: ignore[union-attr]
+            # Type narrowing: result.data is not None after the check above
+            assert result.data is not None  # type: ignore[union-attr]
+            return cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        return None
     
     async def _sync_file_item(
         self,
@@ -234,9 +240,10 @@ class SharePointSync:
             # Note: Supabase storage.upload() accepts bytes directly
             from io import BytesIO
             file_obj = BytesIO(redacted_content)
+            # Supabase accepts BytesIO but mypy doesn't know - use type: ignore
             self.supabase.storage.from_(bucket_name).upload(
                 path=storage_path,
-                file=file_obj,
+                file=file_obj,  # type: ignore[arg-type]
                 file_options={"content-type": mime_type, "upsert": "true"},
             )
         except Exception as e:

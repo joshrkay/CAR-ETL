@@ -1,9 +1,12 @@
 """FastAPI dependencies for authentication and feature flags."""
 from fastapi import Request, HTTPException, status, Depends
-from typing import Annotated, Union
+from typing import Annotated, Callable, Union, TYPE_CHECKING
 from src.auth.models import AuthContext
 from src.features.service import FeatureFlagService
 from supabase import Client
+
+if TYPE_CHECKING:
+    from src.audit.logger import AuditLogger
 
 
 def get_current_user(request: Request) -> AuthContext:
@@ -27,7 +30,7 @@ def get_current_user(request: Request) -> AuthContext:
     return auth
 
 
-def require_role(role: str):
+def require_role(role: str) -> Callable[[], AuthContext]:
     """
     Dependency factory to require a specific role.
     
@@ -50,7 +53,7 @@ def require_role(role: str):
     return role_checker
 
 
-def require_any_role(roles: list[str]):
+def require_any_role(roles: list[str]) -> Callable[[], AuthContext]:
     """
     Dependency factory to require any of the specified roles.
     
@@ -138,7 +141,7 @@ def get_service_client() -> Client:
 def get_audit_logger(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_user)],
-):
+) -> "AuditLogger":  # noqa: F821
     """
     Dependency to get audit logger for current tenant and user.
     
@@ -162,8 +165,9 @@ def get_audit_logger(
     from src.audit.logger import AuditLogger
     
     supabase = get_supabase_client(request)
-    return AuditLogger(
+    logger: AuditLogger = AuditLogger(
         supabase=supabase,
         tenant_id=auth.tenant_id,
         user_id=auth.user_id,
     )
+    return logger

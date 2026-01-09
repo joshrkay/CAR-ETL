@@ -40,21 +40,25 @@ class AuthRateLimiter:
             )
 
             if result.data:
-                record = result.data[0]
-                attempt_count = record.get("attempt_count", 0)
+                record = cast(Dict[str, Any], result.data[0])
+                attempt_count = int(record.get("attempt_count", 0))
 
                 if attempt_count >= self.config.auth_rate_limit_max_attempts:
-                    window_start_str = record["window_start"]
-                    if isinstance(window_start_str, str):
-                        window_start_dt = datetime.fromisoformat(window_start_str.replace("Z", "+00:00"))
+                    window_start_value = record.get("window_start")
+                    if isinstance(window_start_value, str):
+                        window_start_dt = datetime.fromisoformat(window_start_value.replace("Z", "+00:00"))
+                    elif isinstance(window_start_value, datetime):
+                        window_start_dt = window_start_value
                     else:
-                        window_start_dt = window_start_str
+                        # Fallback: use current time if invalid
+                        window_start_dt = now
                     
                     elapsed = (now - window_start_dt.replace(tzinfo=None)).total_seconds()
                     retry_after = max(1, int(self.config.auth_rate_limit_window_seconds - elapsed))
                     raise RateLimitError(retry_after)
 
-                self._increment_attempt(record["id"], attempt_count + 1)
+                record_id = str(record.get("id", ""))
+                self._increment_attempt(record_id, attempt_count + 1)
             else:
                 self._create_new_record(ip_address, now)
 

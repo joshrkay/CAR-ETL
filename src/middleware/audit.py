@@ -1,9 +1,10 @@
 """Audit middleware for automatic request logging."""
 import time
 import logging
+from typing import Awaitable, Callable, Optional
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Optional
+from starlette.responses import Response
 
 from src.audit.logger import AuditLogger
 from src.audit.models import EventType, ActionType
@@ -29,7 +30,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
     
     SKIP_PATHS = ["/health", "/docs", "/openapi.json", "/redoc"]
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Process request and log audit event."""
         # Skip audit for health checks and docs
         if any(request.url.path.startswith(path) for path in self.SKIP_PATHS):
@@ -67,7 +70,9 @@ class AuditMiddleware(BaseHTTPMiddleware):
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+        if request.client and request.client.host:
+            return request.client.host
+        return "unknown"
     
     async def _log_request(
         self,

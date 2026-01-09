@@ -147,7 +147,7 @@ def normalize_integer(value: Any) -> Optional[int]:
         return None
     
     # Remove commas and spaces
-    cleaned = re.sub(r"[,,\s]", "", value)
+    cleaned = re.sub(r"[,\s]", "", value)
     
     try:
         return int(float(cleaned))

@@ -7,7 +7,7 @@ Creates documents for email body and attachments.
 
 import logging
 from uuid import UUID, uuid4
-from typing import Optional
+from typing import Any, Optional
 from supabase import Client
 
 from src.services.email_parser import ParsedEmail, Attachment
@@ -41,7 +41,7 @@ class EmailIngestionService:
         self,
         parsed_email: ParsedEmail,
         tenant_id: UUID,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Ingest email and create documents for body and attachments.
         

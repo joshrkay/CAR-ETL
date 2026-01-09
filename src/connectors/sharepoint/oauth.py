@@ -1,7 +1,7 @@
 """OAuth2 flow for Microsoft Graph API authentication."""
 import os
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 from urllib.parse import urlencode
 import httpx
 from uuid import uuid4
@@ -66,6 +66,11 @@ class SharePointOAuth:
                 "Missing required environment variables: "
                 "SHAREPOINT_CLIENT_ID, SHAREPOINT_CLIENT_SECRET, SHAREPOINT_REDIRECT_URI"
             )
+        
+        # Type narrowing: after the check above, we know these are not None
+        assert client_id is not None
+        assert client_secret is not None
+        assert redirect_uri is not None
         
         return cls(
             client_id=client_id,
@@ -137,7 +142,7 @@ class SharePointOAuth:
                 if "access_token" not in token_data:
                     raise SharePointOAuthError("Token response missing access_token")
                 
-                return token_data
+                return cast(Dict[str, Any], token_data)
                 
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text if e.response else str(e)
@@ -187,7 +192,7 @@ class SharePointOAuth:
                 if "access_token" not in token_data:
                     raise SharePointOAuthError("Token response missing access_token")
                 
-                return token_data
+                return cast(Dict[str, Any], token_data)
                 
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text if e.response else str(e)

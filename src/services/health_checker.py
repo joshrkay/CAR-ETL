@@ -3,7 +3,7 @@ import time
 import logging
 import asyncio
 import httpx
-from typing import Dict, Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional, Union
 from supabase import Client
 
 from src.auth.config import get_auth_config
@@ -38,7 +38,7 @@ class HealthCheckResult:
 class HealthChecker:
     """Service for checking health of system components."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize health checker with service client."""
         self.config = get_auth_config()
         self.service_client: Client | None = None
@@ -58,7 +58,7 @@ class HealthChecker:
         """
         start_time = time.time()
         
-        def _check():
+        def _check() -> Any:
             client = self._get_service_client()
             # Simple query to check database connectivity
             # Using a lightweight query that doesn't require specific tables
@@ -93,7 +93,7 @@ class HealthChecker:
         """
         start_time = time.time()
         
-        def _check():
+        def _check() -> Any:
             client = self._get_service_client()
             # Try to list buckets (lightweight operation)
             # This verifies storage API is accessible

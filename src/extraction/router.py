@@ -7,7 +7,7 @@ Implements fallback logic when primary parser fails.
 import logging
 import yaml
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, cast
 from .parsers.base import BaseParser, ParseResult
 from .parsers.ragflow import RagFlowParser
 from .parsers.unstructured import UnstructuredParser
@@ -40,7 +40,8 @@ def load_parser_routes() -> Dict[str, Any]:
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
     
-    return config.get("parser_routes", {})
+    routes = config.get("parser_routes", {}) if isinstance(config, dict) else {}
+    return cast(Dict[str, Any], routes)
 
 
 def match_mime_type(mime_type: str, routes: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -58,14 +59,14 @@ def match_mime_type(mime_type: str, routes: Dict[str, Any]) -> Optional[Dict[str
     """
     # Try exact match first
     if mime_type in routes:
-        return routes[mime_type]
+        return cast(Dict[str, Any], routes[mime_type])
     
     # Try wildcard match (e.g., "image/*" for "image/png")
     type_prefix = mime_type.split("/")[0]
     wildcard_key = f"{type_prefix}/*"
     
     if wildcard_key in routes:
-        return routes[wildcard_key]
+        return cast(Dict[str, Any], routes[wildcard_key])
     
     return None
 
@@ -171,13 +172,16 @@ def _select_parser_from_conditions(
     
     # Check conditions in order of specificity
     if characteristics.get("has_tables") and "has_tables" in conditions:
-        return conditions["has_tables"]
+        parser_name = conditions.get("has_tables")
+        return cast(Optional[str], parser_name)
     
     if characteristics.get("scanned") and "scanned" in conditions:
-        return conditions["scanned"]
+        parser_name = conditions.get("scanned")
+        return cast(Optional[str], parser_name)
     
     if characteristics.get("simple_text") and "simple_text" in conditions:
-        return conditions["simple_text"]
+        parser_name = conditions.get("simple_text")
+        return cast(Optional[str], parser_name)
     
     return None
 
