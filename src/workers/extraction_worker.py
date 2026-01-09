@@ -22,6 +22,10 @@ from supabase import Client
 from src.auth.client import create_service_client
 from src.extraction.pipeline import process_document
 from src.services.error_sanitizer import sanitize_exception, get_loggable_error
+from src.extraction.idempotency import (
+    ensure_idempotent_processing,
+    cleanup_stale_locks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +107,9 @@ class ExtractionWorker:
         # Reset stale processing items
         await self._reset_stale_items()
 
+        # IDEMPOTENCY: Cleanup stale extraction locks
+        await self._cleanup_stale_extraction_locks()
+
         try:
             # Main worker loop
             while self.running and not self.shutdown_event.is_set():
@@ -181,6 +188,31 @@ class ExtractionWorker:
             error_info = get_loggable_error(e)
             logger.error(
                 "Failed to reset stale items",
+                extra=error_info,
+                exc_info=True,
+            )
+
+    async def _cleanup_stale_extraction_locks(self) -> None:
+        """
+        Cleanup stale extraction locks on worker startup.
+
+        Ensures idempotency by marking abandoned extractions as failed.
+        """
+        try:
+            count = await cleanup_stale_locks(self.supabase)
+
+            if count > 0:
+                logger.warning(
+                    "Cleaned up stale extraction locks",
+                    extra={"count": count},
+                )
+            else:
+                logger.info("No stale extraction locks found")
+
+        except Exception as e:
+            error_info = get_loggable_error(e)
+            logger.error(
+                "Failed to cleanup stale extraction locks",
                 extra=error_info,
                 exc_info=True,
             )
@@ -311,6 +343,32 @@ class ExtractionWorker:
                     "max_attempts": self.max_attempts,
                 },
             )
+
+            # IDEMPOTENCY: Check if already processed or processing
+            should_process, skip_reason = await ensure_idempotent_processing(
+                self.supabase,
+                document_id,
+            )
+
+            if not should_process:
+                logger.info(
+                    "Skipping document - already processed or processing",
+                    extra={
+                        "item_id": item_id,
+                        "document_id": str(document_id),
+                        "skip_reason": skip_reason,
+                    },
+                )
+
+                # Mark queue item as completed (idempotent skip)
+                await self._update_queue_status(
+                    item_id,
+                    status="completed",
+                    completed_at=datetime.utcnow(),
+                )
+                self.stats["succeeded"] += 1
+                self.stats["processed"] += 1
+                return
 
             # Update queue item status to processing
             await self._update_queue_status(
