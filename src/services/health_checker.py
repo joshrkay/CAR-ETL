@@ -160,6 +160,34 @@ class HealthChecker:
             logger.warning(f"Auth health check failed: {error_msg}")
             return HealthCheckResult(status="down", latency_ms=latency_ms, error=error_msg)
     
+    async def check_presidio(self) -> HealthCheckResult:
+        """
+        Check Presidio redaction service.
+        
+        Verifies that Presidio analyzer and anonymizer are initialized.
+        """
+        start_time = time.time()
+        
+        try:
+            from src.services.redaction import _get_analyzer, _get_anonymizer
+            
+            # Verify Presidio is initialized
+            analyzer = _get_analyzer()
+            anonymizer = _get_anonymizer()
+            
+            # Perform a simple test redaction to verify functionality
+            test_text = "Test email: test@example.com"
+            results = analyzer.analyze(text=test_text, language="en")
+            
+            latency_ms = int((time.time() - start_time) * 1000)
+            return HealthCheckResult(status="up", latency_ms=latency_ms)
+            
+        except Exception as e:
+            latency_ms = int((time.time() - start_time) * 1000)
+            error_msg = str(e)
+            logger.warning(f"Presidio health check failed: {error_msg}")
+            return HealthCheckResult(status="down", latency_ms=latency_ms, error=error_msg)
+    
     async def check_all(self) -> Dict[str, HealthCheckResult]:
         """
         Check all system components.
@@ -172,12 +200,13 @@ class HealthChecker:
             self.check_database(),
             self.check_storage(),
             self.check_auth(),
+            self.check_presidio(),
             return_exceptions=True,
         )
         
         # Handle any exceptions
         checks = {}
-        component_names = ["database", "storage", "auth"]
+        component_names = ["database", "storage", "auth", "presidio"]
         
         for i, result in enumerate(results):
             component = component_names[i]
