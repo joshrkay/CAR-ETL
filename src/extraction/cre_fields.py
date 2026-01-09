@@ -5,7 +5,7 @@ Industry-configurable field definitions for Commercial Real Estate document extr
 Fields are organized by document type and can be configured per industry.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from enum import Enum
 from pydantic import BaseModel, Field
 

@@ -6,7 +6,6 @@ Supports OCR for scanned documents and table extraction.
 """
 import logging
 import httpx
-from typing import Dict, Any
 from .base import BaseParser, ParseResult, PageContent, ExtractedTable
 from src.exceptions import ParserError
 

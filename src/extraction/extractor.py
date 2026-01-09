@@ -8,8 +8,7 @@ Handles document type detection, field extraction, and normalization.
 import json
 import logging
 import os
-from typing import Dict, Any, List, Optional
-from uuid import UUID
+from typing import Dict, Any, Optional
 
 try:
     from openai import AsyncOpenAI
@@ -21,7 +20,6 @@ from src.extraction.cre_fields import get_field_config, get_field_definitions_fo
 from src.extraction.prompts import build_extraction_prompt, build_document_type_detection_prompt
 from src.extraction.normalizers import normalize_field_value
 from src.services.redaction import presidio_redact
-from src.db.models.extraction import DocumentType, ExtractionSource
 
 logger = logging.getLogger(__name__)
 

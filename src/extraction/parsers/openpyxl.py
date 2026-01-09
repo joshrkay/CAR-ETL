@@ -6,8 +6,7 @@ Fallback parser for .xlsx files when pandas fails.
 """
 import logging
 from io import BytesIO
-from typing import Dict, Any
-from .base import BaseParser, ParseResult, PageContent, ExtractedTable
+from .base import BaseParser, ParseResult, ExtractedTable
 from src.exceptions import ParserError
 
 logger = logging.getLogger(__name__)
