@@ -26,8 +26,6 @@ from src.services.redaction import presidio_redact
 from src.db.models.extraction import (
     ExtractionStatus,
     ExtractionSource,
-    DocumentType,
-    ParserType,
 )
 from src.exceptions import (
     NotFoundError,
