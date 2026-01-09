@@ -64,7 +64,8 @@ async def get_document(supabase: Client, document_id: UUID) -> Dict[str, Any]:
         Document record as dictionary
 
     Raises:
-        DocumentNotFoundError: If document doesn't exist
+        DocumentNotFoundError: If document doesn't exist.
+        ExtractionPipelineError: If a database or unexpected error occurs while retrieving the document.
     """
     try:
         response = supabase.table("documents").select("*").eq("id", str(document_id)).execute()
