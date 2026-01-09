@@ -1,16 +1,11 @@
 """Rate limiting for authentication attempts."""
 import logging
 from datetime import datetime, timedelta
-from ipaddress import IPv4Address, IPv6Address
-from typing import Any, Dict, Union, cast
 from supabase import create_client, Client
 from src.auth.config import AuthConfig, get_auth_config
 from src.exceptions import RateLimitError
 
 logger = logging.getLogger(__name__)
-
-
-IPAddress = Union[IPv4Address, IPv6Address, str]
 
 
 class AuthRateLimiter:

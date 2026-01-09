@@ -7,6 +7,8 @@ Extracts email metadata, body content, and attachments.
 
 import base64
 import binascii
+import logging
+import re
 from email.utils import parseaddr
 from typing import Any, Optional
 from pydantic import BaseModel, Field
@@ -150,7 +152,6 @@ class EmailParser:
             return None
         except Exception as e:
             # Unexpected error - log but don't fail entire email parsing
-            import logging
             logger = logging.getLogger(__name__)
             logger.warning(
                 "Unexpected error parsing attachment",
@@ -166,16 +167,15 @@ class EmailParser:
     def _html_to_text(self, html: str) -> str:
         """
         Convert HTML to plain text (simple implementation).
-        
+
         Args:
             html: HTML content
-            
+
         Returns:
             Plain text content
         """
         # Simple HTML tag removal (for basic cases)
         # In production, consider using html2text or similar library
-        import re
         text = re.sub(r'<[^>]+>', '', html)
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
