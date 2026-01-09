@@ -21,6 +21,7 @@ from supabase import Client
 
 from src.auth.client import create_service_client
 from src.extraction.pipeline import process_document
+from src.services.error_sanitizer import sanitize_exception, get_loggable_error
 
 logger = logging.getLogger(__name__)
 
@@ -108,9 +109,10 @@ class ExtractionWorker:
                 try:
                     await self._process_batch()
                 except Exception as e:
+                    error_info = get_loggable_error(e)
                     logger.error(
                         "Error in worker batch processing",
-                        extra={"error": str(e)},
+                        extra=error_info,
                         exc_info=True,
                     )
 
@@ -176,9 +178,10 @@ class ExtractionWorker:
                 )
 
         except Exception as e:
+            error_info = get_loggable_error(e)
             logger.error(
                 "Failed to reset stale items",
-                extra={"error": str(e)},
+                extra=error_info,
                 exc_info=True,
             )
 
@@ -276,9 +279,10 @@ class ExtractionWorker:
             return items
 
         except Exception as e:
+            error_info = get_loggable_error(e)
             logger.error(
                 "Failed to fetch pending items",
-                extra={"error": str(e)},
+                extra=error_info,
                 exc_info=True,
             )
             return []
@@ -340,15 +344,19 @@ class ExtractionWorker:
             else:
                 # Failed - check if should retry or dead letter
                 new_attempts = attempts + 1
+                error_message = result.get("error", "Unknown error")
+                # SECURITY: Sanitize error before storing in queue
+                sanitized_error = sanitize_exception(Exception(error_message))
+
                 if new_attempts >= self.max_attempts:
                     # Max attempts reached - dead letter
-                    await self._dead_letter_item(item_id, result.get("error"))
+                    await self._dead_letter_item(item_id, sanitized_error)
                 else:
-                    # Retry later
+                    # Retry later - store sanitized error
                     await self._update_queue_status(
                         item_id,
                         status="failed",
-                        last_error=result.get("error"),
+                        last_error=sanitized_error,
                         completed_at=datetime.utcnow(),
                     )
                     self.stats["failed"] += 1
@@ -359,7 +367,7 @@ class ExtractionWorker:
                             "document_id": str(document_id),
                             "attempt": new_attempts,
                             "max_attempts": self.max_attempts,
-                            "error": result.get("error"),
+                            "sanitized_error": sanitized_error,
                         },
                     )
 
@@ -367,26 +375,29 @@ class ExtractionWorker:
 
         except Exception as e:
             # Unexpected error in processing
-            error_message = str(e)
+            # SECURITY: Sanitize error before logging/storing
+            error_info = get_loggable_error(e)
+            sanitized_error = error_info["sanitized_message"]
+
             logger.error(
                 "Unexpected error processing queue item",
                 extra={
                     "item_id": item_id,
                     "document_id": str(document_id),
-                    "error": error_message,
+                    **error_info,
                 },
                 exc_info=True,
             )
 
-            # Update queue item
+            # Update queue item with sanitized error
             new_attempts = attempts + 1
             if new_attempts >= self.max_attempts:
-                await self._dead_letter_item(item_id, error_message)
+                await self._dead_letter_item(item_id, sanitized_error)
             else:
                 await self._update_queue_status(
                     item_id,
                     status="failed",
-                    last_error=error_message,
+                    last_error=sanitized_error,
                     completed_at=datetime.utcnow(),
                 )
 
@@ -445,12 +456,13 @@ class ExtractionWorker:
             ).execute()
 
         except Exception as e:
+            error_info = get_loggable_error(e)
             logger.error(
                 "Failed to update queue status",
                 extra={
                     "item_id": item_id,
                     "status": status,
-                    "error": str(e),
+                    **error_info,
                 },
                 exc_info=True,
             )
@@ -459,9 +471,11 @@ class ExtractionWorker:
         """
         Move item to dead letter queue (mark as permanently failed).
 
+        SECURITY: error_message should already be sanitized by caller.
+
         Args:
             item_id: Queue item UUID
-            error_message: Final error message
+            error_message: Final error message (already sanitized)
         """
         try:
             # For now, we'll mark as failed with max attempts
@@ -480,16 +494,17 @@ class ExtractionWorker:
                 extra={
                     "item_id": item_id,
                     "attempts": self.max_attempts,
-                    "error": error_message,
+                    "sanitized_error": error_message,
                 },
             )
 
         except Exception as e:
+            error_info = get_loggable_error(e)
             logger.error(
                 "Failed to dead letter item",
                 extra={
                     "item_id": item_id,
-                    "error": str(e),
+                    **error_info,
                 },
                 exc_info=True,
             )

@@ -34,6 +34,7 @@ from src.exceptions import (
     ValidationError,
     ParserError,
 )
+from src.services.error_sanitizer import sanitize_exception, get_loggable_error
 
 logger = logging.getLogger(__name__)
 
@@ -88,12 +89,18 @@ async def get_document(supabase: Client, document_id: UUID) -> Dict[str, Any]:
     except Exception as e:
         if isinstance(e, DocumentNotFoundError):
             raise
+        error_info = get_loggable_error(e)
         logger.error(
             "Failed to retrieve document",
-            extra={"document_id": str(document_id), "error": str(e)},
+            extra={
+                "document_id": str(document_id),
+                **error_info,
+            },
             exc_info=True,
         )
-        raise ExtractionPipelineError(f"Failed to retrieve document: {str(e)}") from e
+        raise ExtractionPipelineError(
+            f"Failed to retrieve document: {error_info['sanitized_message']}"
+        ) from e
 
 
 async def download_document(supabase: Client, storage_path: str, tenant_id: UUID) -> bytes:
@@ -135,17 +142,18 @@ async def download_document(supabase: Client, storage_path: str, tenant_id: UUID
     except Exception as e:
         if isinstance(e, DocumentAccessError):
             raise
+        error_info = get_loggable_error(e)
         logger.error(
             "Failed to download document from storage",
             extra={
                 "bucket": bucket_name,
                 "storage_path": storage_path,
-                "error": str(e),
+                **error_info,
             },
             exc_info=True,
         )
         raise DocumentAccessError(
-            f"Failed to download document from storage: {str(e)}"
+            f"Failed to download document from storage: {error_info['sanitized_message']}"
         ) from e
 
 
@@ -184,12 +192,18 @@ async def parse_document_content(content: bytes, mime_type: str) -> Dict[str, An
         }
 
     except Exception as e:
+        error_info = get_loggable_error(e)
         logger.error(
             "Failed to parse document",
-            extra={"mime_type": mime_type, "error": str(e)},
+            extra={
+                "mime_type": mime_type,
+                **error_info,
+            },
             exc_info=True,
         )
-        raise ParserError(f"Failed to parse document: {str(e)}") from e
+        raise ParserError(
+            f"Failed to parse document: {error_info['sanitized_message']}"
+        ) from e
 
 
 async def redact_pii(text: str, enabled: bool = True) -> str:
@@ -219,9 +233,10 @@ async def redact_pii(text: str, enabled: bool = True) -> str:
         return redacted_text
 
     except Exception as e:
+        error_info = get_loggable_error(e)
         logger.error(
             "PII redaction failed",
-            extra={"error": str(e)},
+            extra=error_info,
             exc_info=True,
         )
         # Re-raise to let caller decide how to handle
@@ -279,9 +294,10 @@ async def extract_cre_fields(
         return extraction_result
 
     except Exception as e:
+        error_info = get_loggable_error(e)
         logger.error(
             "Failed to extract CRE fields",
-            extra={"error": str(e)},
+            extra=error_info,
             exc_info=True,
         )
         raise
@@ -371,15 +387,18 @@ async def save_extraction(
         return UUID(extraction_id)
 
     except Exception as e:
+        error_info = get_loggable_error(e)
         logger.error(
             "Failed to save extraction",
             extra={
                 "document_id": str(document_id),
-                "error": str(e),
+                **error_info,
             },
             exc_info=True,
         )
-        raise ExtractionPipelineError(f"Failed to save extraction: {str(e)}") from e
+        raise ExtractionPipelineError(
+            f"Failed to save extraction: {error_info['sanitized_message']}"
+        ) from e
 
 
 async def update_document_status(
@@ -423,17 +442,18 @@ async def update_document_status(
         )
 
     except Exception as e:
+        error_info = get_loggable_error(e)
         logger.error(
             "Failed to update document status",
             extra={
                 "document_id": str(document_id),
                 "status": status,
-                "error": str(e),
+                **error_info,
             },
             exc_info=True,
         )
         raise ExtractionPipelineError(
-            f"Failed to update document status: {str(e)}"
+            f"Failed to update document status: {error_info['sanitized_message']}"
         ) from e
 
 
@@ -580,38 +600,45 @@ async def _finalize_failure(
     """
     Finalize failed processing.
 
+    SECURITY: Sanitizes error message before logging and database storage
+    to prevent PII leakage.
+
     Args:
         supabase: Supabase client (service role)
         document_id: Document UUID
         error: Exception that caused failure
 
     Returns:
-        Failure result dictionary
+        Failure result dictionary with sanitized error
     """
-    error_message = str(error)
+    # CRITICAL: Sanitize error message to remove PII before logging/storage
+    error_info = get_loggable_error(error)
+    sanitized_message = error_info["sanitized_message"]
 
     logger.error(
         "Document processing failed",
         extra={
             "document_id": str(document_id),
-            "error": error_message,
+            **error_info,
         },
         exc_info=True,
     )
 
     try:
+        # Store ONLY sanitized error in database
         await update_document_status(
             supabase,
             document_id,
             "failed",
-            error_message=error_message,
+            error_message=sanitized_message,
         )
     except Exception as status_error:
+        status_error_info = get_loggable_error(status_error)
         logger.error(
             "Failed to update document status after error",
             extra={
                 "document_id": str(document_id),
-                "error": str(status_error),
+                **status_error_info,
             },
         )
 
@@ -620,7 +647,7 @@ async def _finalize_failure(
         "extraction_id": None,
         "status": "failed",
         "overall_confidence": 0.0,
-        "error": error_message,
+        "error": sanitized_message,
     }
 
 
