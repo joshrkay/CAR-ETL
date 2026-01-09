@@ -145,7 +145,23 @@ class EmailParser:
                 content=content,
                 size=size,
             )
-        except Exception:
+        except (ValueError, TypeError, base64.binascii.Error) as e:
+            # Invalid base64 encoding or type mismatch
+            # Return None to skip invalid attachments
+            return None
+        except Exception as e:
+            # Unexpected error - log but don't fail entire email parsing
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "Unexpected error parsing attachment",
+                extra={
+                    "filename": filename,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
             return None
     
     def _html_to_text(self, html: str) -> str:

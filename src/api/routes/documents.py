@@ -130,18 +130,37 @@ async def upload_document(
     # Step 1: Read file content
     try:
         content = await file.read()
-    except Exception as e:
+    except (IOError, OSError, RuntimeError) as e:
         logger.error(
             "Failed to read uploaded file",
             extra={
                 "request_id": request_id,
                 "tenant_id": tenant_id,
                 "error": str(e),
+                "error_type": type(e).__name__,
             },
             exc_info=True,
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "FILE_READ_ERROR",
+                "message": "Failed to read uploaded file",
+            },
+        ) from e
+    except Exception as e:
+        logger.error(
+            "Unexpected error reading uploaded file",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "code": "FILE_READ_ERROR",
                 "message": "Failed to read uploaded file",
@@ -233,8 +252,22 @@ async def upload_document(
         )
     except Exception as e:
         logger.error(
-            "Failed to store document metadata",
+            "Unexpected error storing document metadata",
             extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "STORAGE_ERROR",
+                "message": "Failed to store document metadata",
+            },
+        ) from e
                 "request_id": request_id,
                 "tenant_id": tenant_id,
                 "document_id": document_id,
@@ -307,8 +340,10 @@ async def fetch_tenant_max_file_size(
             extra={
                 "tenant_id": tenant_id,
                 "error": str(e),
+                "error_type": type(e).__name__,
                 "default_size": DEFAULT_MAX_FILE_SIZE_BYTES,
             },
+            exc_info=True,
         )
         return DEFAULT_MAX_FILE_SIZE_BYTES
 

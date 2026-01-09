@@ -86,10 +86,14 @@ async def handle_inbound_email(
     # Step 1: Read raw request body for signature verification
     try:
         payload_body = await request.body()
-    except Exception as e:
+    except (IOError, OSError, RuntimeError) as e:
         logger.error(
             "Failed to read request body",
-            extra={"request_id": request_id, "error": str(e)},
+            extra={
+                "request_id": request_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
             exc_info=True,
         )
         raise HTTPException(
@@ -98,7 +102,24 @@ async def handle_inbound_email(
                 "code": "INVALID_REQUEST",
                 "message": "Failed to read request body",
             },
+        ) from e
+    except Exception as e:
+        logger.error(
+            "Unexpected error reading request body",
+            extra={
+                "request_id": request_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
         )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "INTERNAL_ERROR",
+                "message": "Unexpected error reading request",
+            },
+        ) from e
     
     # Step 2: Verify Resend signature
     if not RESEND_WEBHOOK_SECRET:
@@ -129,7 +150,7 @@ async def handle_inbound_email(
     try:
         import json
         payload = json.loads(payload_body.decode("utf-8"))
-    except Exception as e:
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         logger.error(
             "Failed to parse JSON payload",
             extra={"request_id": request_id, "error": str(e)},
@@ -187,13 +208,14 @@ async def handle_inbound_email(
     try:
         parser = EmailParser()
         parsed_email = parser.parse_resend_webhook(payload)
-    except Exception as e:
+    except (ValueError, KeyError, TypeError) as e:
         logger.error(
-            "Failed to parse email",
+            "Failed to parse email - invalid payload structure",
             extra={
                 "request_id": request_id,
                 "tenant_slug": tenant_slug,
                 "error": str(e),
+                "error_type": type(e).__name__,
             },
             exc_info=True,
         )
@@ -203,7 +225,25 @@ async def handle_inbound_email(
                 "code": "PARSE_ERROR",
                 "message": "Failed to parse email content",
             },
+        ) from e
+    except Exception as e:
+        logger.error(
+            "Unexpected error parsing email",
+            extra={
+                "request_id": request_id,
+                "tenant_slug": tenant_slug,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
         )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "INTERNAL_ERROR",
+                "message": "Unexpected error parsing email",
+            },
+        ) from e
     
     # Step 7: Check rate limit
     try:
@@ -287,11 +327,12 @@ async def handle_inbound_email(
     
     except Exception as e:
         logger.error(
-            "Failed to ingest email",
+            "Unexpected error ingesting email",
             extra={
                 "request_id": request_id,
                 "tenant_slug": tenant_slug,
                 "error": str(e),
+                "error_type": type(e).__name__,
             },
             exc_info=True,
         )
@@ -368,8 +409,12 @@ async def get_tenant_id_by_slug(supabase: Client, slug: str) -> Optional[UUID]:
         return None
     except Exception as e:
         logger.error(
-            "Failed to fetch tenant by slug",
-            extra={"slug": slug, "error": str(e)},
+            "Unexpected error fetching tenant by slug",
+            extra={
+                "slug": slug,
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
             exc_info=True,
         )
         return None

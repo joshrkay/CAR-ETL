@@ -160,7 +160,19 @@ class FileValidator:
 
         except zipfile.BadZipFile:
             errors.append("Corrupted ZIP structure - not a valid Office document")
+        except (IOError, OSError, MemoryError) as e:
+            errors.append(f"Office document validation failed: {str(e)}")
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "Unexpected error during Office document validation",
+                extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
             errors.append(f"Office document validation failed: {str(e)}")
 
         return errors

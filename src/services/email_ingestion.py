@@ -83,15 +83,30 @@ class EmailIngestionService:
                 )
                 if doc_id:
                     attachment_document_ids.append(doc_id)
-            except Exception as e:
+            except (ValidationError, StorageUploadError) as e:
                 logger.warning(
                     "Failed to create document for attachment",
                     extra={
                         "tenant_id": str(tenant_id),
                         "filename": attachment.filename,
                         "error": str(e),
+                        "error_type": type(e).__name__,
                     },
+                    exc_info=True,
                 )
+            except Exception as e:
+                logger.error(
+                    "Unexpected error creating attachment document",
+                    extra={
+                        "tenant_id": str(tenant_id),
+                        "filename": attachment.filename,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    },
+                    exc_info=True,
+                )
+                # Re-raise unexpected errors to fail-fast
+                raise
         
         # Step 4: Create email_ingestions record
         email_ingestion_id = self._create_email_ingestion_record(

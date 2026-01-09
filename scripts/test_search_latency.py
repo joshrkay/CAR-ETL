@@ -95,7 +95,6 @@ async def test_search_latency(
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": tenant_id,
                     "filter_document_ids": None,
                 }
             )
@@ -162,7 +161,6 @@ async def test_end_to_end_latency(
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": tenant_id,
                     "filter_document_ids": None,
                 }
             )

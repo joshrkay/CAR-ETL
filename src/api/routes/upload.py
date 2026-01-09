@@ -6,6 +6,7 @@ Part of Ingestion Plane - validates and buffers data only.
 """
 
 import logging
+import zipfile
 from typing import Annotated, Optional
 from uuid import UUID, uuid4
 
@@ -126,7 +127,7 @@ async def upload_bulk_documents(
     # Step 1: Read ZIP file content
     try:
         zip_content = await file.read()
-    except Exception as e:
+    except (IOError, OSError, RuntimeError) as e:
         logger.error(
             "Failed to read ZIP file",
             extra={
@@ -134,6 +135,26 @@ async def upload_bulk_documents(
                 "tenant_id": tenant_id,
                 "batch_id": batch_id,
                 "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "FILE_READ_ERROR",
+                "message": "Failed to read ZIP file",
+            },
+        ) from e
+    except Exception as e:
+        logger.error(
+            "Unexpected error reading ZIP file",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "batch_id": batch_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
             },
             exc_info=True,
         )
@@ -191,7 +212,7 @@ async def upload_bulk_documents(
             tenant_id=tenant_id,
             request_id=request_id,
         )
-    except Exception as e:
+    except (zipfile.BadZipFile, IOError, OSError, MemoryError) as e:
         logger.error(
             "Failed to extract files from ZIP",
             extra={
@@ -199,14 +220,34 @@ async def upload_bulk_documents(
                 "tenant_id": tenant_id,
                 "batch_id": batch_id,
                 "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "EXTRACTION_ERROR",
+                "message": "Failed to extract files from ZIP",
+            },
+        ) from e
+    except Exception as e:
+        logger.error(
+            "Unexpected error extracting files from ZIP",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "batch_id": batch_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
             },
             exc_info=True,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
-                "code": "EXTRACTION_ERROR",
-                "message": "Failed to extract files from ZIP",
+                "code": "INTERNAL_ERROR",
+                "message": "Unexpected error extracting files",
             },
         )
     
@@ -370,11 +411,14 @@ async def fetch_tenant_max_file_size(
     
     except Exception as e:
         logger.warning(
-            "Failed to fetch tenant max file size",
+            "Failed to fetch tenant max file size, using default",
             extra={
                 "tenant_id": tenant_id,
                 "error": str(e),
+                "error_type": type(e).__name__,
+                "default_size": DEFAULT_MAX_FILE_SIZE_BYTES,
             },
+            exc_info=True,
         )
         return DEFAULT_MAX_FILE_SIZE_BYTES
 

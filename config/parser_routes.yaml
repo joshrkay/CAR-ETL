@@ -1,0 +1,27 @@
+# Parser Routing Configuration
+# Maps MIME types to parser selection rules
+
+parser_routes:
+  "application/pdf":
+    default: "ragflow"
+    fallback: "tika"
+    conditions:
+      has_tables: "ragflow"
+      scanned: "ragflow"  # OCR
+      simple_text: "unstructured"
+  
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    default: "unstructured"
+    fallback: "tika"
+  
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    default: "pandas"
+    fallback: "openpyxl"
+  
+  "image/*":
+    default: "ragflow"  # OCR
+    fallback: null
+  
+  "text/*":
+    default: "unstructured"
+    fallback: null
