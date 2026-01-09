@@ -6,11 +6,11 @@ This is the entry point for file ingestion into the CAR Platform.
 """
 
 import logging
-from typing import Annotated, Optional
+from typing import Optional
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
