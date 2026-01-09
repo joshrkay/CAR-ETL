@@ -1,7 +1,7 @@
 """Health check endpoints."""
 from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
-from typing import Dict, Any
+from typing import Dict, Any, Union
 
 from src.services.health_checker import HealthChecker
 
@@ -9,7 +9,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health_liveness():
+async def health_liveness() -> Dict[str, str]:
     """
     Liveness check endpoint.
     
@@ -19,8 +19,8 @@ async def health_liveness():
     return {"status": "healthy"}
 
 
-@router.get("/health/ready")
-async def health_readiness():
+@router.get("/health/ready", response_model=None)
+async def health_readiness() -> Union[JSONResponse, Dict[str, Any]]:
     """
     Readiness check endpoint.
     

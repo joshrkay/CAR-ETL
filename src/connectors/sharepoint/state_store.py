@@ -1,6 +1,6 @@
 """Temporary state storage for OAuth flows."""
 import logging
-from typing import Optional
+from typing import Optional, Dict, Any, cast
 from datetime import datetime, timedelta, timezone
 from supabase import Client
 
@@ -79,13 +79,17 @@ class OAuthStateStore:
                 .execute()
             )
             
-            if not result.data:
+            if not result.data:  # type: ignore[union-attr]
                 logger.debug(f"No OAuth state found for state_preview={state_preview}...")
                 return None
             
+            # Type narrowing: result.data is not None after the check above
+            assert result.data is not None  # type: ignore[union-attr]
+            data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+            
             # Safely access expires_at - if missing, treat as corrupted and clean up
             try:
-                expires_at_str = result.data.get("expires_at")
+                expires_at_str = data.get("expires_at")
                 if not expires_at_str:
                     # Missing expires_at - treat as corrupted, clean up and return None
                     logger.warning(
@@ -113,7 +117,7 @@ class OAuthStateStore:
                 
                 # Safely access tenant_id for logging - don't let logging failure prevent cleanup
                 try:
-                    tenant_id = result.data.get("tenant_id", "unknown")
+                    tenant_id = data.get("tenant_id", "unknown")
                     logger.debug(
                         f"OAuth state expired and deleted: state_preview={state_preview}..., "
                         f"tenant_id={tenant_id}, expired_at={expires_at.isoformat()}"

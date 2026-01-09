@@ -1,6 +1,6 @@
 """Feature flag service with caching."""
 from uuid import UUID
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, cast
 from supabase import Client
 from cachetools import TTLCache
 
@@ -38,7 +38,8 @@ class FeatureFlagService:
     def _get_cached_value(self, flag_name: str) -> Optional[bool]:
         """Get cached value if valid. TTLCache handles expiration automatically."""
         cache_key = self._get_cache_key(flag_name)
-        return _shared_cache.get(cache_key)
+        cached = _shared_cache.get(cache_key)
+        return cast(Optional[bool], cached)
     
     def _set_cached_value(self, flag_name: str, value: bool) -> None:
         """Set cached value with TTL. TTLCache handles expiration automatically."""
@@ -97,23 +98,24 @@ class FeatureFlagService:
                 # Flag doesn't exist, return False
                 result = False
             else:
-                flag_data = flag_result.data[0]
-                flag_id = flag_data["id"]
-                default_enabled = flag_data.get("enabled_default", False)
+                flag_data = cast(Dict[str, Any], flag_result.data[0])
+                flag_id = str(flag_data["id"])
+                default_enabled = bool(flag_data.get("enabled_default", False))
                 
                 # Check for tenant override
                 tenant_override_result = (
                     self.client.table("tenant_feature_flags")
                     .select("enabled")
                     .eq("tenant_id", str(self.tenant_id))
-                    .eq("flag_id", str(flag_id))
+                    .eq("flag_id", flag_id)
                     .limit(1)
                     .execute()
                 )
                 
                 if tenant_override_result.data:
                     # Use tenant override
-                    result = tenant_override_result.data[0]["enabled"]
+                    override_data = cast(Dict[str, Any], tenant_override_result.data[0])
+                    result = bool(override_data.get("enabled", False))
                 else:
                     # Use default
                     result = default_enabled
@@ -154,21 +156,26 @@ class FeatureFlagService:
             )
             
             # Build override map
-            override_map = {
-                override["flag_id"]: override["enabled"]
-                for override in (overrides_result.data or [])
-            }
+            override_map: Dict[str, bool] = {}
+            if overrides_result.data:
+                for override in overrides_result.data:
+                    override_dict = cast(Dict[str, Any], override)
+                    flag_id = str(override_dict.get("flag_id", ""))
+                    enabled = bool(override_dict.get("enabled", False))
+                    override_map[flag_id] = enabled
             
             # Build result map
-            result = {}
-            for flag in flags_result.data:
-                flag_id = flag["id"]
-                flag_name = flag["name"]
-                
-                if flag_id in override_map:
-                    result[flag_name] = override_map[flag_id]
-                else:
-                    result[flag_name] = flag.get("enabled_default", False)
+            result: Dict[str, bool] = {}
+            if flags_result.data:
+                for flag in flags_result.data:
+                    flag_dict = cast(Dict[str, Any], flag)
+                    flag_id = str(flag_dict.get("id", ""))
+                    flag_name = str(flag_dict.get("name", ""))
+                    
+                    if flag_id in override_map:
+                        result[flag_name] = override_map[flag_id]
+                    else:
+                        result[flag_name] = bool(flag_dict.get("enabled_default", False))
             
             # Update shared cache for all flags
             for flag_name, enabled in result.items():
@@ -203,26 +210,26 @@ class FeatureFlagService:
             if not flag_result.data:
                 return None
             
-            flag_data = flag_result.data[0]
-            flag_id = flag_data["id"]
-            default_enabled = flag_data.get("enabled_default", False)
+            flag_data = cast(Dict[str, Any], flag_result.data[0])
+            flag_id = str(flag_data.get("id", ""))
+            default_enabled = bool(flag_data.get("enabled_default", False))
             
             # Check for tenant override
             tenant_override_result = (
                 self.client.table("tenant_feature_flags")
                 .select("enabled")
                 .eq("tenant_id", str(self.tenant_id))
-                .eq("flag_id", str(flag_id))
+                .eq("flag_id", flag_id)
                 .limit(1)
                 .execute()
             )
             
             is_override = bool(tenant_override_result.data)
-            enabled = (
-                tenant_override_result.data[0]["enabled"]
-                if is_override
-                else default_enabled
-            )
+            if is_override and tenant_override_result.data:
+                override_data = cast(Dict[str, Any], tenant_override_result.data[0])
+                enabled = bool(override_data.get("enabled", False))
+            else:
+                enabled = default_enabled
             
             return FeatureFlagResponse(
                 name=flag_name,

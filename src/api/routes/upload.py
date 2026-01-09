@@ -7,7 +7,7 @@ Part of Ingestion Plane - validates and buffers data only.
 
 import logging
 import zipfile
-from typing import Optional
+from typing import Any, Dict, Optional, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
@@ -265,6 +265,12 @@ async def upload_bulk_documents(
         
         # If validation succeeded, redact and store document metadata
         if processing_result.status == "processing":
+            # Ensure required fields are present
+            if not processing_result.mime_type or not processing_result.document_id:
+                processing_result.status = "failed"
+                processing_result.error = "Missing required fields (mime_type or document_id)"
+                continue
+            
             try:
                 # SECURITY: Redact PII before storage (defense in depth)
                 redacted_content = presidio_redact_bytes(content, processing_result.mime_type)
@@ -402,9 +408,13 @@ async def fetch_tenant_max_file_size(
             .execute()
         )
         
-        if result.data and result.data.get("settings"):
-            settings = result.data["settings"]
-            return settings.get("max_file_size_bytes", DEFAULT_MAX_FILE_SIZE_BYTES)
+        if result and result.data:
+            tenant_dict = cast(Dict[str, Any], result.data)
+            settings = tenant_dict.get("settings")
+            if isinstance(settings, dict):
+                max_size = settings.get("max_file_size_bytes", DEFAULT_MAX_FILE_SIZE_BYTES)
+                if isinstance(max_size, int):
+                    return max_size
         
         return DEFAULT_MAX_FILE_SIZE_BYTES
     
@@ -473,7 +483,7 @@ async def store_document_metadata(
     )
     
     # Store document metadata
-    document_data = {
+    document_data: Dict[str, Any] = {
         "id": document_id,
         "tenant_id": tenant_id,
         "uploaded_by": user_id,

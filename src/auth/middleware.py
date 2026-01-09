@@ -1,12 +1,13 @@
 """FastAPI middleware for JWT authentication with custom claims."""
+from typing import Any, Awaitable, Callable, Optional, Union
 from fastapi import Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from starlette.applications import Starlette
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from datetime import datetime
 from uuid import UUID
 import jwt
-from typing import Optional, Union
 
 from src.auth.config import AuthConfig, get_auth_config
 from src.auth.models import AuthContext, AuthError
@@ -19,12 +20,14 @@ security = HTTPBearer(auto_error=False)
 class AuthMiddleware(BaseHTTPMiddleware):
     """Middleware to validate JWT tokens and extract auth context."""
 
-    def __init__(self, app, config: Optional[AuthConfig] = None):
+    def __init__(self, app: Starlette, config: Optional[AuthConfig] = None) -> None:
         super().__init__(app)
         self.config = config or get_auth_config()
         self.rate_limiter = AuthRateLimiter(self.config)
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Process request and validate JWT token."""
         if self._should_skip_auth(request):
             return await call_next(request)
@@ -65,7 +68,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+        if request.client and request.client.host:
+            return request.client.host
+        return "unknown"
 
     async def _validate_token(self, request: Request) -> Optional[AuthError]:
         """
@@ -132,7 +137,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         
         return None
 
-    def _extract_auth_context(self, decoded: dict) -> Union[AuthContext, AuthError]:
+    def _extract_auth_context(self, decoded: dict[str, Any]) -> Union[AuthContext, AuthError]:
         """
         Extract AuthContext from decoded JWT claims.
         

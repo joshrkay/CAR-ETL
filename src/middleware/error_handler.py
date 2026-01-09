@@ -1,8 +1,8 @@
 """Error handler middleware for consistent error responses."""
 import logging
-from typing import Optional
+from typing import Any, Awaitable, Callable, Dict, Optional
 from fastapi import Request, status, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -31,7 +31,9 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
     - Unhandled → 500 (logs full trace, returns generic message)
     """
     
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """Process request and handle exceptions."""
         try:
             response = await call_next(request)
@@ -125,7 +127,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             # Convert string detail to standard format
             code = "HTTP_ERROR"
             message = str(detail) if detail else "An error occurred"
-            details = []
+            details: list[Dict[str, str]] = []
         
         error_response = {
             "error": {
@@ -173,7 +175,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         # Get status code - only defaults to 500 for unknown CARException types
         status_code = status_code_map.get(type(exc), status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        error_response = {
+        error_response: Dict[str, Any] = {
             "error": {
                 "code": exc.code,
                 "message": exc.message,
@@ -213,7 +215,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         )
         
         # Return generic error message (don't expose stack trace)
-        error_response = {
+        error_response: Dict[str, Any] = {
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
                 "message": "An unexpected error occurred",

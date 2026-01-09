@@ -5,7 +5,7 @@ Ingestion Plane: Emits normalized ingestion references/events.
 Does NOT download file bytes - downstream will fetch.
 """
 import logging
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, Any, List, Optional, Set, cast
 from uuid import UUID
 
 from src.connectors.google_drive.client import (
@@ -99,10 +99,15 @@ class GoogleDriveSync:
             
             # If no folders selected, sync root of all drives
             if not folder_ids:
-                folder_ids = [None]  # None means root
+                folder_ids_with_none: List[Optional[str]] = [None]  # None means root
+            else:
+                folder_ids_with_none = folder_ids  # type: ignore[assignment]
             
             # If no shared drives specified, sync all (empty list)
-            drives_to_sync = shared_drive_ids if shared_drive_ids else [None]
+            if shared_drive_ids:
+                drives_to_sync: List[Optional[str]] = shared_drive_ids  # type: ignore[assignment]
+            else:
+                drives_to_sync = [None]
             
             # Track processed file IDs for idempotency
             processed_file_ids: Set[str] = set()
@@ -112,13 +117,15 @@ class GoogleDriveSync:
                     drive_stats = await self._sync_drive(
                         client=client,
                         drive_id=drive_id,
-                        folder_ids=folder_ids,
+                        folder_ids=folder_ids_with_none,
                         processed_file_ids=processed_file_ids,
                     )
                     stats["files_emitted"] += drive_stats["files_emitted"]
                     stats["deletions_emitted"] += drive_stats["deletions_emitted"]
                     stats["files_skipped"] += drive_stats["files_skipped"]
-                    stats["errors"].extend(drive_stats["errors"])
+                    errors_list = cast(List[str], stats["errors"])
+                    drive_errors = cast(List[str], drive_stats["errors"])
+                    errors_list.extend(drive_errors)
                 except TokenRevokedError:
                     logger.error(
                         "Token revoked during sync",
@@ -133,7 +140,8 @@ class GoogleDriveSync:
                         self.connector_id,
                     )
                     stats["needs_reauth"] = True
-                    stats["errors"].append(f"Token revoked for drive {drive_id}")
+                    errors_list = cast(List[str], stats["errors"])
+                    errors_list.append(f"Token revoked for drive {drive_id}")
                     break
                 except RateLimitError as e:
                     logger.warning(
@@ -144,7 +152,8 @@ class GoogleDriveSync:
                             "drive_id": drive_id,
                         },
                     )
-                    stats["errors"].append(f"Rate limit exceeded for drive {drive_id}: {str(e)}")
+                    errors_list = cast(List[str], stats["errors"])
+                    errors_list.append(f"Rate limit exceeded for drive {drive_id}: {str(e)}")
                     # Continue with other drives
                     continue
                 except GoogleDriveClientError as e:
@@ -157,7 +166,8 @@ class GoogleDriveSync:
                             "drive_id": drive_id,
                         },
                     )
-                    stats["errors"].append(error_msg)
+                    errors_list = cast(List[str], stats["errors"])
+                    errors_list.append(error_msg)
                     continue
             
             # Update sync status
@@ -169,11 +179,12 @@ class GoogleDriveSync:
                     "Token revoked, re-authentication required",
                 )
             elif stats["errors"]:
+                errors_list = cast(List[str], stats["errors"])
                 await self.state_store.update_last_sync(
                     self.tenant_id,
                     self.connector_id,
                     "error",
-                    f"{len(stats['errors'])} errors during sync",
+                    f"{len(errors_list)} errors during sync",
                 )
             else:
                 await self.state_store.update_last_sync(
@@ -214,7 +225,7 @@ class GoogleDriveSync:
         Returns:
             Statistics for this drive
         """
-        stats = {
+        stats: Dict[str, Any] = {
             "files_emitted": 0,
             "deletions_emitted": 0,
             "files_skipped": 0,
@@ -284,7 +295,8 @@ class GoogleDriveSync:
                                 "file_id": file_id,
                             },
                         )
-                        stats["errors"].append(error_msg)
+                        errors_list = cast(List[str], stats["errors"])
+                    errors_list.append(error_msg)
                 
                 # Update checkpoint
                 if next_page_token:

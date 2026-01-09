@@ -7,7 +7,7 @@ Fallback parser for various document formats.
 import logging
 import httpx
 from typing import Dict, Any, List
-from .base import BaseParser, ParseResult, PageContent, ExtractedTable
+from .base import BaseParser, ParseResult, PageContent
 from src.exceptions import ParserError
 
 logger = logging.getLogger(__name__)

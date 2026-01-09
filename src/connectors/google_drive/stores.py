@@ -5,7 +5,7 @@ These implementations use Supabase but are isolated behind interfaces
 to maintain architectural boundaries.
 """
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, cast
 from datetime import datetime, timezone
 from uuid import UUID
 from supabase import Client
@@ -42,10 +42,13 @@ class SupabaseTokenStore(TokenStore):
             .execute()
         )
         
-        if not result.data:
+        if not result.data:  # type: ignore[union-attr]
             return None
         
-        config = result.data.get("config", {})
+        # Type narrowing: result.data is not None after the check above
+        assert result.data is not None  # type: ignore[union-attr]
+        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        config = cast(Dict[str, Any], data.get("config", {}))
         access_token = config.get("access_token")
         
         if not access_token:
@@ -75,10 +78,13 @@ class SupabaseTokenStore(TokenStore):
             .execute()
         )
         
-        if not result.data:
+        if not result.data:  # type: ignore[union-attr]
             raise ValueError(f"Connector {connector_id} not found")
         
-        config = result.data.get("config", {})
+        # Type narrowing: result.data is not None after the check above
+        assert result.data is not None  # type: ignore[union-attr]
+        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        config = cast(Dict[str, Any], data.get("config", {}))
         config["access_token"] = access_token
         if refresh_token:
             config["refresh_token"] = refresh_token
@@ -119,10 +125,14 @@ class SupabaseConnectorConfigStore(ConnectorConfigStore):
             .execute()
         )
         
-        if not result.data:
+        if not result.data:  # type: ignore[union-attr]
             raise ValueError(f"Connector {connector_id} not found")
         
-        return result.data.get("config", {})
+        # Type narrowing: result.data is not None after the check above
+        assert result.data is not None  # type: ignore[union-attr]
+        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        config = data.get("config", {})
+        return cast(Dict[str, Any], config)
     
     async def save_config(
         self,
@@ -138,7 +148,8 @@ class SupabaseConnectorConfigStore(ConnectorConfigStore):
     async def get_folder_ids(self, tenant_id: UUID, connector_id: UUID) -> List[str]:
         """Get selected folder IDs."""
         config = await self.get_config(tenant_id, connector_id)
-        return config.get("folder_ids", [])
+        folder_ids = config.get("folder_ids", [])
+        return cast(List[str], folder_ids)
     
     async def set_folder_ids(
         self,
@@ -154,7 +165,8 @@ class SupabaseConnectorConfigStore(ConnectorConfigStore):
     async def get_shared_drive_ids(self, tenant_id: UUID, connector_id: UUID) -> List[str]:
         """Get shared drive IDs (empty list means all)."""
         config = await self.get_config(tenant_id, connector_id)
-        return config.get("shared_drive_ids", [])
+        drive_ids = config.get("shared_drive_ids", [])
+        return cast(List[str], drive_ids)
 
 
 class SupabaseSyncStateStore(SyncStateStore):
@@ -180,7 +192,8 @@ class SupabaseSyncStateStore(SyncStateStore):
         
         if drive_id:
             drive_tokens = config.get("drive_tokens", {})
-            return drive_tokens.get(drive_id)
+            token = drive_tokens.get(drive_id) if isinstance(drive_tokens, dict) else None
+            return cast(Optional[str], token)
         
         return config.get("page_token")
     
@@ -211,15 +224,15 @@ class SupabaseSyncStateStore(SyncStateStore):
         error_message: Optional[str] = None,
     ) -> None:
         """Update last sync timestamp and status."""
-        update_data = {
+        update_data: Dict[str, Any] = {
             "last_sync_at": datetime.now(timezone.utc).isoformat(),
             "status": status,
         }
         
         if error_message:
-            config = await self._get_config(tenant_id, connector_id)
-            config["last_sync_error"] = error_message
-            update_data["config"] = config
+            config_dict = await self._get_config(tenant_id, connector_id)
+            config_dict["last_sync_error"] = error_message
+            update_data["config"] = config_dict
         
         self.supabase.table("connectors").update(update_data).eq(
             "id", str(connector_id)
@@ -236,10 +249,14 @@ class SupabaseSyncStateStore(SyncStateStore):
             .execute()
         )
         
-        if not result.data:
+        if not result.data:  # type: ignore[union-attr]
             raise ValueError(f"Connector {connector_id} not found")
         
-        return result.data.get("config", {})
+        # Type narrowing: result.data is not None after the check above
+        assert result.data is not None  # type: ignore[union-attr]
+        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        config = data.get("config", {})
+        return cast(Dict[str, Any], config)
     
     async def _save_config(
         self,

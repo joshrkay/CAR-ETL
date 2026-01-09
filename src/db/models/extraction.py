@@ -25,6 +25,8 @@ class DocumentType(str, Enum):
     LEASE = "lease"
     RENT_ROLL = "rent_roll"
     FINANCIAL_STATEMENT = "financial_statement"
+    OPERATING_AGREEMENT = "operating_agreement"
+    OTHER = "other"
 
 
 class ParserType(str, Enum):

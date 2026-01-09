@@ -5,7 +5,7 @@ Emits normalized ingestion references/events for downstream processing.
 This is part of the Ingestion Plane - it only emits references, not raw data.
 """
 import logging
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, cast
 from uuid import UUID, uuid4
 from supabase import Client
 
@@ -47,7 +47,7 @@ class SupabaseIngestionEmitter(IngestionEmitter):
         # Redact filename before persisting
         redacted_filename = presidio_redact(file_name)
         
-        ingestion_data = {
+        ingestion_data: Dict[str, Any] = {
             "id": str(uuid4()),
             "tenant_id": str(tenant_id),
             "source_type": "google_drive",
@@ -70,7 +70,8 @@ class SupabaseIngestionEmitter(IngestionEmitter):
         if not result.data:
             raise ValueError("Failed to emit file reference")
         
-        ingestion_id = result.data[0]["id"]
+        data_list = cast(List[Dict[str, Any]], result.data)
+        ingestion_id = cast(str, data_list[0]["id"])
         
         logger.info(
             "File reference emitted",
@@ -103,12 +104,15 @@ class SupabaseIngestionEmitter(IngestionEmitter):
             .execute()
         )
         
-        if result.data:
+        if result.data:  # type: ignore[union-attr]
+            # Type narrowing: result.data is not None after the check above
+            assert result.data is not None  # type: ignore[union-attr]
+            data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
             # Mark as deleted (append-only: don't hard delete)
             self.supabase.table("documents").update({
                 "status": "deleted",
                 "error_message": "File deleted from Google Drive",
-            }).eq("id", result.data["id"]).execute()
+            }).eq("id", data["id"]).execute()
             
             logger.info(
                 "Deletion reference emitted",

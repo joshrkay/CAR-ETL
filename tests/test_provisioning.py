@@ -46,14 +46,16 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client):
     user_id = str(uuid4())
     
     # Mock slug validation (no existing tenant)
+    call_count = [0]  # Use list to allow modification in nested function
+    
     def execute_side_effect():
-        call_count = getattr(execute_side_effect, "call_count", 0)
-        execute_side_effect.call_count = call_count + 1
+        call_count[0] += 1
+        current_count = call_count[0]
         
-        if call_count == 1:
+        if current_count == 1:
             # Slug check - no existing tenant
             return Mock(data=[])
-        elif call_count == 2:
+        elif current_count == 2:
             # Tenant creation
             return Mock(data=[{
                 "id": str(tenant_id),
@@ -62,7 +64,7 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client):
                 "status": "active",
                 "created_at": "2026-01-08T00:00:00Z",
             }])
-        elif call_count == 3:
+        elif current_count == 3:
             # Tenant user creation
             return Mock(data=[{
                 "tenant_id": str(tenant_id),
@@ -71,6 +73,8 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client):
             }])
         return Mock(data=[])
     
+    # Reset the default return value and set side_effect
+    mock_supabase_client.execute.return_value = None
     mock_supabase_client.execute.side_effect = execute_side_effect
     
     # Mock storage service
@@ -127,14 +131,16 @@ def test_provision_tenant_rollback_on_bucket_failure(
     tenant_id = uuid4()
     
     # Mock slug validation (no existing tenant)
+    call_count = [0]
+    
     def execute_side_effect():
-        call_count = getattr(execute_side_effect, "call_count", 0)
-        execute_side_effect.call_count = call_count + 1
+        call_count[0] += 1
+        current_count = call_count[0]
         
-        if call_count == 1:
+        if current_count == 1:
             # Slug check
             return Mock(data=[])
-        elif call_count == 2:
+        elif current_count == 2:
             # Tenant creation
             return Mock(data=[{
                 "id": str(tenant_id),
@@ -143,14 +149,15 @@ def test_provision_tenant_rollback_on_bucket_failure(
                 "status": "active",
                 "created_at": "2026-01-08T00:00:00Z",
             }])
-        elif call_count == 3:
+        elif current_count == 3:
             # Rollback: delete tenant_users (if created)
             return Mock(data=[])
-        elif call_count == 4:
+        elif current_count == 4:
             # Rollback: delete tenant
             return Mock(data=[])
         return Mock(data=[])
     
+    mock_supabase_client.execute.return_value = None
     mock_supabase_client.execute.side_effect = execute_side_effect
     
     # Mock storage service to fail
@@ -228,34 +235,28 @@ def test_storage_setup_create_bucket(mock_supabase_client):
     tenant_id = uuid4()
     bucket_name = f"documents-{tenant_id}"
     
-    with patch('src.services.storage_setup.get_auth_config') as mock_config:
-        mock_config.return_value = Mock(
-            supabase_url="https://test.supabase.co",
-            supabase_service_key="test-key",
-        )
+    service = StorageSetupService(
+        mock_supabase_client,
+        "https://test.supabase.co",
+        "test-key",
+    )
+    
+    # Mock bucket doesn't exist
+    mock_supabase_client.storage.from_ = Mock(return_value=Mock(
+        list=Mock(side_effect=Exception("Not found"))
+    ))
+    
+    # Mock HTTP request for bucket creation
+    with patch('httpx.Client') as mock_httpx:
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_client_instance = Mock()
+        mock_client_instance.post.return_value = mock_response
+        mock_httpx.return_value.__enter__.return_value = mock_client_instance
         
-        service = StorageSetupService(
-            mock_supabase_client,
-            "https://test.supabase.co",
-            "test-key",
-        )
+        result = service.create_tenant_bucket(tenant_id)
         
-        # Mock bucket doesn't exist
-        mock_supabase_client.storage.from_ = Mock(return_value=Mock(
-            list=Mock(side_effect=Exception("Not found"))
-        ))
-        
-        # Mock HTTP request for bucket creation
-        with patch('httpx.Client') as mock_httpx:
-            mock_response = Mock()
-            mock_response.status_code = 200
-            mock_client_instance = Mock()
-            mock_client_instance.post.return_value = mock_response
-            mock_httpx.return_value.__enter__.return_value = mock_client_instance
-            
-            result = service.create_tenant_bucket(tenant_id)
-            
-            assert result == bucket_name
+        assert result == bucket_name
 
 
 def test_storage_setup_delete_bucket(mock_supabase_client):
@@ -264,25 +265,19 @@ def test_storage_setup_delete_bucket(mock_supabase_client):
     
     tenant_id = uuid4()
     
-    with patch('src.services.storage_setup.get_auth_config') as mock_config:
-        mock_config.return_value = Mock(
-            supabase_url="https://test.supabase.co",
-            supabase_service_key="test-key",
-        )
+    service = StorageSetupService(
+        mock_supabase_client,
+        "https://test.supabase.co",
+        "test-key",
+    )
+    
+    # Mock HTTP request for bucket deletion
+    with patch('httpx.Client') as mock_httpx:
+        mock_response = Mock()
+        mock_response.status_code = 204
+        mock_client_instance = Mock()
+        mock_client_instance.delete.return_value = mock_response
+        mock_httpx.return_value.__enter__.return_value = mock_client_instance
         
-        service = StorageSetupService(
-            mock_supabase_client,
-            "https://test.supabase.co",
-            "test-key",
-        )
-        
-        # Mock HTTP request for bucket deletion
-        with patch('httpx.Client') as mock_httpx:
-            mock_response = Mock()
-            mock_response.status_code = 204
-            mock_client_instance = Mock()
-            mock_client_instance.delete.return_value = mock_response
-            mock_httpx.return_value.__enter__.return_value = mock_client_instance
-            
-            # Should not raise
-            service.delete_tenant_bucket(tenant_id)
+        # Should not raise
+        service.delete_tenant_bucket(tenant_id)

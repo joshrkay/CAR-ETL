@@ -1,11 +1,12 @@
 """Tenant provisioning service with rollback support."""
 from uuid import UUID
-from typing import Optional
-from supabase import Client
+from typing import Any, Dict, Optional, cast
 import logging
+from supabase import Client
 
 from src.services.storage_setup import StorageSetupService, StorageSetupError
 from src.auth.config import get_auth_config
+from src.utils.pii_protection import hash_email
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ class TenantProvisioningService:
         slug: str,
         admin_email: str,
         environment: str = "prod",
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Provision a new tenant with storage bucket and admin user.
         
@@ -89,7 +90,8 @@ class TenantProvisioningService:
             if not tenant_result.data:
                 raise ProvisioningError("Failed to create tenant")
             
-            tenant_id = UUID(str(tenant_result.data[0]["id"]))
+            tenant_data = cast(Dict[str, Any], tenant_result.data[0])
+            tenant_id = UUID(str(tenant_data["id"]))
             logger.info(f"Created tenant: {tenant_id}")
             
             # Step 3: Create storage bucket
@@ -201,15 +203,14 @@ class TenantProvisioningService:
                 raise ProvisioningError(f"Failed to link admin user: {str(e)}") from e
             
             # Step 7: Return success
-            tenant_data = tenant_result.data[0]
             return {
                 "tenant_id": str(tenant_id),
-                "name": tenant_data["name"],
-                "slug": tenant_data["slug"],
-                "status": tenant_data["status"],
+                "name": str(tenant_data.get("name", "")),
+                "slug": str(tenant_data.get("slug", "")),
+                "status": str(tenant_data.get("status", "")),
                 "storage_bucket": bucket_name,
                 "admin_invite_sent": True,
-                "created_at": tenant_data["created_at"],
+                "created_at": tenant_data.get("created_at"),
             }
             
         except ProvisioningError:

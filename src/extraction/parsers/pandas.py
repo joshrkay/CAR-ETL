@@ -6,8 +6,7 @@ Primary parser for .xlsx files.
 """
 import logging
 from io import BytesIO
-from typing import Dict, Any
-from .base import BaseParser, ParseResult, PageContent, ExtractedTable
+from .base import BaseParser, ParseResult, ExtractedTable
 from src.exceptions import ParserError
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 class PandasParser(BaseParser):
     """Parser implementation using pandas for Excel files."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Pandas parser."""
         pass
     
