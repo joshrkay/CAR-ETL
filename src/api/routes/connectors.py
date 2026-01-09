@@ -334,10 +334,14 @@ async def _handle_oauth_callback(
             connector_type="sharepoint",
         )
         
+        from datetime import datetime, timedelta, timezone
+        
         config = connector.get("config", {})
         config["access_token"] = token_data["access_token"]
         config["refresh_token"] = token_data.get("refresh_token", "")
-        config["expires_at"] = token_data.get("expires_in", 3600)
+        # Convert expires_in (seconds) to absolute timestamp
+        expires_in = token_data.get("expires_in", 3600)
+        config["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
         
         encrypted_config = _encrypt_connector_config(config)
         

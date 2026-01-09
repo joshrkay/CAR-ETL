@@ -28,12 +28,13 @@ SUPABASE_ANON_KEY=your-anon-key-here
 # Service role key (CRITICAL - keep secret!)
 # Get from: Supabase Dashboard → Settings → API → Project API keys → service_role secret
 # WARNING: This key bypasses RLS - never expose it!
-SUPABASE_SERVICE_KEY=your-service-role-key-here
+SUPABASE_SERVICE_KEY=mXq3Mkh3yziih/VSZRW8fdsqw8m3v9+4BVi3zPtxRxNE3UkypqS4YUZW+LVYFH00Qs/TgdayPYc/KoZb+3X1vg==
+
 
 # JWT secret for token validation (CRITICAL - keep secret!)
 # Get from: Supabase Dashboard → Settings → API → JWT Secret
 # Used to verify JWT tokens issued by Supabase Auth
-SUPABASE_JWT_SECRET=your-jwt-secret-here
+SUPABASE_JWT_SECRET=mXq3Mkh3yziih/VSZRW8fdsqw8m3v9+4BVi3zPtxRxNE3UkypqS4YUZW+LVYFH00Qs/TgdayPYc/KoZb+3X1vg==
 
 # ============================================
 # SHAREPOINT CONNECTOR (Required for SharePoint)
@@ -41,12 +42,12 @@ SUPABASE_JWT_SECRET=your-jwt-secret-here
 
 # Azure AD Application Client ID
 # Get from: Azure Portal → App registrations → Your app → Overview → Application (client) ID
-SHAREPOINT_CLIENT_ID=your-client-id-here
+SHAREPOINT_CLIENT_ID=c2d0b1df-92ab-44d9-8d47-9722a97a6eb4
 
 # Azure AD Application Client Secret
 # Get from: Azure Portal → App registrations → Your app → Certificates & secrets → Client secrets
 # Create a new secret if needed (valid for 6/12/24 months)
-SHAREPOINT_CLIENT_SECRET=your-client-secret-here
+SHAREPOINT_CLIENT_SECRET=624ff5b6-6ce9-4556-adbc-9c01580f07b8
 
 # ============================================
 # GOOGLE DRIVE CONNECTOR (Required for Google Drive)
@@ -54,11 +55,11 @@ SHAREPOINT_CLIENT_SECRET=your-client-secret-here
 
 # Google OAuth Application Client ID
 # Get from: Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID
-GOOGLE_CLIENT_ID=your-google-client-id-here
+GOOGLE_CLIENT_ID=1863675278-ap57vk3lv7hlnvpvvcfdjokj5jmfu262.apps.googleusercontent.com
 
 # Google OAuth Application Client Secret
 # Get from: Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID → Client secret
-GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+GOOGLE_CLIENT_SECRET=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
 
 # OAuth Redirect URI (must match Google Cloud Console configuration)
 # For dev: http://localhost:8000/oauth/google/callback

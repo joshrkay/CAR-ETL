@@ -1,7 +1,7 @@
 """Delta sync logic for SharePoint files."""
 import logging
 import hashlib
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from supabase import Client
@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 class SharePointSyncError(Exception):
     """Error for SharePoint sync operations."""
-    pass
 
 
 class SharePointSync:
@@ -205,7 +204,6 @@ class SharePointSync:
         file_id = item.get("id")
         file_name = item.get("name")
         file_size = item.get("size", 0)
-        web_url = item.get("webUrl")
         
         if not file_id or not file_name:
             return
@@ -226,9 +224,35 @@ class SharePointSync:
         if existing_doc and existing_doc.get("file_hash") == file_hash:
             return
         
-        document_id = str(uuid4())
+        document_id = str(uuid4()) if not existing_doc else existing_doc["id"]
         
-        storage_path = f"sharepoint/{self.tenant_id}/{drive_id}/{file_id}/{file_name}"
+        # Upload redacted content to Supabase Storage
+        bucket_name = f"documents-{self.tenant_id}"
+        storage_path = f"sharepoint/{drive_id}/{file_id}/{file_name}"
+        
+        try:
+            # Upload to Supabase Storage bucket
+            # Note: Supabase storage.upload() accepts bytes directly
+            from io import BytesIO
+            file_obj = BytesIO(redacted_content)
+            self.supabase.storage.from_(bucket_name).upload(
+                path=storage_path,
+                file=file_obj,
+                file_options={"content-type": mime_type, "upsert": "true"},
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to upload file to storage",
+                extra={
+                    "tenant_id": str(self.tenant_id),
+                    "document_id": document_id,
+                    "storage_path": storage_path,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
+            # Continue with metadata storage even if upload fails
+            # The document will be marked as pending and can be retried
         
         document_data = {
             "id": document_id,
@@ -237,14 +261,13 @@ class SharePointSync:
             "storage_path": storage_path,
             "original_filename": file_name,
             "mime_type": mime_type,
-            "file_size_bytes": file_size,
+            "file_size_bytes": len(redacted_content),  # Use actual redacted content size
             "source_type": "sharepoint",
             "source_path": source_path,
             "status": "pending",
         }
         
         if existing_doc:
-            document_data["id"] = existing_doc["id"]
             self.supabase.table("documents").update(document_data).eq(
                 "id", document_data["id"]
             ).execute()

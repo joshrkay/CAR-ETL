@@ -6,13 +6,13 @@ Add these to your `.env` file:
 
 ```bash
 # SharePoint OAuth Configuration
-SHAREPOINT_CLIENT_ID=c2d0b1df-92ab-44d9-8d47-9722a97a6eb4
-SHAREPOINT_CLIENT_SECRET=90eab852-dbd3-499e-85eb-f1afdd615a50t
+SHAREPOINT_CLIENT_ID=your-client-id-here
+SHAREPOINT_CLIENT_SECRET=your-client-secret-here
 SHAREPOINT_REDIRECT_URI=http://localhost:8000/oauth/microsoft/callback
 
 # Encryption Key (for OAuth token encryption)
 # Generate a new key with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-ENCRYPTION_KEY=BW89EmvwZbeFMJ3xeXfw64NR-IcG8iRXSDQDONuvcTs=
+ENCRYPTION_KEY=your-encryption-key-here
 ```
 
 ## Azure AD App Registration

@@ -1,7 +1,6 @@
 """Microsoft Graph API client for SharePoint operations."""
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timezone
 import httpx
 from src.connectors.sharepoint.oauth import SharePointOAuth, SharePointOAuthError
 
