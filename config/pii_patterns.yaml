@@ -1,0 +1,90 @@
+# PII Detection Patterns and CRE-Specific Exceptions
+# Understanding Plane Configuration
+
+# PII Entity Types to Detect
+# Note: Presidio entity types for English (en) language
+pii_entities:
+  - US_SSN  # US Social Security Number
+  - PHONE_NUMBER
+  - EMAIL_ADDRESS
+  - CREDIT_CARD
+  - US_PASSPORT
+  - US_DRIVER_LICENSE
+  - PERSON
+  - LOCATION  # Will be filtered by CRE exceptions
+
+# CRE-Specific Exceptions (NOT PII in CRE context)
+cre_exceptions:
+  # Property addresses are NOT PII in CRE context
+  property_address_patterns:
+    - "property address"
+    - "premises address"
+    - "leased premises"
+    - "building address"
+    - "site address"
+    - "physical address"
+    - "property location"
+  
+  # Company/business names are NOT PII
+  company_name_patterns:
+    - "tenant name"
+    - "landlord name"
+    - "lessor"
+    - "lessee"
+    - "property owner"
+    - "building owner"
+    - "property manager"
+    - "LLC"
+    - "Corp"
+    - "Inc"
+    - "Partnership"
+    - "REIT"
+  
+  # Business contact info (context-dependent)
+  business_contact_context:
+    # If email/phone appears near these terms, likely business contact
+    business_indicators:
+      - "tenant contact"
+      - "landlord contact"
+      - "property manager"
+      - "leasing office"
+      - "management office"
+      - "corporate"
+      - "business"
+      - "office"
+    
+    # Business email domains (common CRE companies)
+    business_email_domains:
+      - "cbre.com"
+      - "jll.com"
+      - "cushwake.com"
+      - "colliers.com"
+      - "avisonyoung.com"
+      - "marcusmillichap.com"
+      - "newmark.com"
+      - "transwestern.com"
+      - "kidder.com"
+      - "greystone.com"
+      - "hff.com"
+      - "hollidayfenoglio.com"
+
+# Redaction Modes Configuration
+redaction_modes:
+  mask:
+    replacement: "[REDACTED]"
+    description: "Replace PII with [REDACTED] placeholder"
+  
+  hash:
+    algorithm: "sha256"
+    include_salt: true
+    description: "Replace PII with hash (reversible with key)"
+  
+  none:
+    description: "No redaction (for internal use only)"
+
+# Audit Configuration
+audit:
+  log_all_redactions: true
+  store_original: false  # Set to true if original needs to be stored securely
+  log_entity_types: true
+  log_redaction_mode: true

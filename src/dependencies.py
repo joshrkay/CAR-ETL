@@ -1,12 +1,12 @@
 """FastAPI dependencies for authentication and feature flags."""
+from __future__ import annotations
+
 from fastapi import Request, HTTPException, status, Depends
-from typing import Annotated, Callable, Union, TYPE_CHECKING
+from typing import Annotated, Callable, Union
 from src.auth.models import AuthContext
+from src.audit.logger import AuditLogger
 from src.features.service import FeatureFlagService
 from supabase import Client
-
-if TYPE_CHECKING:
-    from src.audit.logger import AuditLogger
 
 
 def get_current_user(request: Request) -> AuthContext:
@@ -141,7 +141,7 @@ def get_service_client() -> Client:
 def get_audit_logger(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_user)],
-) -> "AuditLogger":  # noqa: F821
+) -> AuditLogger:
     """
     Dependency to get audit logger for current tenant and user.
     
@@ -162,8 +162,6 @@ def get_audit_logger(
             )
             await logger.flush()  # Ensure event is persisted
     """
-    from src.audit.logger import AuditLogger
-    
     supabase = get_supabase_client(request)
     logger: AuditLogger = AuditLogger(
         supabase=supabase,

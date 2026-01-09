@@ -1,4 +1,7 @@
 """Example FastAPI application with auth middleware."""
+import signal
+import sys
+import logging
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -19,6 +22,9 @@ from src.middleware.audit import AuditMiddleware
 from src.middleware.request_id import RequestIDMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.exceptions import CARException
+from src.audit.logger import shutdown_all_audit_loggers
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="CAR Platform API", version="1.0.0")
 
@@ -32,6 +38,143 @@ app.add_middleware(RequestIDMiddleware)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(AuditMiddleware)
 app.add_middleware(ErrorHandlerMiddleware)
+
+
+def _shutdown_handler(signum: int, frame: Any) -> None:
+    """
+    Signal handler for graceful shutdown.
+    
+    Handles SIGTERM and SIGINT to flush audit logs before exit.
+    Note: Signal handlers run in the main thread and must be synchronous.
+    FastAPI's shutdown event handler will handle async flush.
+    """
+    signal_name = signal.Signals(signum).name
+    logger.info(
+        f"Received {signal_name} signal, initiating graceful shutdown",
+        extra={"signal": signal_name, "signum": signum},
+    )
+    
+    # FastAPI's shutdown event will handle async flush
+    # Signal handler just logs and lets FastAPI handle cleanup
+
+
+# Register signal handlers for graceful shutdown
+signal.signal(signal.SIGTERM, _shutdown_handler)
+signal.signal(signal.SIGINT, _shutdown_handler)
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """
+    Validate environment variables and pre-warm Presidio models on application startup.
+    
+    This ensures all required credentials are configured before accepting requests
+    and reduces latency on first redaction request by loading models during
+    application initialization rather than on first use.
+    """
+    import logging
+    import sys
+    from src.auth.config import get_auth_config
+    from src.services.redaction import _get_analyzer, _get_anonymizer
+    
+    logger = logging.getLogger(__name__)
+    
+    # Step 1: Validate environment variables
+    try:
+        auth_config = get_auth_config()
+        validation_errors = auth_config.validate_environment()
+        
+        if validation_errors:
+            logger.error(
+                "Environment variable validation failed",
+                extra={
+                    "error_count": len(validation_errors),
+                    "errors": validation_errors,
+                },
+            )
+            
+            print("\n" + "=" * 80, file=sys.stderr)
+            print("ERROR: Required environment variables are missing or invalid", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
+            print("\nMissing or invalid variables:", file=sys.stderr)
+            for error in validation_errors:
+                print(f"  - {error}", file=sys.stderr)
+            print("\nTo fix this:", file=sys.stderr)
+            print("  1. Create a .env file in the project root", file=sys.stderr)
+            print("  2. Set all required environment variables", file=sys.stderr)
+            print("  3. See docs/SECURITY.md for configuration details", file=sys.stderr)
+            print("\nRequired variables:", file=sys.stderr)
+            print("  - SUPABASE_URL", file=sys.stderr)
+            print("  - SUPABASE_ANON_KEY", file=sys.stderr)
+            print("  - SUPABASE_SERVICE_KEY", file=sys.stderr)
+            print("  - SUPABASE_JWT_SECRET", file=sys.stderr)
+            print("=" * 80 + "\n", file=sys.stderr)
+            
+            sys.exit(1)
+        
+        # Log success (without secrets)
+        logger.info(
+            "Environment variables validated successfully",
+            extra={
+                "supabase_url": auth_config.supabase_url,
+                "app_env": auth_config.app_env,
+                "log_level": auth_config.log_level,
+                # Intentionally NOT logging secret values
+            },
+        )
+        
+    except Exception as e:
+        logger.error(
+            "Failed to validate environment variables",
+            extra={
+                "error": str(e),
+                "error_type": type(e).__name__,
+            },
+            exc_info=True,
+        )
+        print("\n" + "=" * 80, file=sys.stderr)
+        print("ERROR: Failed to load environment configuration", file=sys.stderr)
+        print("=" * 80, file=sys.stderr)
+        print(f"\nError: {e}", file=sys.stderr)
+        print("\nTo fix this:", file=sys.stderr)
+        print("  1. Ensure .env file exists in the project root", file=sys.stderr)
+        print("  2. See docs/SECURITY.md for configuration details", file=sys.stderr)
+        print("=" * 80 + "\n", file=sys.stderr)
+        sys.exit(1)
+    
+    # Step 2: Pre-warm Presidio models
+    try:
+        # Pre-warm Presidio models
+        _get_analyzer()
+        _get_anonymizer()
+        logger.info("Presidio models pre-warmed successfully")
+    except Exception as e:
+        logger.error(
+            f"Failed to pre-warm Presidio models: {e}",
+            exc_info=True,
+        )
+        # Don't fail startup - models will load on first use
+        # This allows application to start even if Presidio has issues
+
+
+@app.on_event("shutdown")
+async def shutdown_event() -> None:
+    """
+    FastAPI shutdown event handler.
+    
+    Flushes all audit log buffers before application exit.
+    Ensures no audit events are lost during graceful shutdown.
+    """
+    logger.info("Application shutdown initiated, flushing audit logs")
+    
+    try:
+        shutdown_all_audit_loggers(timeout=5.0)
+        logger.info("Audit logs flushed successfully")
+    except Exception as e:
+        logger.error(
+            f"Error flushing audit logs during shutdown: {e}",
+            exc_info=True,
+        )
 
 
 # Register exception handlers for route handlers

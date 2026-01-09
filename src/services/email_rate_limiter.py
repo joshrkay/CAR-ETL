@@ -6,7 +6,7 @@ Enforces max 100 emails per sender per hour.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from supabase import Client
 
 from src.exceptions import RateLimitError
@@ -41,7 +41,7 @@ class EmailRateLimiter:
         Raises:
             RateLimitError: If rate limit is exceeded
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         window_start = now - timedelta(hours=RATE_LIMIT_WINDOW_HOURS)
         
         try:
@@ -68,7 +68,10 @@ class EmailRateLimiter:
                         oldest_time = datetime.fromisoformat(
                             oldest_time_str.replace("Z", "+00:00")
                         )
-                        elapsed = (now - oldest_time.replace(tzinfo=None)).total_seconds()
+                        # Ensure both datetimes are timezone-aware for comparison
+                        if oldest_time.tzinfo is None:
+                            oldest_time = oldest_time.replace(tzinfo=timezone.utc)
+                        elapsed = (now - oldest_time).total_seconds()
                         retry_after = max(1, int(3600 - elapsed))
                     else:
                         retry_after = 3600
@@ -90,19 +93,23 @@ class EmailRateLimiter:
                 )
         
         except RateLimitError:
+            # Re-raise rate limit errors
             raise
-        except Exception as e:
-            # Fail closed: Block request on rate limit check failure (defense in depth)
+        except (ConnectionError, TimeoutError) as e:
+            # Fail closed: Block request on database connection/timeout errors
+            # This prevents DoS bypass if rate limiter database is unavailable
             logger.error(
-                "Rate limit check failed - BLOCKING REQUEST (fail closed)",
+                "Rate limit check failed due to database error - BLOCKING REQUEST (fail closed)",
                 extra={
                     "from_address_hash": hash_email(from_address),
                     "error": str(e),
+                    "error_type": type(e).__name__,
                 },
                 exc_info=True,
             )
-            # Fail closed: Reject request on error to prevent bypass
             raise RateLimitError(
                 retry_after=300,
-                message="Rate limit check failed - please try again later",
-            )
+                message="Rate limit check unavailable - please try again later",
+            ) from e
+        # All other exceptions propagate to caller (fail closed by default)
+        # This ensures any unexpected errors don't bypass rate limiting

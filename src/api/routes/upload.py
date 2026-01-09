@@ -278,6 +278,49 @@ async def upload_bulk_documents(
                 storage_service = FileStorageService(supabase)
                 file_hash = storage_service.calculate_file_hash(redacted_content)
                 
+                # Generate storage path
+                storage_path = f"bulk/{batch_id}/{filename}"
+                
+                # Upload file to storage before creating document record
+                try:
+                    storage_service.upload_file(
+                        content=redacted_content,
+                        storage_path=storage_path,
+                        tenant_id=UUID(tenant_id),
+                        mime_type=processing_result.mime_type,
+                    )
+                except StorageUploadError as e:
+                    logger.error(
+                        "Failed to upload file to storage",
+                        extra={
+                            "request_id": request_id,
+                            "tenant_id": tenant_id,
+                            "batch_id": batch_id,
+                            "filename": filename,
+                            "error": str(e),
+                        },
+                        exc_info=True,
+                    )
+                    # Mark as failed and continue to next file
+                    processing_result = FileProcessingResult(
+                        filename=filename,
+                        document_id=None,
+                        status="failed",
+                        error="Failed to upload file to storage",
+                        file_size=processing_result.file_size,
+                        mime_type=processing_result.mime_type,
+                    )
+                    failed_count += 1
+                    results.append(
+                        FileResult(
+                            filename=processing_result.filename,
+                            document_id=processing_result.document_id,
+                            status=processing_result.status,
+                            error=processing_result.error,
+                        )
+                    )
+                    continue
+                
                 await store_document_metadata(
                     supabase=supabase,
                     storage_service=storage_service,
@@ -289,6 +332,7 @@ async def upload_bulk_documents(
                     file_size=len(redacted_content),
                     content=redacted_content,
                     file_hash=file_hash,
+                    storage_path=storage_path,
                     batch_id=batch_id,
                 )
                 
@@ -306,9 +350,9 @@ async def upload_bulk_documents(
                 )
             
             except StorageUploadError as e:
-                # If file upload fails, mark as failed
+                # This should not happen as upload is handled above, but keep for safety
                 logger.error(
-                    "Failed to upload file to storage",
+                    "Storage upload error in store_document_metadata",
                     extra={
                         "request_id": request_id,
                         "tenant_id": tenant_id,
@@ -443,44 +487,37 @@ async def store_document_metadata(
     file_size: int,
     content: bytes,
     file_hash: str,
+    storage_path: str,
     batch_id: str,
 ) -> None:
     """
-    Upload file to storage and store document metadata in database.
+    Store document metadata in database.
+    
+    Note: File should already be uploaded to storage before calling this function.
     
     This function:
-    1. Uploads file content to Supabase Storage
-    2. Creates a record in the documents table which automatically
+    1. Creates a record in the documents table which automatically
        triggers document processing via database trigger.
     
     Args:
         supabase: Supabase client with user JWT
-        storage_service: File storage service for uploading files
+        storage_service: File storage service (unused, kept for compatibility)
         document_id: Unique document identifier
         tenant_id: Tenant identifier
         user_id: User identifier
         filename: Original filename
         mime_type: Validated MIME type
         file_size: File size in bytes
-        content: File content bytes
+        content: File content bytes (unused, kept for compatibility)
         file_hash: SHA-256 hash of file content
+        storage_path: Storage path where file was uploaded
         batch_id: Batch identifier for bulk upload
         
     Raises:
-        StorageUploadError: If file upload fails
         Exception: If database insert fails
     """
     # SECURITY: Content is already redacted before this function is called
-    # Generate storage path
-    storage_path = f"uploads/{tenant_id}/{document_id}/{filename}"
-    
-    # Upload file to storage
-    storage_service.upload_file(
-        content=content,
-        storage_path=storage_path,
-        tenant_id=UUID(tenant_id),
-        mime_type=mime_type,
-    )
+    # File is already uploaded to storage before this function is called
     
     # Store document metadata
     document_data: Dict[str, Any] = {

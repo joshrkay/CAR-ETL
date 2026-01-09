@@ -217,6 +217,9 @@ async def upload_document(
     document_id = str(uuid4())
     storage_service = FileStorageService(supabase)
     
+    # Calculate SHA-256 hash of redacted content
+    file_hash = storage_service.calculate_file_hash(redacted_content)
+    
     try:
         await store_document_metadata(
             supabase=supabase,
@@ -228,6 +231,7 @@ async def upload_document(
             mime_type=validation_result.mime_type,
             file_size=len(redacted_content),
             content=redacted_content,
+            file_hash=file_hash,
             description=description,
         )
     except StorageUploadError as e:
@@ -342,15 +346,15 @@ async def store_document_metadata(
     mime_type: str,
     file_size: int,
     content: bytes,
+    file_hash: str,
     description: Optional[str],
 ) -> None:
     """
     Upload file to storage and store document metadata in database.
     
     This function:
-    1. Calculates file hash
-    2. Uploads file content to Supabase Storage
-    3. Creates a record in the documents table which automatically
+    1. Uploads file content to Supabase Storage
+    2. Creates a record in the documents table which automatically
        triggers document processing via database trigger.
     
     Args:
@@ -363,6 +367,7 @@ async def store_document_metadata(
         mime_type: Validated MIME type
         file_size: File size in bytes
         content: File content bytes
+        file_hash: SHA-256 hash of file content (already calculated)
         description: Optional document description (stored in source_path)
         
     Raises:
@@ -370,11 +375,8 @@ async def store_document_metadata(
         Exception: If database insert fails
     """
     # SECURITY: Content is already redacted before this function is called
-    # Calculate file hash (using redacted content)
-    file_hash = storage_service.calculate_file_hash(content)
-    
-    # Generate storage path
-    storage_path = f"uploads/{tenant_id}/{document_id}/{filename}"
+    # Generate storage path (tenant isolation via bucket, not path)
+    storage_path = f"uploads/{document_id}/{filename}"
     
     # Upload file to storage
     storage_service.upload_file(
@@ -382,6 +384,17 @@ async def store_document_metadata(
         storage_path=storage_path,
         tenant_id=UUID(tenant_id),
         mime_type=mime_type,
+    )
+    
+    logger.info(
+        "File uploaded to storage successfully",
+        extra={
+            "document_id": document_id,
+            "tenant_id": tenant_id,
+            "storage_path": storage_path,
+            "bucket_name": f"documents-{tenant_id}",
+            "file_size": file_size,
+        },
     )
     
     # Store document metadata
