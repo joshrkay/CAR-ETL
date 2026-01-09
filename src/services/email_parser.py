@@ -6,6 +6,7 @@ Extracts email metadata, body content, and attachments.
 """
 
 import base64
+import binascii
 from email.utils import parseaddr
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -143,7 +144,7 @@ class EmailParser:
                 content=content,
                 size=size,
             )
-        except (ValueError, TypeError, base64.binascii.Error) as e:
+        except (ValueError, TypeError, binascii.Error):
             # Invalid base64 encoding or type mismatch
             # Return None to skip invalid attachments
             return None
