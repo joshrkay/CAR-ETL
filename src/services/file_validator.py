@@ -7,6 +7,7 @@ Enforces size limits and MIME type integrity.
 Security Layer: Defense in depth - never trust file extensions or client-provided MIME types.
 """
 
+import logging
 import zipfile
 from io import BytesIO
 from typing import Optional
@@ -163,7 +164,6 @@ class FileValidator:
         except (IOError, OSError, MemoryError) as e:
             errors.append(f"Office document validation failed: {str(e)}")
         except Exception as e:
-            import logging
             logger = logging.getLogger(__name__)
             logger.warning(
                 "Unexpected error during Office document validation",
