@@ -450,45 +450,24 @@ class TestProcessDocument:
             "status": "pending",
         }
 
-        mock_content = b"PDF content"
-
-        mock_parse_result = {
-            "text": "Lease agreement text",
-            "pages": [{"page": 1}],
-            "tables": [],
-            "metadata": {"parser": "ragflow"},
-        }
-
-        mock_extraction = ExtractionResult(
-            fields={
-                "tenant_name": ExtractedField(
-                    value="ABC Corp",
-                    confidence=0.95,
-                    page=1,
-                    quote="ABC Corp",
-                )
-            },
-            document_type="lease",
-            overall_confidence=0.95,
-        )
-
         mock_supabase = Mock()
 
-        # Mock all the database calls
-        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get_doc, \
-             patch("src.extraction.pipeline.download_document", new_callable=AsyncMock) as mock_download, \
-             patch("src.extraction.pipeline.parse_document_content", new_callable=AsyncMock) as mock_parse, \
-             patch("src.extraction.pipeline.redact_pii", new_callable=AsyncMock) as mock_redact, \
-             patch("src.extraction.pipeline.extract_cre_fields", new_callable=AsyncMock) as mock_extract, \
-             patch("src.extraction.pipeline.save_extraction", new_callable=AsyncMock) as mock_save, \
-             patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        # Mock all the helper functions
+        with patch("src.extraction.pipeline._validate_and_prepare", new_callable=AsyncMock) as mock_validate, \
+             patch("src.extraction.pipeline._parse_and_redact", new_callable=AsyncMock) as mock_parse_redact, \
+             patch("src.extraction.pipeline._extract_and_persist", new_callable=AsyncMock) as mock_extract_persist, \
+             patch("src.extraction.pipeline._finalize_success", new_callable=AsyncMock) as mock_finalize:
 
-            mock_get_doc.return_value = mock_document
-            mock_download.return_value = mock_content
-            mock_parse.return_value = mock_parse_result
-            mock_redact.return_value = "Redacted text"
-            mock_extract.return_value = mock_extraction
-            mock_save.return_value = extraction_id
+            mock_validate.return_value = (mock_document, tenant_id)
+            mock_parse_redact.return_value = ("Redacted text", "ragflow")
+            mock_extract_persist.return_value = (extraction_id, 0.95)
+            mock_finalize.return_value = {
+                "document_id": str(document_id),
+                "extraction_id": str(extraction_id),
+                "status": "ready",
+                "overall_confidence": 0.95,
+                "error": None,
+            }
 
             result = await process_document(document_id, mock_supabase)
 
@@ -498,15 +477,10 @@ class TestProcessDocument:
             assert result["error"] is None
 
             # Verify all steps were called
-            mock_get_doc.assert_called_once()
-            mock_download.assert_called_once()
-            mock_parse.assert_called_once()
-            mock_redact.assert_called_once()
-            mock_extract.assert_called_once()
-            mock_save.assert_called_once()
-
-            # Verify status updates
-            assert mock_update.call_count == 2  # processing and ready
+            mock_validate.assert_called_once_with(mock_supabase, document_id)
+            mock_parse_redact.assert_called_once()
+            mock_extract_persist.assert_called_once()
+            mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_document_parsing_failure(self):
@@ -524,14 +498,19 @@ class TestProcessDocument:
 
         mock_supabase = Mock()
 
-        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get_doc, \
-             patch("src.extraction.pipeline.download_document", new_callable=AsyncMock) as mock_download, \
-             patch("src.extraction.pipeline.parse_document_content", new_callable=AsyncMock) as mock_parse, \
-             patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        with patch("src.extraction.pipeline._validate_and_prepare", new_callable=AsyncMock) as mock_validate, \
+             patch("src.extraction.pipeline._parse_and_redact", new_callable=AsyncMock) as mock_parse_redact, \
+             patch("src.extraction.pipeline._finalize_failure", new_callable=AsyncMock) as mock_finalize:
 
-            mock_get_doc.return_value = mock_document
-            mock_download.return_value = b"content"
-            mock_parse.side_effect = ParserError("Parser failed")
+            mock_validate.return_value = (mock_document, tenant_id)
+            mock_parse_redact.side_effect = ParserError("Parser failed")
+            mock_finalize.return_value = {
+                "document_id": str(document_id),
+                "extraction_id": None,
+                "status": "failed",
+                "overall_confidence": 0.0,
+                "error": "Parser failed",
+            }
 
             result = await process_document(document_id, mock_supabase)
 
@@ -539,8 +518,8 @@ class TestProcessDocument:
             assert result["error"] is not None
             assert "Parser failed" in result["error"]
 
-            # Verify status was updated to failed
-            mock_update.assert_called()
+            # Verify finalize_failure was called
+            mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_document_extraction_failure(self):
@@ -556,32 +535,29 @@ class TestProcessDocument:
             "status": "pending",
         }
 
-        mock_parse_result = {
-            "text": "Some text",
-            "pages": [],
-            "tables": [],
-            "metadata": {},
-        }
-
         mock_supabase = Mock()
 
-        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get_doc, \
-             patch("src.extraction.pipeline.download_document", new_callable=AsyncMock) as mock_download, \
-             patch("src.extraction.pipeline.parse_document_content", new_callable=AsyncMock) as mock_parse, \
-             patch("src.extraction.pipeline.redact_pii", new_callable=AsyncMock) as mock_redact, \
-             patch("src.extraction.pipeline.extract_cre_fields", new_callable=AsyncMock) as mock_extract, \
-             patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        with patch("src.extraction.pipeline._validate_and_prepare", new_callable=AsyncMock) as mock_validate, \
+             patch("src.extraction.pipeline._parse_and_redact", new_callable=AsyncMock) as mock_parse_redact, \
+             patch("src.extraction.pipeline._extract_and_persist", new_callable=AsyncMock) as mock_extract_persist, \
+             patch("src.extraction.pipeline._finalize_failure", new_callable=AsyncMock) as mock_finalize:
 
-            mock_get_doc.return_value = mock_document
-            mock_download.return_value = b"content"
-            mock_parse.return_value = mock_parse_result
-            mock_redact.return_value = "Redacted"
-            mock_extract.side_effect = Exception("Extraction failed")
+            mock_validate.return_value = (mock_document, tenant_id)
+            mock_parse_redact.return_value = ("Redacted text", "tika")
+            mock_extract_persist.side_effect = Exception("Extraction failed")
+            mock_finalize.return_value = {
+                "document_id": str(document_id),
+                "extraction_id": None,
+                "status": "failed",
+                "overall_confidence": 0.0,
+                "error": "Extraction failed",
+            }
 
             result = await process_document(document_id, mock_supabase)
 
             assert result["status"] == "failed"
             assert "Extraction failed" in result["error"]
+            mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_process_document_not_found(self):
@@ -589,15 +565,167 @@ class TestProcessDocument:
         document_id = uuid4()
         mock_supabase = Mock()
 
-        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get_doc, \
-             patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        with patch("src.extraction.pipeline._validate_and_prepare", new_callable=AsyncMock) as mock_validate, \
+             patch("src.extraction.pipeline._finalize_failure", new_callable=AsyncMock) as mock_finalize:
 
-            mock_get_doc.side_effect = DocumentNotFoundError("Document not found")
+            mock_validate.side_effect = DocumentNotFoundError("Document not found")
+            mock_finalize.return_value = {
+                "document_id": str(document_id),
+                "extraction_id": None,
+                "status": "failed",
+                "overall_confidence": 0.0,
+                "error": "Document not found",
+            }
 
             result = await process_document(document_id, mock_supabase)
 
             assert result["status"] == "failed"
             assert "Document not found" in result["error"]
+            mock_finalize.assert_called_once()
+
+
+class TestHelperFunctions:
+    """Tests for refactored helper functions."""
+
+    @pytest.mark.asyncio
+    async def test_validate_and_prepare_success(self):
+        """Test _validate_and_prepare with valid document."""
+        from src.extraction.pipeline import _validate_and_prepare
+
+        document_id = uuid4()
+        tenant_id = uuid4()
+        mock_document = {
+            "id": str(document_id),
+            "tenant_id": str(tenant_id),
+            "status": "pending",
+        }
+
+        mock_supabase = Mock()
+
+        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get, \
+             patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+
+            mock_get.return_value = mock_document
+
+            doc, tid = await _validate_and_prepare(mock_supabase, document_id)
+
+            assert doc == mock_document
+            assert tid == tenant_id
+            mock_update.assert_called_once_with(mock_supabase, document_id, "processing")
+
+    @pytest.mark.asyncio
+    async def test_parse_and_redact_success(self):
+        """Test _parse_and_redact with valid document."""
+        from src.extraction.pipeline import _parse_and_redact
+
+        tenant_id = uuid4()
+        mock_document = {
+            "storage_path": "uploads/test.pdf",
+            "mime_type": "application/pdf",
+        }
+
+        mock_parse_result = {
+            "text": "Document text",
+            "pages": [],
+            "tables": [],
+            "metadata": {"parser": "ragflow"},
+        }
+
+        mock_supabase = Mock()
+
+        with patch("src.extraction.pipeline.download_document", new_callable=AsyncMock) as mock_download, \
+             patch("src.extraction.pipeline.parse_document_content", new_callable=AsyncMock) as mock_parse, \
+             patch("src.extraction.pipeline.redact_pii", new_callable=AsyncMock) as mock_redact:
+
+            mock_download.return_value = b"content"
+            mock_parse.return_value = mock_parse_result
+            mock_redact.return_value = "Redacted text"
+
+            text, parser = await _parse_and_redact(mock_supabase, mock_document, tenant_id)
+
+            assert text == "Redacted text"
+            assert parser == "ragflow"
+            mock_redact.assert_called_once_with("Document text", enabled=True)
+
+    @pytest.mark.asyncio
+    async def test_extract_and_persist_success(self):
+        """Test _extract_and_persist with valid extraction."""
+        from src.extraction.pipeline import _extract_and_persist
+
+        document_id = uuid4()
+        tenant_id = uuid4()
+        extraction_id = uuid4()
+
+        mock_extraction = ExtractionResult(
+            fields={"tenant_name": ExtractedField(value="ABC", confidence=0.9, page=1, quote="ABC")},
+            document_type="lease",
+            overall_confidence=0.9,
+        )
+
+        mock_supabase = Mock()
+
+        with patch("src.extraction.pipeline.extract_cre_fields", new_callable=AsyncMock) as mock_extract, \
+             patch("src.extraction.pipeline.save_extraction", new_callable=AsyncMock) as mock_save:
+
+            mock_extract.return_value = mock_extraction
+            mock_save.return_value = extraction_id
+
+            ext_id, confidence = await _extract_and_persist(
+                mock_supabase,
+                document_id,
+                tenant_id,
+                "Redacted text",
+                "ragflow",
+            )
+
+            assert ext_id == extraction_id
+            assert confidence == 0.9
+            mock_save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_finalize_success(self):
+        """Test _finalize_success creates correct result."""
+        from src.extraction.pipeline import _finalize_success
+
+        document_id = uuid4()
+        extraction_id = uuid4()
+
+        mock_supabase = Mock()
+
+        with patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+
+            result = await _finalize_success(
+                mock_supabase,
+                document_id,
+                extraction_id,
+                0.88,
+            )
+
+            assert result["status"] == "ready"
+            assert result["extraction_id"] == str(extraction_id)
+            assert result["overall_confidence"] == 0.88
+            assert result["error"] is None
+            mock_update.assert_called_once_with(mock_supabase, document_id, "ready")
+
+    @pytest.mark.asyncio
+    async def test_finalize_failure(self):
+        """Test _finalize_failure creates correct result."""
+        from src.extraction.pipeline import _finalize_failure
+
+        document_id = uuid4()
+        error = Exception("Test error")
+
+        mock_supabase = Mock()
+
+        with patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+
+            result = await _finalize_failure(mock_supabase, document_id, error)
+
+            assert result["status"] == "failed"
+            assert result["extraction_id"] is None
+            assert result["overall_confidence"] == 0.0
+            assert result["error"] == "Test error"
+            mock_update.assert_called_once()
 
 
 class TestPipelineEdgeCases:

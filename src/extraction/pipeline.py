@@ -437,6 +437,193 @@ async def update_document_status(
         ) from e
 
 
+async def _validate_and_prepare(
+    supabase: Client,
+    document_id: UUID,
+) -> tuple[Dict[str, Any], UUID]:
+    """
+    Validate document exists and prepare for processing.
+
+    Args:
+        supabase: Supabase client (service role)
+        document_id: Document UUID
+
+    Returns:
+        Tuple of (document dict, tenant_id)
+
+    Raises:
+        DocumentNotFoundError: If document doesn't exist
+    """
+    document = await get_document(supabase, document_id)
+    tenant_id = UUID(document["tenant_id"])
+    await update_document_status(supabase, document_id, "processing")
+    return document, tenant_id
+
+
+async def _parse_and_redact(
+    supabase: Client,
+    document: Dict[str, Any],
+    tenant_id: UUID,
+) -> tuple[str, str]:
+    """
+    Download, parse, and redact document content.
+
+    Args:
+        supabase: Supabase client (service role)
+        document: Document record
+        tenant_id: Tenant UUID
+
+    Returns:
+        Tuple of (redacted_text, parser_used)
+
+    Raises:
+        DocumentAccessError: If download fails
+        ParserError: If parsing fails
+    """
+    content = await download_document(
+        supabase,
+        document["storage_path"],
+        tenant_id,
+    )
+
+    parse_result = await parse_document_content(
+        content,
+        document["mime_type"],
+    )
+
+    # TODO: Make redaction configurable via feature flags
+    redacted_text = await redact_pii(parse_result["text"], enabled=True)
+    parser_used = parse_result["metadata"].get("parser", "unknown")
+
+    return redacted_text, parser_used
+
+
+async def _extract_and_persist(
+    supabase: Client,
+    document_id: UUID,
+    tenant_id: UUID,
+    redacted_text: str,
+    parser_used: str,
+) -> tuple[UUID, float]:
+    """
+    Extract fields and persist to database.
+
+    Args:
+        supabase: Supabase client (service role)
+        document_id: Document UUID
+        tenant_id: Tenant UUID
+        redacted_text: Redacted document text
+        parser_used: Parser name (ragflow, tika, etc.)
+
+    Returns:
+        Tuple of (extraction_id, overall_confidence)
+
+    Raises:
+        ExtractionPipelineError: If extraction or save fails
+    """
+    extraction_result = await extract_cre_fields(redacted_text)
+
+    extraction_id = await save_extraction(
+        supabase,
+        document_id,
+        tenant_id,
+        extraction_result,
+        parser_used=parser_used,
+    )
+
+    return extraction_id, extraction_result.overall_confidence
+
+
+async def _finalize_success(
+    supabase: Client,
+    document_id: UUID,
+    extraction_id: UUID,
+    overall_confidence: float,
+) -> Dict[str, Any]:
+    """
+    Finalize successful processing.
+
+    Args:
+        supabase: Supabase client (service role)
+        document_id: Document UUID
+        extraction_id: Extraction UUID
+        overall_confidence: Confidence score
+
+    Returns:
+        Success result dictionary
+    """
+    await update_document_status(supabase, document_id, "ready")
+
+    logger.info(
+        "Document processing completed",
+        extra={
+            "document_id": str(document_id),
+            "extraction_id": str(extraction_id),
+            "overall_confidence": overall_confidence,
+        },
+    )
+
+    return {
+        "document_id": str(document_id),
+        "extraction_id": str(extraction_id),
+        "status": "ready",
+        "overall_confidence": overall_confidence,
+        "error": None,
+    }
+
+
+async def _finalize_failure(
+    supabase: Client,
+    document_id: UUID,
+    error: Exception,
+) -> Dict[str, Any]:
+    """
+    Finalize failed processing.
+
+    Args:
+        supabase: Supabase client (service role)
+        document_id: Document UUID
+        error: Exception that caused failure
+
+    Returns:
+        Failure result dictionary
+    """
+    error_message = str(error)
+
+    logger.error(
+        "Document processing failed",
+        extra={
+            "document_id": str(document_id),
+            "error": error_message,
+        },
+        exc_info=True,
+    )
+
+    try:
+        await update_document_status(
+            supabase,
+            document_id,
+            "failed",
+            error_message=error_message,
+        )
+    except Exception as status_error:
+        logger.error(
+            "Failed to update document status after error",
+            extra={
+                "document_id": str(document_id),
+                "error": str(status_error),
+            },
+        )
+
+    return {
+        "document_id": str(document_id),
+        "extraction_id": None,
+        "status": "failed",
+        "overall_confidence": 0.0,
+        "error": error_message,
+    }
+
+
 async def process_document(document_id: UUID, supabase: Client) -> Dict[str, Any]:
     """
     Process a single document through the extraction pipeline.
@@ -457,116 +644,43 @@ async def process_document(document_id: UUID, supabase: Client) -> Dict[str, Any
         supabase: Supabase client (service role)
 
     Returns:
-        Dictionary with processing results:
-        {
-            "document_id": UUID,
-            "extraction_id": UUID,
-            "status": str,
-            "overall_confidence": float,
-            "error": Optional[str]
-        }
+        Dictionary with processing results
 
     Raises:
         Exception: Pipeline errors are caught and logged, status updated
     """
-    result = {
-        "document_id": str(document_id),
-        "extraction_id": None,
-        "status": "failed",
-        "overall_confidence": 0.0,
-        "error": None,
-    }
+    logger.info(
+        "Starting document processing",
+        extra={"document_id": str(document_id)},
+    )
 
     try:
-        logger.info(
-            "Starting document processing",
-            extra={"document_id": str(document_id)},
-        )
+        # Step 1: Validate document and prepare
+        document, tenant_id = await _validate_and_prepare(supabase, document_id)
 
-        # Step 1: Validate document (exists, accessible)
-        document = await get_document(supabase, document_id)
-        tenant_id = UUID(document["tenant_id"])
-
-        # Update status to processing
-        await update_document_status(supabase, document_id, "processing")
-
-        # Step 2 & 3: Download and parse document
-        content = await download_document(
+        # Steps 2-4: Parse and redact
+        redacted_text, parser_used = await _parse_and_redact(
             supabase,
-            document["storage_path"],
+            document,
             tenant_id,
         )
 
-        parse_result = await parse_document_content(
-            content,
-            document["mime_type"],
-        )
-
-        # Step 4: Redact PII (if enabled)
-        # TODO: Make this configurable via feature flags
-        redacted_text = await redact_pii(parse_result["text"], enabled=True)
-
-        # Step 5 & 6: Extract CRE fields and calculate confidence
-        extraction_result = await extract_cre_fields(redacted_text)
-
-        # Step 7: Store results
-        extraction_id = await save_extraction(
+        # Steps 5-7: Extract and persist
+        extraction_id, confidence = await _extract_and_persist(
             supabase,
             document_id,
             tenant_id,
-            extraction_result,
-            parser_used=parse_result["metadata"].get("parser", "unknown"),
+            redacted_text,
+            parser_used,
         )
 
-        # Step 8: Update document status
-        await update_document_status(supabase, document_id, "ready")
-
-        # Step 9: Index for search
-        # TODO: Implement search indexing
-
-        result.update({
-            "extraction_id": str(extraction_id),
-            "status": "ready",
-            "overall_confidence": extraction_result.overall_confidence,
-        })
-
-        logger.info(
-            "Document processing completed",
-            extra={
-                "document_id": str(document_id),
-                "extraction_id": str(extraction_id),
-                "overall_confidence": extraction_result.overall_confidence,
-            },
+        # Step 8: Finalize success
+        return await _finalize_success(
+            supabase,
+            document_id,
+            extraction_id,
+            confidence,
         )
 
     except Exception as e:
-        error_message = str(e)
-        result["error"] = error_message
-
-        logger.error(
-            "Document processing failed",
-            extra={
-                "document_id": str(document_id),
-                "error": error_message,
-            },
-            exc_info=True,
-        )
-
-        # Update document status to failed
-        try:
-            await update_document_status(
-                supabase,
-                document_id,
-                "failed",
-                error_message=error_message,
-            )
-        except Exception as status_error:
-            logger.error(
-                "Failed to update document status after error",
-                extra={
-                    "document_id": str(document_id),
-                    "error": str(status_error),
-                },
-            )
-
-    return result
+        return await _finalize_failure(supabase, document_id, e)
