@@ -92,7 +92,12 @@ class SupabaseIngestionEmitter(IngestionEmitter):
         drive_id: Optional[str],
         source_path: str,
     ) -> None:
-        """Emit file deletion reference event."""
+        """
+        Emit file deletion reference event.
+
+        IMMUTABILITY: Documents table remains unchanged.
+        Deletion is logged in document_source_deletions table.
+        """
         # Find existing document by source_path
         result = (
             self.supabase.table("documents")
@@ -103,22 +108,41 @@ class SupabaseIngestionEmitter(IngestionEmitter):
             .maybe_single()
             .execute()
         )
-        
+
         if result.data:  # type: ignore[union-attr]
             # Type narrowing: result.data is not None after the check above
             assert result.data is not None  # type: ignore[union-attr]
             data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
-            # Mark as deleted (append-only: don't hard delete)
-            self.supabase.table("documents").update({
-                "status": "deleted",
-                "error_message": "File deleted from Google Drive",
-            }).eq("id", data["id"]).execute()
-            
-            logger.info(
-                "Deletion reference emitted",
-                extra={
-                    "tenant_id": str(tenant_id),
-                    "file_id": file_id,
-                    "source_path": source_path,
-                },
-            )
+
+            # Log deletion without mutating documents table
+            deletion_data = {
+                "tenant_id": str(tenant_id),
+                "document_id": data["id"],
+                "source_type": "google_drive",
+                "source_path": source_path,
+                "deletion_reason": "File deleted from Google Drive",
+            }
+
+            try:
+                self.supabase.table("document_source_deletions").insert(
+                    deletion_data
+                ).execute()
+
+                logger.info(
+                    "Deletion reference emitted",
+                    extra={
+                        "tenant_id": str(tenant_id),
+                        "file_id": file_id,
+                        "source_path": source_path,
+                    },
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to log source deletion",
+                    extra={
+                        "tenant_id": str(tenant_id),
+                        "document_id": data["id"],
+                        "error": str(e),
+                    },
+                    exc_info=True,
+                )
