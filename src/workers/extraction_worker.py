@@ -152,7 +152,9 @@ class ExtractionWorker:
         """Setup signal handlers for graceful shutdown."""
         def signal_handler(sig, frame):
             logger.info(f"Received signal {sig}, initiating shutdown")
-            asyncio.create_task(self.stop())
+            # Set flags directly - signal handlers cannot create tasks
+            self.running = False
+            self.shutdown_event.set()
 
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
