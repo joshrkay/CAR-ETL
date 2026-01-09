@@ -98,7 +98,28 @@ def mock_supabase_client():
     insert_query = Mock()
     insert_query.insert = Mock(return_value=insert_response)
     
-    client.table = Mock(side_effect=lambda table: tenant_query if table == "tenants" else insert_query)
+    # Mock rate limit table (for auth rate limiter)
+    rate_limit_response = Mock()
+    rate_limit_response.data = []  # No existing rate limit records
+    rate_limit_response.execute = Mock(return_value=rate_limit_response)
+    
+    rate_limit_query = Mock()
+    rate_limit_query.limit = Mock(return_value=rate_limit_query)
+    rate_limit_query.order = Mock(return_value=rate_limit_query)
+    rate_limit_query.gte = Mock(return_value=rate_limit_query)
+    rate_limit_query.eq = Mock(return_value=rate_limit_query)
+    rate_limit_query.select = Mock(return_value=rate_limit_query)
+    rate_limit_query.execute = Mock(return_value=rate_limit_response)
+    
+    def table_side_effect(table_name):
+        if table_name == "tenants":
+            return tenant_query
+        elif table_name == "auth_rate_limits":
+            return rate_limit_query
+        else:
+            return insert_query
+    
+    client.table = Mock(side_effect=table_side_effect)
     
     return client
 
@@ -113,14 +134,22 @@ def client_with_auth(mock_auth_context, mock_supabase_client):
         return mock_supabase_client
     
     from src.dependencies import get_current_user, get_supabase_client
-    app.dependency_overrides[get_current_user] = override_get_current_user
-    app.dependency_overrides[get_supabase_client] = override_get_supabase_client
     
-    client = TestClient(app)
+    # Patch create_client so rate limiter uses mocked client
+    patcher = patch("src.auth.rate_limit.create_client", return_value=mock_supabase_client)
+    patcher.start()
     
-    yield client
-    
-    app.dependency_overrides.clear()
+    try:
+        app.dependency_overrides[get_current_user] = override_get_current_user
+        app.dependency_overrides[get_supabase_client] = override_get_supabase_client
+        
+        client = TestClient(app)
+        
+        yield client
+        
+        app.dependency_overrides.clear()
+    finally:
+        patcher.stop()
 
 
 class TestBulkUploadService:
