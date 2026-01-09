@@ -188,7 +188,7 @@ async def set_tenant_override(
         
         if existing.data:
             # Update existing override
-            result = (
+            (
                 supabase.table("tenant_feature_flags")
                 .update({"enabled": override_data.enabled})
                 .eq("id", existing.data[0]["id"])

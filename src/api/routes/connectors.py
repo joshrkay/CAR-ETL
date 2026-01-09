@@ -7,7 +7,7 @@ Enforces tenant isolation and encrypts sensitive credentials.
 import logging
 from typing import Annotated, Optional, List, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel, Field
