@@ -144,21 +144,53 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     decrypted = config.copy()
     
+    # Validate key-loading step
+    try:
+        from src.utils.encryption import get_encryption_key
+        _ = get_encryption_key()
+        logger.debug("Encryption key loaded successfully for decryption")
+    except Exception as key_error:
+        logger.error(f"Failed to load encryption key: {str(key_error)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "KEY_LOAD_ERROR", "message": "Failed to load encryption key"},
+        )
+    
     if "access_token" in decrypted:
+        encrypted_token = decrypted["access_token"]
+        # Log token format (redacted) for debugging
+        token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token[:len(encrypted_token)]
+        logger.debug(f"Token format pre-decryption (access_token): {token_preview}... (length: {len(encrypted_token)})")
+        
         try:
-            decrypted["access_token"] = decrypt_value(decrypted["access_token"])
+            decrypted["access_token"] = decrypt_value(encrypted_token)
+            logger.debug("Successfully decrypted access_token")
         except ValueError as e:
-            logger.error("Failed to decrypt access_token", exc_info=True)
+            logger.error(
+                f"Failed to decrypt access_token: {str(e)} "
+                f"(token format preview: {token_preview}..., length: {len(encrypted_token)})",
+                exc_info=True
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
             )
     
     if "refresh_token" in decrypted:
+        encrypted_token = decrypted["refresh_token"]
+        # Log token format (redacted) for debugging
+        token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token[:len(encrypted_token)]
+        logger.debug(f"Token format pre-decryption (refresh_token): {token_preview}... (length: {len(encrypted_token)})")
+        
         try:
-            decrypted["refresh_token"] = decrypt_value(decrypted["refresh_token"])
+            decrypted["refresh_token"] = decrypt_value(encrypted_token)
+            logger.debug("Successfully decrypted refresh_token")
         except ValueError as e:
-            logger.error("Failed to decrypt refresh_token", exc_info=True)
+            logger.error(
+                f"Failed to decrypt refresh_token: {str(e)} "
+                f"(token format preview: {token_preview}..., length: {len(encrypted_token)})",
+                exc_info=True
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
