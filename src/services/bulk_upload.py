@@ -26,6 +26,14 @@ MAX_ZIP_SIZE_BYTES = 500 * 1024 * 1024
 # Maximum number of files allowed in a single ZIP
 MAX_FILES_PER_ZIP = 1000
 
+# Maximum compression ratio (compressed/uncompressed) to detect ZIP bombs
+# A ratio < 0.01 (1%) indicates extreme compression, likely a bomb
+MAX_COMPRESSION_RATIO = 0.01
+
+# Maximum uncompressed size per file (10x the compressed ZIP limit as safety)
+# This prevents memory exhaustion from decompression bombs
+MAX_UNCOMPRESSED_FILE_SIZE = 10 * MAX_ZIP_SIZE_BYTES
+
 
 @dataclass
 class FileProcessingResult:
@@ -76,6 +84,8 @@ class BulkUploadService:
         self.file_validator = file_validator
         self.max_zip_size = max_zip_size
         self.max_files = max_files
+        # Get max file size from validator for ZIP bomb protection
+        self.max_file_size = file_validator.max_file_size
 
     def validate_zip_file(self, content: bytes) -> list[str]:
         """
@@ -158,7 +168,72 @@ class BulkUploadService:
                     if file_info.is_dir() or self._is_system_file(file_info.filename):
                         continue
                     
-                    # Extract file content
+                    # ZIP bomb protection: Check uncompressed size before reading
+                    uncompressed_size = file_info.file_size
+                    compressed_size = file_info.compress_size
+                    
+                    # Skip empty files (they'll be rejected by validator anyway)
+                    if uncompressed_size == 0:
+                        continue
+                    
+                    # Skip files with invalid compression data (corrupted ZIP)
+                    if compressed_size == 0 and uncompressed_size > 0:
+                        logger.warning(
+                            "Skipping file: invalid compression data (corrupted ZIP entry)",
+                            extra={
+                                "request_id": request_id,
+                                "tenant_id": tenant_id,
+                                "filename": file_info.filename,
+                            },
+                        )
+                        continue
+                    
+                    # Check uncompressed size against limit
+                    if uncompressed_size > self.max_file_size:
+                        logger.warning(
+                            "Skipping file: uncompressed size exceeds limit",
+                            extra={
+                                "request_id": request_id,
+                                "tenant_id": tenant_id,
+                                "filename": file_info.filename,
+                                "uncompressed_size": uncompressed_size,
+                                "max_size": self.max_file_size,
+                            },
+                        )
+                        continue
+                    
+                    # Check for ZIP bomb: suspicious compression ratio
+                    if compressed_size > 0:
+                        compression_ratio = compressed_size / uncompressed_size
+                        if compression_ratio < MAX_COMPRESSION_RATIO:
+                            logger.warning(
+                                "Skipping file: suspicious compression ratio (possible ZIP bomb)",
+                                extra={
+                                    "request_id": request_id,
+                                    "tenant_id": tenant_id,
+                                    "filename": file_info.filename,
+                                    "compressed_size": compressed_size,
+                                    "uncompressed_size": uncompressed_size,
+                                    "compression_ratio": compression_ratio,
+                                },
+                            )
+                            continue
+                    
+                    # Additional safety: check against absolute maximum
+                    if uncompressed_size > MAX_UNCOMPRESSED_FILE_SIZE:
+                        logger.warning(
+                            "Skipping file: uncompressed size exceeds absolute maximum",
+                            extra={
+                                "request_id": request_id,
+                                "tenant_id": tenant_id,
+                                "filename": file_info.filename,
+                                "uncompressed_size": uncompressed_size,
+                                "max_uncompressed": MAX_UNCOMPRESSED_FILE_SIZE,
+                            },
+                        )
+                        continue
+                    
+                    # Extract file content (now safe - size checked)
                     try:
                         file_content = zip_file.read(file_info.filename)
                         

@@ -13,6 +13,8 @@ from supabase import Client
 
 from src.services.email_parser import ParsedEmail, Attachment
 from src.services.file_validator import FileValidator, ValidationResult
+from src.services.redaction import presidio_redact, presidio_redact_bytes
+from src.utils.pii_protection import hash_email
 from src.exceptions import ValidationError, NotFoundError
 
 logger = logging.getLogger(__name__)
@@ -103,7 +105,7 @@ class EmailIngestionService:
             extra={
                 "email_ingestion_id": email_ingestion_id,
                 "tenant_id": str(tenant_id),
-                "from_address": parsed_email.from_address,
+                "from_address_hash": hash_email(parsed_email.from_address),
                 "body_document_id": body_document_id,
                 "attachment_count": len(attachment_document_ids),
             },
@@ -117,18 +119,22 @@ class EmailIngestionService:
     
     def _verify_tenant(self, tenant_id: UUID) -> None:
         """
-        Verify tenant exists.
+        Verify tenant exists and is active.
+        
+        Only allows ingestion for tenants with status 'active' to prevent
+        data ingestion into inactive or suspended accounts.
         
         Args:
             tenant_id: Tenant identifier
             
         Raises:
-            NotFoundError: If tenant not found
+            NotFoundError: If tenant not found or not active
         """
         result = (
             self.client.table("tenants")
             .select("id")
             .eq("id", str(tenant_id))
+            .eq("status", "active")
             .maybe_single()
             .execute()
         )
@@ -144,6 +150,8 @@ class EmailIngestionService:
         """
         Create document for email body.
         
+        SECURITY: Explicitly redacts PII before persisting.
+        
         Args:
             parsed_email: Parsed email data
             tenant_id: Tenant identifier
@@ -154,7 +162,9 @@ class EmailIngestionService:
         Raises:
             ValidationError: If body content is invalid
         """
-        body_content = parsed_email.body_text.encode("utf-8")
+        # SECURITY: Explicit redaction before persisting (defense in depth)
+        redacted_body_text = presidio_redact(parsed_email.body_text)
+        body_content = redacted_body_text.encode("utf-8")
         file_hash = self._calculate_hash(body_content)
         
         # Validate body content (as text/plain)
@@ -209,6 +219,8 @@ class EmailIngestionService:
         """
         Create document for email attachment.
         
+        SECURITY: Explicitly redacts PII before persisting.
+        
         Args:
             attachment: Attachment data
             tenant_id: Tenant identifier
@@ -217,9 +229,15 @@ class EmailIngestionService:
         Returns:
             Document ID or None if validation fails
         """
-        # Validate attachment
+        # SECURITY: Explicit redaction before persisting (defense in depth)
+        redacted_content = presidio_redact_bytes(
+            attachment.content,
+            attachment.content_type,
+        )
+        
+        # Validate attachment (using redacted content)
         validation_result = self.validator.validate_file(
-            content=attachment.content,
+            content=redacted_content,
             claimed_mime=attachment.content_type,
         )
         
@@ -234,8 +252,8 @@ class EmailIngestionService:
             )
             return None
         
-        # Calculate hash
-        file_hash = self._calculate_hash(attachment.content)
+        # Calculate hash (using redacted content)
+        file_hash = self._calculate_hash(redacted_content)
         
         # Generate storage path
         document_id = str(uuid4())

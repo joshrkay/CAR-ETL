@@ -11,6 +11,7 @@ from typing import Optional
 from supabase import Client
 
 from src.exceptions import RateLimitError
+from src.utils.pii_protection import hash_email
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +79,7 @@ class EmailRateLimiter:
                 logger.warning(
                     "Email rate limit exceeded",
                     extra={
-                        "from_address": from_address,
+                        "from_address_hash": hash_email(from_address),
                         "email_count": email_count,
                         "limit": MAX_EMAILS_PER_HOUR,
                     },
@@ -92,14 +93,17 @@ class EmailRateLimiter:
         except RateLimitError:
             raise
         except Exception as e:
-            # Log error but don't block ingestion in case of rate limit check failure
+            # Fail closed: Block request on rate limit check failure (defense in depth)
             logger.error(
-                "Rate limit check failed",
+                "Rate limit check failed - BLOCKING REQUEST (fail closed)",
                 extra={
-                    "from_address": from_address,
+                    "from_address_hash": hash_email(from_address),
                     "error": str(e),
                 },
                 exc_info=True,
             )
-            # In production, you might want to fail closed
-            # For now, we'll allow the request to proceed
+            # Fail closed: Reject request on error to prevent bypass
+            raise RateLimitError(
+                retry_after=300,
+                message="Rate limit check failed - please try again later",
+            )
