@@ -7,16 +7,24 @@ Tests cover:
 - State retrieval with database exceptions
 - State retrieval with missing/expired states
 """
+import base64
 import os
 import sys
 from pathlib import Path
-from unittest.mock import Mock, patch, AsyncMock
-from uuid import uuid4
+from unittest.mock import Mock, patch
 from datetime import datetime, timezone, timedelta
 
-# Add project root to path
+from cryptography.fernet import Fernet
+import pytest
+from fastapi import HTTPException, status
+
+# Add project root to path first
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from src.api.routes.connectors import _decrypt_connector_config  # noqa: E402
+from src.connectors.sharepoint.state_store import OAuthStateStore  # noqa: E402
+from src.utils.encryption import encrypt_value  # noqa: E402
 
 # Load environment variables
 try:
@@ -26,13 +34,6 @@ try:
         load_dotenv(env_path)
 except ImportError:
     pass
-
-import pytest
-from fastapi import HTTPException, status
-
-from src.api.routes.connectors import _decrypt_connector_config
-from src.connectors.sharepoint.state_store import OAuthStateStore
-from src.utils.encryption import encrypt_value, decrypt_value
 
 
 class TestDecryptionErrorHandling:
@@ -66,9 +67,6 @@ class TestDecryptionErrorHandling:
     
     def test_decrypt_with_corrupted_access_token(self):
         """Test decryption fails gracefully with corrupted access token."""
-        import base64
-        from cryptography.fernet import Fernet
-        
         # Set up encryption key for test
         test_key = Fernet.generate_key()
         
@@ -89,9 +87,6 @@ class TestDecryptionErrorHandling:
     
     def test_decrypt_with_corrupted_refresh_token(self):
         """Test decryption fails gracefully with corrupted refresh token."""
-        import base64
-        from cryptography.fernet import Fernet
-        
         # Set up encryption key for test
         test_key = Fernet.generate_key()
         
@@ -115,9 +110,6 @@ class TestDecryptionErrorHandling:
     
     def test_decrypt_with_wrong_encryption_key(self):
         """Test decryption fails when token was encrypted with different key."""
-        import base64
-        from cryptography.fernet import Fernet
-        
         # Encrypt with one key
         key1 = Fernet.generate_key()
         with patch.dict(os.environ, {
@@ -143,9 +135,6 @@ class TestDecryptionErrorHandling:
     
     def test_decrypt_success_with_valid_tokens(self):
         """Test successful decryption with valid tokens."""
-        import base64
-        from cryptography.fernet import Fernet
-        
         # Set up encryption key for test
         test_key = Fernet.generate_key()
         
@@ -169,9 +158,6 @@ class TestDecryptionErrorHandling:
     
     def test_decrypt_with_empty_tokens(self):
         """Test decryption handles empty token values."""
-        import base64
-        from cryptography.fernet import Fernet
-        
         # Set up encryption key for test
         test_key = Fernet.generate_key()
         
