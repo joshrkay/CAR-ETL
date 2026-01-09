@@ -1,6 +1,5 @@
 """Supabase Storage bucket setup for tenant isolation."""
 from uuid import UUID
-from typing import Optional, Dict, Any
 from supabase import Client
 import logging
 import httpx
@@ -146,7 +145,7 @@ class StorageSetupService:
             # - Policy: bucket_id = 'documents-' || auth.tenant_id()::text
             
             logger.info(f"Bucket policies for {bucket_name} should be set via migration")
-            logger.info(f"Expected policy: bucket_id = 'documents-' || auth.tenant_id()::text")
+            logger.info("Expected policy: bucket_id = 'documents-' || auth.tenant_id()::text")
             
             # Policies are typically created via migration, not programmatically
             # This is a no-op for now - policies should be in migration

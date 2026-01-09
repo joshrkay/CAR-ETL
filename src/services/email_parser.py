@@ -6,8 +6,6 @@ Extracts email metadata, body content, and attachments.
 """
 
 import base64
-import email
-from email.message import EmailMessage
 from email.utils import parseaddr
 from typing import Optional
 from pydantic import BaseModel, Field

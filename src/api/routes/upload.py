@@ -7,18 +7,17 @@ Part of Ingestion Plane - validates and buffers data only.
 
 import logging
 import zipfile
-from typing import Annotated, Optional
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from supabase import Client
 
 from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
 from src.dependencies import get_supabase_client
 from src.services.bulk_upload import (
-    BulkUploadService,
     FileProcessingResult,
     create_bulk_upload_service,
 )

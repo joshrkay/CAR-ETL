@@ -11,7 +11,7 @@ from typing import Optional
 from supabase import Client
 
 from src.services.email_parser import ParsedEmail, Attachment
-from src.services.file_validator import FileValidator, ValidationResult
+from src.services.file_validator import FileValidator
 from src.services.file_storage import FileStorageService, StorageUploadError
 from src.services.redaction import presidio_redact, presidio_redact_bytes
 from src.utils.pii_protection import hash_email

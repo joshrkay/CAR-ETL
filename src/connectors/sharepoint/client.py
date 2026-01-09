@@ -2,7 +2,7 @@
 import logging
 from typing import List, Dict, Any, Optional
 import httpx
-from src.connectors.sharepoint.oauth import SharePointOAuth, SharePointOAuthError
+from src.connectors.sharepoint.oauth import SharePointOAuth
 
 logger = logging.getLogger(__name__)
 

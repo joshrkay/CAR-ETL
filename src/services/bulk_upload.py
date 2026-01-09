@@ -7,8 +7,6 @@ Each file is validated independently and processed with tenant isolation.
 
 import hashlib
 import logging
-import os
-import tempfile
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
@@ -16,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from src.services.file_validator import FileValidator, ValidationResult
+from src.services.file_validator import FileValidator
 
 logger = logging.getLogger(__name__)
 

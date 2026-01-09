@@ -6,18 +6,16 @@ This is the entry point for file ingestion into the CAR Platform.
 """
 
 import logging
-from typing import Annotated, Optional
+from typing import Optional
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
 from src.dependencies import get_supabase_client
-from src.exceptions import CARException
 from src.services.file_validator import (
-    ValidationResult,
     FileValidator,
 )
 from src.services.file_storage import FileStorageService, StorageUploadError
@@ -268,20 +266,6 @@ async def upload_document(
                 "message": "Failed to store document metadata",
             },
         ) from e
-                "request_id": request_id,
-                "tenant_id": tenant_id,
-                "document_id": document_id,
-                "error": str(e),
-            },
-            exc_info=True,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "code": "DATABASE_ERROR",
-                "message": "Failed to store document metadata",
-            },
-        )
     
     logger.info(
         "Document uploaded successfully",

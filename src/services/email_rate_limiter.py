@@ -7,7 +7,6 @@ Enforces max 100 emails per sender per hour.
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 from supabase import Client
 
 from src.exceptions import RateLimitError

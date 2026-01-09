@@ -1,6 +1,6 @@
 """Supabase client factory for user requests with RLS support."""
 from supabase import Client, create_client
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from src.auth.config import AuthConfig, get_auth_config
 

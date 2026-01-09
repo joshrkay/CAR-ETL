@@ -1,6 +1,6 @@
 """Temporary state storage for OAuth flows."""
 import logging
-from typing import Optional, Dict
+from typing import Optional
 from datetime import datetime, timedelta, timezone
 from supabase import Client
 
@@ -41,7 +41,7 @@ class OAuthStateStore:
                 "tenant_id": tenant_id,
                 "expires_at": expires_at.isoformat(),
             }).execute()
-        except Exception as e:
+        except Exception:
             logger.error("Failed to store OAuth state", exc_info=True)
             raise
     
@@ -79,6 +79,6 @@ class OAuthStateStore:
             
             return tenant_id
             
-        except Exception as e:
+        except Exception:
             logger.error("Failed to retrieve OAuth state", exc_info=True)
             return None
