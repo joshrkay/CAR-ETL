@@ -5,9 +5,9 @@ Handles OAuth authentication and sync configuration for external data sources.
 Enforces tenant isolation and encrypts sensitive credentials.
 """
 import logging
+import os
 from typing import Annotated, Optional, List, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel, Field
@@ -24,6 +24,27 @@ from src.utils.encryption import encrypt_value, decrypt_value
 from src.dependencies import get_service_client
 
 logger = logging.getLogger(__name__)
+
+
+def _redact_value(value: str, prefix_len: int = 8, suffix_len: int = 0) -> str:
+    """
+    Redact a sensitive value for logging.
+    
+    Args:
+        value: Value to redact
+        prefix_len: Number of characters to show from the start
+        suffix_len: Number of characters to show from the end (default: 0)
+        
+    Returns:
+        Redacted string showing only prefix and/or suffix with "..." in between
+    """
+    if not value or len(value) <= prefix_len + suffix_len:
+        return "***"
+    
+    if suffix_len > 0:
+        return f"{value[:prefix_len]}...{value[-suffix_len:]}"
+    
+    return f"{value[:prefix_len]}..."
 
 router = APIRouter(
     prefix="/api/v1/connectors/sharepoint",
@@ -144,24 +165,86 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     decrypted = config.copy()
     
+    # Validate encryption environment setup
+    encryption_key = os.getenv("ENCRYPTION_KEY")
+    jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+    
+    if not encryption_key and not jwt_secret:
+        logger.error(
+            "Decryption environment not configured",
+            extra={
+                "has_encryption_key": bool(encryption_key),
+                "has_jwt_secret": bool(jwt_secret),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "DECRYPTION_CONFIG_ERROR",
+                "message": "Encryption keys not configured. Contact system administrator.",
+            },
+        )
+    
     if "access_token" in decrypted:
+        encrypted_token = decrypted["access_token"]
         try:
-            decrypted["access_token"] = decrypt_value(decrypted["access_token"])
+            decrypted["access_token"] = decrypt_value(encrypted_token)
+            logger.debug(
+                "Successfully decrypted access_token",
+                extra={
+                    "token_prefix": _redact_value(encrypted_token),
+                    "token_length": len(encrypted_token),
+                },
+            )
         except ValueError as e:
-            logger.error("Failed to decrypt access_token", exc_info=True)
+            # Log detailed error for debugging with partial token info
+            logger.error(
+                "Failed to decrypt access_token",
+                extra={
+                    "error": str(e),
+                    "token_preview": _redact_value(encrypted_token, suffix_len=8),
+                    "token_length": len(encrypted_token),
+                    "has_encryption_key": bool(encryption_key),
+                },
+                exc_info=True,
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
+                detail={
+                    "code": "DECRYPTION_ERROR",
+                    "message": "Failed to decrypt access token. Token may be corrupted or encryption key mismatch.",
+                },
             )
     
     if "refresh_token" in decrypted:
+        encrypted_token = decrypted["refresh_token"]
         try:
-            decrypted["refresh_token"] = decrypt_value(decrypted["refresh_token"])
+            decrypted["refresh_token"] = decrypt_value(encrypted_token)
+            logger.debug(
+                "Successfully decrypted refresh_token",
+                extra={
+                    "token_prefix": _redact_value(encrypted_token),
+                    "token_length": len(encrypted_token),
+                },
+            )
         except ValueError as e:
-            logger.error("Failed to decrypt refresh_token", exc_info=True)
+            # Log detailed error for debugging with partial token info
+            logger.error(
+                "Failed to decrypt refresh_token",
+                extra={
+                    "error": str(e),
+                    "token_preview": _redact_value(encrypted_token, suffix_len=8),
+                    "token_length": len(encrypted_token),
+                    "has_encryption_key": bool(encryption_key),
+                },
+                exc_info=True,
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
+                detail={
+                    "code": "DECRYPTION_ERROR",
+                    "message": "Failed to decrypt refresh token. Token may be corrupted or encryption key mismatch.",
+                },
             )
     
     return decrypted
@@ -294,7 +377,6 @@ async def oauth_callback(
     """
     Handle OAuth callback and store encrypted tokens (authenticated version).
     """
-    request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
     return await _handle_oauth_callback(request, code, state, tenant_id, supabase)
 
@@ -387,7 +469,15 @@ async def _handle_oauth_callback(
             detail={"code": "OAUTH_ERROR", "message": str(e)},
         )
     except Exception as e:
-        logger.error("Unexpected error in OAuth callback", exc_info=True)
+        logger.error(
+            "Unexpected error in OAuth callback",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "error": str(e),
+            },
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "INTERNAL_ERROR", "message": "OAuth callback failed"},
@@ -431,13 +521,6 @@ async def oauth_callback_public(
                 "message": "Invalid or expired state parameter",
             },
         )
-    
-    from src.dependencies import get_supabase_client
-    from src.auth.client import create_user_client
-    
-    supabase = create_user_client(
-        access_token="",  # Will use service client for this operation
-    )
     
     return await _handle_oauth_callback(
         request=request,
