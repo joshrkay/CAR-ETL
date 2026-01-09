@@ -1,6 +1,6 @@
 """Temporary state storage for OAuth flows."""
 import logging
-from typing import Optional, Dict
+from typing import Optional
 from datetime import datetime, timedelta, timezone
 from supabase import Client
 

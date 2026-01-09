@@ -7,7 +7,6 @@ Enforces tenant isolation and encrypts sensitive credentials.
 import logging
 from typing import Annotated, Optional, List, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel, Field
@@ -360,7 +359,6 @@ async def oauth_callback(
     """
     Handle OAuth callback and store encrypted tokens (authenticated version).
     """
-    request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
     return await _handle_oauth_callback(request, code, state, tenant_id, supabase)
 
@@ -449,7 +447,15 @@ async def _handle_oauth_callback(
             detail={"code": "OAUTH_ERROR", "message": str(e)},
         )
     except Exception as e:
-        logger.error("Unexpected error in OAuth callback", exc_info=True)
+        logger.error(
+            "Unexpected error in OAuth callback",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "error": str(e),
+            },
+            exc_info=True,
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "INTERNAL_ERROR", "message": "OAuth callback failed"},
@@ -493,13 +499,6 @@ async def oauth_callback_public(
                 "message": "Invalid or expired state parameter",
             },
         )
-    
-    from src.dependencies import get_supabase_client
-    from src.auth.client import create_user_client
-    
-    supabase = create_user_client(
-        access_token="",  # Will use service client for this operation
-    )
     
     return await _handle_oauth_callback(
         request=request,
