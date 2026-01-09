@@ -1,9 +1,12 @@
 """FastAPI dependencies for authentication and feature flags."""
 from fastapi import Request, HTTPException, status, Depends
-from typing import Annotated, Callable, Union
+from typing import Annotated, Callable, Union, TYPE_CHECKING
 from src.auth.models import AuthContext
 from src.features.service import FeatureFlagService
 from supabase import Client
+
+if TYPE_CHECKING:
+    from src.audit.logger import AuditLogger
 
 
 def get_current_user(request: Request) -> AuthContext:
@@ -138,7 +141,7 @@ def get_service_client() -> Client:
 def get_audit_logger(
     request: Request,
     auth: Annotated[AuthContext, Depends(get_current_user)],
-) -> "AuditLogger":
+) -> "AuditLogger":  # noqa: F821
     """
     Dependency to get audit logger for current tenant and user.
     
