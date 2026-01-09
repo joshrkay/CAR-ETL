@@ -5,6 +5,7 @@ Handles OAuth authentication and sync configuration for external data sources.
 Enforces tenant isolation and encrypts sensitive credentials.
 """
 import logging
+import os
 from typing import Annotated, Optional, List, Dict, Any
 from uuid import UUID, uuid4
 
@@ -23,6 +24,27 @@ from src.utils.encryption import encrypt_value, decrypt_value
 from src.dependencies import get_service_client
 
 logger = logging.getLogger(__name__)
+
+
+def _redact_value(value: str, prefix_len: int = 8, suffix_len: int = 0) -> str:
+    """
+    Redact a sensitive value for logging.
+    
+    Args:
+        value: Value to redact
+        prefix_len: Number of characters to show from the start
+        suffix_len: Number of characters to show from the end (default: 0)
+        
+    Returns:
+        Redacted string showing only prefix and/or suffix with "..." in between
+    """
+    if not value or len(value) <= prefix_len + suffix_len:
+        return "***"
+    
+    if suffix_len > 0:
+        return f"{value[:prefix_len]}...{value[-suffix_len:]}"
+    
+    return f"{value[:prefix_len]}..."
 
 router = APIRouter(
     prefix="/api/v1/connectors/sharepoint",
@@ -141,8 +163,6 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     Raises:
         ValueError: If decryption fails
     """
-    import os
-    
     decrypted = config.copy()
     
     # Validate encryption environment setup
@@ -172,7 +192,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             logger.debug(
                 "Successfully decrypted access_token",
                 extra={
-                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
+                    "token_prefix": _redact_value(encrypted_token),
                     "token_length": len(encrypted_token),
                 },
             )
@@ -182,8 +202,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
                 "Failed to decrypt access_token",
                 extra={
                     "error": str(e),
-                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
-                    "token_suffix": encrypted_token[-8:] if len(encrypted_token) > 8 else "***",
+                    "token_preview": _redact_value(encrypted_token, suffix_len=8),
                     "token_length": len(encrypted_token),
                     "has_encryption_key": bool(encryption_key),
                 },
@@ -204,7 +223,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             logger.debug(
                 "Successfully decrypted refresh_token",
                 extra={
-                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
+                    "token_prefix": _redact_value(encrypted_token),
                     "token_length": len(encrypted_token),
                 },
             )
@@ -214,8 +233,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
                 "Failed to decrypt refresh_token",
                 extra={
                     "error": str(e),
-                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
-                    "token_suffix": encrypted_token[-8:] if len(encrypted_token) > 8 else "***",
+                    "token_preview": _redact_value(encrypted_token, suffix_len=8),
                     "token_length": len(encrypted_token),
                     "has_encryption_key": bool(encryption_key),
                 },
