@@ -7,7 +7,7 @@ Enforces tenant isolation and encrypts sensitive credentials.
 import logging
 from typing import Annotated, Optional, List, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel, Field
@@ -327,14 +327,11 @@ async def _handle_oauth_callback(
         oauth = SharePointOAuth.from_env()
         token_data = await oauth.exchange_code_for_tokens(code=code, state=state)
         
-        from uuid import UUID
         connector = await _get_or_create_connector(
             supabase=supabase,
             tenant_id=UUID(tenant_id),
             connector_type="sharepoint",
         )
-        
-        from datetime import datetime, timedelta, timezone
         
         config = connector.get("config", {})
         config["access_token"] = token_data["access_token"]
