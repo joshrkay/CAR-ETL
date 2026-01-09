@@ -1,6 +1,7 @@
 """Rate limiting for authentication attempts."""
 import logging
 from datetime import datetime, timedelta
+from typing import cast, Dict, Any
 from supabase import create_client, Client
 from src.auth.config import AuthConfig, get_auth_config
 from src.exceptions import RateLimitError
@@ -41,7 +42,11 @@ class AuthRateLimiter:
 
             if result.data:
                 record = cast(Dict[str, Any], result.data[0])
-                attempt_count = int(record.get("attempt_count", 0))
+                attempt_count_raw = record.get("attempt_count")
+                try:
+                    attempt_count = int(attempt_count_raw) if attempt_count_raw is not None else 0
+                except ValueError:
+                    attempt_count = 0
 
                 if attempt_count >= self.config.auth_rate_limit_max_attempts:
                     window_start_value = record.get("window_start")
