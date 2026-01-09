@@ -114,7 +114,6 @@ class TestVectorSearchLatency:
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": str(tenant_id),
                     "filter_document_ids": None,
                 }
             )
@@ -151,7 +150,6 @@ class TestVectorSearchLatency:
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": str(tenant_id),
                     "filter_document_ids": None,
                 }
             )
@@ -198,7 +196,6 @@ class TestVectorSearchLatency:
                     {
                         "query_embedding": query_embedding,
                         "match_count": 10,
-                        "filter_tenant_id": str(tenant_id),
                         "filter_document_ids": None,
                     }
                 )
@@ -244,7 +241,6 @@ class TestVectorSearchLatency:
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": str(tenant_id),
                     "filter_document_ids": document_ids,
                 }
             )

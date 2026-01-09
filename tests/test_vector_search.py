@@ -155,6 +155,7 @@ class TestVectorSearch:
         mock_supabase_client.rpc.return_value.execute.return_value.data = mock_results
         
         # Call search function
+        # Note: filter_tenant_id parameter removed - function always uses tenant_id from JWT
         result = (
             mock_supabase_client
             .rpc(
@@ -162,7 +163,6 @@ class TestVectorSearch:
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": str(tenant_id),
                     "filter_document_ids": None,
                 }
             )
@@ -193,6 +193,7 @@ class TestVectorSearch:
         
         mock_supabase_client.rpc.return_value.execute.return_value.data = mock_results
         
+        # Note: filter_tenant_id parameter removed - function always uses tenant_id from JWT
         result = (
             mock_supabase_client
             .rpc(
@@ -200,7 +201,6 @@ class TestVectorSearch:
                 {
                     "query_embedding": query_embedding,
                     "match_count": 10,
-                    "filter_tenant_id": str(tenant_id),
                     "filter_document_ids": filter_doc_ids,
                 }
             )

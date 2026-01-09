@@ -101,9 +101,28 @@ class StorageSetupService:
                 
         except StorageSetupError:
             raise
+        except httpx.HTTPError as e:
+            logger.error(
+                "HTTP error creating storage bucket",
+                extra={
+                    "bucket_name": bucket_name,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise StorageSetupError(f"Failed to create storage bucket: HTTP error: {str(e)}") from e
         except Exception as e:
-            logger.error(f"Error creating bucket {bucket_name}: {e}")
-            raise StorageSetupError(f"Failed to create storage bucket: {str(e)}")
+            logger.error(
+                "Unexpected error creating storage bucket",
+                extra={
+                    "bucket_name": bucket_name,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise StorageSetupError(f"Failed to create storage bucket: {str(e)}") from e
     
     def setup_bucket_policies(self, tenant_id: UUID, bucket_name: str) -> None:
         """
@@ -132,8 +151,17 @@ class StorageSetupService:
             # This is a no-op for now - policies should be in migration
             
         except Exception as e:
-            logger.error(f"Error setting up bucket policies: {e}")
-            raise StorageSetupError(f"Failed to setup bucket policies: {str(e)}")
+            logger.error(
+                "Error setting up bucket policies",
+                extra={
+                    "tenant_id": str(tenant_id),
+                    "bucket_name": bucket_name,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise StorageSetupError(f"Failed to setup bucket policies: {str(e)}") from e
     
     def delete_tenant_bucket(self, tenant_id: UUID) -> None:
         """
@@ -166,6 +194,25 @@ class StorageSetupService:
                 else:
                     logger.warning(f"Could not delete bucket {bucket_name}: {response.status_code}")
                     
+        except httpx.HTTPError as e:
+            logger.warning(
+                "HTTP error deleting bucket (may not exist)",
+                extra={
+                    "bucket_name": bucket_name,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            # Don't raise - bucket might not exist or already deleted
         except Exception as e:
-            logger.warning(f"Error deleting bucket {bucket_name}: {e} (may not exist)")
+            logger.warning(
+                "Unexpected error deleting bucket (may not exist)",
+                extra={
+                    "bucket_name": bucket_name,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
             # Don't raise - bucket might not exist or already deleted
