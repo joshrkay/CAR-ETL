@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import Request, HTTPException, status, Depends
 from typing import Annotated, Callable, Union
 from src.auth.models import AuthContext
+from src.audit.logger import AuditLogger
 from src.features.service import FeatureFlagService
 from supabase import Client
 
