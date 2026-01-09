@@ -90,15 +90,145 @@ class TestEmailParser:
     def test_parse_attachment_invalid(self):
         """Test parsing invalid attachment (missing content)."""
         parser = EmailParser()
-        
+
         att_data = {
             "filename": "test.pdf",
             "content_type": "application/pdf",
             # Missing content
         }
-        
+
         result = parser._parse_attachment(att_data)
         assert result is None
+
+    def test_parse_webhook_html_only(self):
+        """Test parsing webhook with HTML but no text version."""
+        parser = EmailParser()
+
+        payload = {
+            "from": "sender@example.com",
+            "to": "tenant@ingest.yourapp.com",
+            "subject": "HTML Email",
+            "html": "<p>This is HTML content</p>",
+            # No text field
+        }
+
+        parsed = parser.parse_resend_webhook(payload)
+
+        assert parsed.body_html == "<p>This is HTML content</p>"
+        assert parsed.body_text == "This is HTML content"  # Extracted from HTML
+
+    def test_extract_address_empty(self):
+        """Test extracting address from empty string."""
+        parser = EmailParser()
+
+        assert parser._extract_address("") == ""
+        assert parser._extract_address(None) == ""
+
+    def test_extract_address_comma_separated(self):
+        """Test extracting address from comma-separated list."""
+        parser = EmailParser()
+
+        # Should take first address
+        result = parser._extract_address("first@example.com, second@example.com")
+        assert result == "first@example.com"
+
+    def test_extract_address_no_valid_address(self):
+        """Test extracting address when parseaddr fails."""
+        parser = EmailParser()
+
+        # Invalid format that parseaddr can't parse
+        result = parser._extract_address("invalid,format,test")
+        assert result == "invalid"  # Takes first part
+
+    def test_parse_attachment_with_bytes_content(self):
+        """Test parsing attachment with bytes content (not base64 string)."""
+        parser = EmailParser()
+
+        content = b"Direct bytes content"
+        att_data = {
+            "filename": "test.bin",
+            "content_type": "application/octet-stream",
+            "content": content,  # Already bytes, not base64
+        }
+
+        result = parser._parse_attachment(att_data)
+
+        assert result is not None
+        assert result.content == content
+        assert result.size == len(content)
+
+    def test_parse_attachment_with_exception(self):
+        """Test parsing attachment that raises exception during decoding."""
+        parser = EmailParser()
+
+        att_data = {
+            "filename": "test.pdf",
+            "content_type": "application/pdf",
+            "content": "invalid base64!!!",  # Invalid base64
+        }
+
+        result = parser._parse_attachment(att_data)
+        assert result is None
+
+    def test_parse_attachment_default_values(self):
+        """Test parsing attachment with missing optional fields."""
+        parser = EmailParser()
+
+        content = b"test content"
+        content_b64 = base64.b64encode(content).decode("utf-8")
+
+        # Test with 'name' instead of 'filename'
+        att_data = {
+            "name": "alternate.txt",
+            "type": "text/plain",
+            "data": content_b64,  # 'data' instead of 'content'
+        }
+
+        result = parser._parse_attachment(att_data)
+
+        assert result is not None
+        assert result.filename == "alternate.txt"
+        assert result.content_type == "text/plain"
+
+    def test_parse_attachment_no_filename(self):
+        """Test parsing attachment with no filename uses default."""
+        parser = EmailParser()
+
+        content = b"test"
+        content_b64 = base64.b64encode(content).decode("utf-8")
+
+        att_data = {
+            "content": content_b64,
+            # No filename or name
+        }
+
+        result = parser._parse_attachment(att_data)
+
+        assert result is not None
+        assert result.filename == "attachment"  # Default
+        assert result.content_type == "application/octet-stream"  # Default
+
+    def test_html_to_text_with_tags(self):
+        """Test HTML to text conversion removes tags."""
+        parser = EmailParser()
+
+        html = "<p>Hello <b>world</b></p><div>Test</div>"
+        text = parser._html_to_text(html)
+
+        assert "Hello world" in text
+        assert "Test" in text
+        assert "<p>" not in text
+        assert "<b>" not in text
+
+    def test_html_to_text_with_whitespace(self):
+        """Test HTML to text conversion normalizes whitespace."""
+        parser = EmailParser()
+
+        html = "<p>Hello   \n\n   world</p>"
+        text = parser._html_to_text(html)
+
+        # Should normalize multiple spaces/newlines to single space
+        assert text == "Hello world"
 
 
 class TestResendVerifier:
