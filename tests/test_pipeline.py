@@ -8,7 +8,6 @@ for the full workflow.
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 from uuid import UUID, uuid4
-from typing import Dict, Any
 
 from src.extraction.pipeline import (
     get_document,
