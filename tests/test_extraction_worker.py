@@ -286,13 +286,21 @@ class TestFetchPendingItems:
             },
         ]
 
+        # Mock pending query response
         mock_response = Mock(data=pending_items)
-        worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value = mock_response
+        pending_chain = (
+            worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value
+            .order.return_value.order.return_value.limit.return_value.execute
+        )
+        pending_chain.return_value = mock_response
 
         # Mock retry query to return empty
-        worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value.lt.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value = Mock(
-            data=[]
+        retry_empty = Mock(data=[])
+        retry_chain = (
+            worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value
+            .lt.return_value.order.return_value.order.return_value.limit.return_value.execute
         )
+        retry_chain.return_value = retry_empty
 
         result = await worker._fetch_pending_items(limit=5)
 
@@ -325,14 +333,19 @@ class TestFetchPendingItems:
 
         # Mock pending query
         mock_pending_response = Mock(data=pending_items)
-        worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value = mock_pending_response
+        pending_chain = (
+            worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value
+            .order.return_value.order.return_value.limit.return_value.execute
+        )
+        pending_chain.return_value = mock_pending_response
 
         # Mock retry query
-        mock_retry_response = Mock(data=retry_items)
-        # Create a separate chain for the retry query
-        retry_chain = Mock()
-        retry_chain.data = retry_items
-        worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value.lt.return_value.order.return_value.order.return_value.limit.return_value.execute.return_value = retry_chain
+        retry_response = Mock(data=retry_items)
+        retry_chain = (
+            worker.supabase.table.return_value.select.return_value.eq.return_value.lt.return_value
+            .lt.return_value.order.return_value.order.return_value.limit.return_value.execute
+        )
+        retry_chain.return_value = retry_response
 
         result = await worker._fetch_pending_items(limit=5)
 
