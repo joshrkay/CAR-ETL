@@ -5,14 +5,14 @@ Handles ingestion of emails into the CAR Platform.
 Creates documents for email body and attachments.
 """
 
-import hashlib
 import logging
 from uuid import UUID, uuid4
 from typing import Optional
 from supabase import Client
 
 from src.services.email_parser import ParsedEmail, Attachment
-from src.services.file_validator import FileValidator, ValidationResult
+from src.services.file_validator import FileValidator
+from src.services.file_storage import FileStorageService, StorageUploadError
 from src.services.redaction import presidio_redact, presidio_redact_bytes
 from src.utils.pii_protection import hash_email
 from src.exceptions import ValidationError, NotFoundError
@@ -35,6 +35,7 @@ class EmailIngestionService:
         """
         self.client = supabase_client
         self.validator = FileValidator(max_file_size=DEFAULT_MAX_FILE_SIZE_BYTES)
+        self.storage_service = FileStorageService(supabase_client)
     
     def ingest_email(
         self,
@@ -82,15 +83,30 @@ class EmailIngestionService:
                 )
                 if doc_id:
                     attachment_document_ids.append(doc_id)
-            except Exception as e:
+            except (ValidationError, StorageUploadError) as e:
                 logger.warning(
                     "Failed to create document for attachment",
                     extra={
                         "tenant_id": str(tenant_id),
                         "filename": attachment.filename,
                         "error": str(e),
+                        "error_type": type(e).__name__,
                     },
+                    exc_info=True,
                 )
+            except Exception as e:
+                logger.error(
+                    "Unexpected error creating attachment document",
+                    extra={
+                        "tenant_id": str(tenant_id),
+                        "filename": attachment.filename,
+                        "error": str(e),
+                        "error_type": type(e).__name__,
+                    },
+                    exc_info=True,
+                )
+                # Re-raise unexpected errors to fail-fast
+                raise
         
         # Step 4: Create email_ingestions record
         email_ingestion_id = self._create_email_ingestion_record(
@@ -165,7 +181,7 @@ class EmailIngestionService:
         # SECURITY: Explicit redaction before persisting (defense in depth)
         redacted_body_text = presidio_redact(parsed_email.body_text)
         body_content = redacted_body_text.encode("utf-8")
-        file_hash = self._calculate_hash(body_content)
+        file_hash = self.storage_service.calculate_file_hash(body_content)
         
         # Validate body content (as text/plain)
         validation_result = self.validator.validate_file(
@@ -179,9 +195,29 @@ class EmailIngestionService:
                 details=[{"field": "body", "issue": err} for err in validation_result.errors],
             )
         
-        # Generate storage path (placeholder - in production, upload to S3)
+        # Generate storage path and upload file
         document_id = str(uuid4())
         storage_path = f"emails/{tenant_id}/{document_id}/body.txt"
+        
+        # Upload file to storage
+        try:
+            self.storage_service.upload_file(
+                content=body_content,
+                storage_path=storage_path,
+                tenant_id=tenant_id,
+                mime_type="text/plain",
+            )
+        except StorageUploadError as e:
+            logger.error(
+                "Failed to upload email body to storage",
+                extra={
+                    "tenant_id": str(tenant_id),
+                    "document_id": document_id,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
+            raise Exception(f"Failed to upload email body to storage: {str(e)}") from e
         
         # Create document record
         # Sanitize subject for filename
@@ -253,11 +289,32 @@ class EmailIngestionService:
             return None
         
         # Calculate hash (using redacted content)
-        file_hash = self._calculate_hash(redacted_content)
+        file_hash = self.storage_service.calculate_file_hash(redacted_content)
         
-        # Generate storage path
+        # Generate storage path and upload file
         document_id = str(uuid4())
         storage_path = f"emails/{tenant_id}/{document_id}/{attachment.filename}"
+        
+        # Upload file to storage
+        try:
+            self.storage_service.upload_file(
+                content=redacted_content,
+                storage_path=storage_path,
+                tenant_id=tenant_id,
+                mime_type=validation_result.mime_type,
+            )
+        except StorageUploadError as e:
+            logger.error(
+                "Failed to upload attachment to storage",
+                extra={
+                    "tenant_id": str(tenant_id),
+                    "document_id": document_id,
+                    "filename": attachment.filename,
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
+            return None
         
         # Create document record
         document_data = {
@@ -267,7 +324,7 @@ class EmailIngestionService:
             "storage_path": storage_path,
             "original_filename": attachment.filename,
             "mime_type": validation_result.mime_type,
-            "file_size_bytes": attachment.size,
+            "file_size_bytes": len(redacted_content),
             "source_type": "email",
             "source_path": attachment.filename,
             "parent_id": parent_id,
@@ -324,14 +381,3 @@ class EmailIngestionService:
         
         return result.data[0]["id"]
     
-    def _calculate_hash(self, content: bytes) -> str:
-        """
-        Calculate SHA-256 hash of content.
-        
-        Args:
-            content: Content bytes
-            
-        Returns:
-            Hexadecimal hash string
-        """
-        return hashlib.sha256(content).hexdigest()

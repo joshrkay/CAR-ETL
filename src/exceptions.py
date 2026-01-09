@@ -86,3 +86,14 @@ class RateLimitError(CARException):
             message=message,
         )
         self.retry_after = retry_after
+
+
+class ParserError(CARException):
+    """Raised when document parsing fails."""
+    
+    def __init__(self, parser_name: str, message: str = "Parser failed"):
+        super().__init__(
+            code="PARSER_ERROR",
+            message=f"{parser_name}: {message}",
+        )
+        self.parser_name = parser_name

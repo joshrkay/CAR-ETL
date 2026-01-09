@@ -55,6 +55,8 @@ class OAuthStateStore:
                 f"(state_preview={state_preview}..., tenant_id={tenant_id})",
                 exc_info=True
             )
+        except Exception:
+            logger.error("Failed to store OAuth state", exc_info=True)
             raise
     
     async def get_tenant_id(self, state: str) -> Optional[str]:
@@ -112,4 +114,6 @@ class OAuthStateStore:
                 f"(state_preview={state_preview}...)",
                 exc_info=True
             )
+        except Exception:
+            logger.error("Failed to retrieve OAuth state", exc_info=True)
             return None

@@ -6,7 +6,6 @@ This service must be called before any data persistence or transmission.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ def presidio_redact(text: str) -> str:
         "PII redaction not yet implemented - returning original text",
         extra={
             "text_length": len(text),
-            "text_preview": text[:50] if len(text) > 50 else text,
+            # SECURITY: Do not log text content (may contain PII)
         },
     )
     

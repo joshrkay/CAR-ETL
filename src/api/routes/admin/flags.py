@@ -188,7 +188,7 @@ async def set_tenant_override(
         
         if existing.data:
             # Update existing override
-            result = (
+            (
                 supabase.table("tenant_feature_flags")
                 .update({"enabled": override_data.enabled})
                 .eq("id", existing.data[0]["id"])
@@ -196,7 +196,7 @@ async def set_tenant_override(
             )
         else:
             # Create new override
-            result = (
+            (
                 supabase.table("tenant_feature_flags")
                 .insert({
                     "tenant_id": str(validated_tenant_id),
@@ -291,7 +291,7 @@ async def delete_tenant_override(
         flag_id = flag_result.data[0]["id"]
         
         # Delete the override
-        result = (
+        (
             supabase.table("tenant_feature_flags")
             .delete()
             .eq("tenant_id", str(validated_tenant_id))

@@ -7,8 +7,6 @@ Each file is validated independently and processed with tenant isolation.
 
 import hashlib
 import logging
-import os
-import tempfile
 import zipfile
 from dataclasses import dataclass
 from io import BytesIO
@@ -16,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 from uuid import uuid4
 
-from src.services.file_validator import FileValidator, ValidationResult
+from src.services.file_validator import FileValidator
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +132,17 @@ class BulkUploadService:
         
         except zipfile.BadZipFile:
             errors.append("Invalid ZIP file format")
+        except (IOError, OSError, MemoryError) as e:
+            errors.append(f"ZIP validation failed: {str(e)}")
         except Exception as e:
+            logger.warning(
+                "Unexpected error during ZIP validation",
+                extra={
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
             errors.append(f"ZIP validation failed: {str(e)}")
         
         return errors
@@ -252,7 +260,7 @@ class BulkUploadService:
                                 },
                             )
                     
-                    except Exception as e:
+                    except (zipfile.BadZipFile, IOError, OSError, MemoryError) as e:
                         logger.error(
                             "Failed to extract file from ZIP",
                             extra={
@@ -260,17 +268,45 @@ class BulkUploadService:
                                 "tenant_id": tenant_id,
                                 "filename": file_info.filename,
                                 "error": str(e),
+                                "error_type": type(e).__name__,
                             },
+                            exc_info=True,
+                        )
+                        continue
+                    except Exception as e:
+                        logger.error(
+                            "Unexpected error extracting file from ZIP",
+                            extra={
+                                "request_id": request_id,
+                                "tenant_id": tenant_id,
+                                "filename": file_info.filename,
+                                "error": str(e),
+                                "error_type": type(e).__name__,
+                            },
+                            exc_info=True,
                         )
                         continue
         
-        except Exception as e:
+        except (zipfile.BadZipFile, IOError, OSError, MemoryError) as e:
             logger.error(
                 "Failed to process ZIP file",
                 extra={
                     "request_id": request_id,
                     "tenant_id": tenant_id,
                     "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            raise
+        except Exception as e:
+            logger.error(
+                "Unexpected error processing ZIP file",
+                extra={
+                    "request_id": request_id,
+                    "tenant_id": tenant_id,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
                 },
                 exc_info=True,
             )

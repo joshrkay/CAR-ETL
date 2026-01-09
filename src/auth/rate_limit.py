@@ -1,10 +1,13 @@
 """Rate limiting for authentication attempts."""
+import logging
 from datetime import datetime, timedelta
 from ipaddress import IPv4Address, IPv6Address
 from typing import Union
 from supabase import create_client, Client
 from src.auth.config import AuthConfig, get_auth_config
 from src.exceptions import RateLimitError
+
+logger = logging.getLogger(__name__)
 
 
 IPAddress = Union[IPv4Address, IPv6Address, str]
@@ -62,9 +65,21 @@ class AuthRateLimiter:
 
         except RateLimitError:
             raise
-        except Exception:
+        except Exception as e:
+            logger.error(
+                "Failed to check rate limit",
+                extra={
+                    "ip_address": ip_address,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            # In production, fail-fast to prevent bypassing rate limits
             if self.config.is_production:
                 raise
+            # In non-production, allow request to proceed but log the error
+            # This helps with development but should never happen in production
 
     def _increment_attempt(self, record_id: str, new_count: int) -> None:
         """Increment attempt count for existing record."""
@@ -73,9 +88,21 @@ class AuthRateLimiter:
                 "attempt_count": new_count,
                 "updated_at": datetime.utcnow().isoformat(),
             }).eq("id", record_id).execute()
-        except Exception:
+        except Exception as e:
+            logger.error(
+                "Failed to increment rate limit attempt count",
+                extra={
+                    "record_id": record_id,
+                    "new_count": new_count,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            # In production, fail-fast to maintain accurate rate limiting
             if self.config.is_production:
                 raise
+            # In non-production, log but allow continuation
 
     def _create_new_record(self, ip_address: str, window_start: datetime) -> None:
         """Create new rate limit record."""
@@ -85,17 +112,40 @@ class AuthRateLimiter:
                 "attempt_count": 1,
                 "window_start": window_start.isoformat(),
             }).execute()
-        except Exception:
+        except Exception as e:
+            logger.error(
+                "Failed to create rate limit record",
+                extra={
+                    "ip_address": ip_address,
+                    "window_start": window_start.isoformat(),
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            # In production, fail-fast to maintain accurate rate limiting
             if self.config.is_production:
                 raise
+            # In non-production, log but allow continuation
 
     def reset_rate_limit(self, ip_address: str) -> None:
         """Reset rate limit for IP address (on successful auth)."""
         try:
             self.supabase.table("auth_rate_limits").delete().eq("ip_address", ip_address).execute()
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                "Failed to reset rate limit",
+                extra={
+                    "ip_address": ip_address,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                },
+                exc_info=True,
+            )
+            # In production, fail-fast to maintain accurate rate limiting
             if self.config.is_production:
                 raise
+            # In non-production, log but allow continuation (reset is best-effort)
 
 
 def get_rate_limiter() -> AuthRateLimiter:
