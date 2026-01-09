@@ -159,7 +159,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if "access_token" in decrypted:
         encrypted_token = decrypted["access_token"]
         # Log token format (redacted) for debugging
-        token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token[:len(encrypted_token)]
+        token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token
         logger.debug(f"Token format pre-decryption (access_token): {token_preview}... (length: {len(encrypted_token)})")
         
         try:
@@ -179,7 +179,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if "refresh_token" in decrypted:
         encrypted_token = decrypted["refresh_token"]
         # Log token format (redacted) for debugging
-        token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token[:len(encrypted_token)]
+        token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token
         logger.debug(f"Token format pre-decryption (refresh_token): {token_preview}... (length: {len(encrypted_token)})")
         
         try:

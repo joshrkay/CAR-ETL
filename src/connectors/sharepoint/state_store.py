@@ -84,9 +84,9 @@ class OAuthStateStore:
                 return None
             
             expires_at = datetime.fromisoformat(result.data["expires_at"].replace("Z", "+00:00"))
-            tenant_id = result.data["tenant_id"]
             
             if datetime.now(timezone.utc) > expires_at:
+                tenant_id = result.data["tenant_id"]
                 logger.debug(
                     f"OAuth state expired: state_preview={state_preview}..., "
                     f"tenant_id={tenant_id}, expired_at={expires_at.isoformat()}"
@@ -94,6 +94,7 @@ class OAuthStateStore:
                 self.supabase.table("oauth_states").delete().eq("state", state).execute()
                 return None
             
+            tenant_id = result.data["tenant_id"]
             logger.debug(
                 f"Successfully retrieved OAuth state: state_preview={state_preview}..., "
                 f"tenant_id={tenant_id}"
