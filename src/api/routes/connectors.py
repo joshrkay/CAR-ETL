@@ -333,8 +333,6 @@ async def _handle_oauth_callback(
             connector_type="sharepoint",
         )
         
-        from datetime import datetime, timedelta, timezone
-        
         config = connector.get("config", {})
         config["access_token"] = token_data["access_token"]
         config["refresh_token"] = token_data.get("refresh_token", "")
