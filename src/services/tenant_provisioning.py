@@ -6,6 +6,7 @@ import logging
 
 from src.services.storage_setup import StorageSetupService, StorageSetupError
 from src.auth.config import get_auth_config
+from src.utils.pii_protection import hash_email
 
 logger = logging.getLogger(__name__)
 
