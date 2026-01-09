@@ -1,6 +1,7 @@
 """Rate limiting for authentication attempts."""
 import logging
 from datetime import datetime, timedelta
+from typing import Any, Dict, cast
 from supabase import create_client, Client
 from src.auth.config import AuthConfig, get_auth_config
 from src.exceptions import RateLimitError
