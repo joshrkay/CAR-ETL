@@ -1,8 +1,8 @@
 """Tenant provisioning service with rollback support."""
 from uuid import UUID
 from typing import Optional
-from supabase import Client
 import logging
+from supabase import Client
 
 from src.services.storage_setup import StorageSetupService, StorageSetupError
 from src.auth.config import get_auth_config
