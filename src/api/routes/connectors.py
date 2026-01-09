@@ -160,6 +160,24 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
         )
     
     if "access_token" in decrypted:
+        encrypted_token = decrypted["access_token"]
+        # Log token format (redacted) for debugging
+        if encrypted_token is not None and isinstance(encrypted_token, str):
+            token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token
+            logger.debug(f"Token format pre-decryption (access_token): {token_preview}... (length: {len(encrypted_token)})")
+        else:
+            logger.debug(f"Token format pre-decryption (access_token): None or non-string (type: {type(encrypted_token).__name__})")
+        
+        try:
+            decrypted["access_token"] = decrypt_value(encrypted_token)
+            logger.debug("Successfully decrypted access_token")
+        except ValueError as e:
+            token_preview = encrypted_token[:8] if (encrypted_token and isinstance(encrypted_token, str) and len(encrypted_token) >= 8) else (encrypted_token if encrypted_token else "None")
+            logger.error(
+                f"Failed to decrypt access_token: {str(e)} "
+                f"(token format preview: {token_preview}..., length: {len(encrypted_token) if encrypted_token and isinstance(encrypted_token, str) else 'N/A'})",
+                exc_info=True
+            )
         # Store original encrypted token - DO NOT use decrypted["access_token"] in except block
         encrypted_token = decrypted["access_token"]
         

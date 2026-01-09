@@ -131,23 +131,7 @@ class OAuthStateStore:
                 
                 return None
             
-            # Safely access tenant_id - required for return value
-            try:
-                tenant_id_value = data.get("tenant_id")
-                if not tenant_id_value or not isinstance(tenant_id_value, str):
-                    raise ValueError("tenant_id is missing or not a string")
-                tenant_id = cast(str, tenant_id_value)
-            except (KeyError, AttributeError, TypeError, ValueError) as e:
-                # If tenant_id is missing, log error and clean up corrupted state
-                logger.error(
-                    f"OAuth state missing tenant_id field: state_preview={state_preview}..., "
-                    f"error={str(e)}",
-                    exc_info=True
-                )
-                # Clean up corrupted state
-                self.supabase.table("oauth_states").delete().eq("state", state).execute()
-                return None
-            
+            tenant_id = result.data["tenant_id"]
             logger.debug(
                 f"Successfully retrieved OAuth state: state_preview={state_preview}..., "
                 f"tenant_id={tenant_id}"
@@ -165,4 +149,6 @@ class OAuthStateStore:
                 f"(state_preview={state_preview}...)",
                 exc_info=True
             )
+        except Exception:
+            logger.error("Failed to retrieve OAuth state", exc_info=True)
             return None
