@@ -35,14 +35,26 @@ class OAuthStateStore:
         """
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=expires_in_seconds)
         
+        # Log storage attempt for traceability
+        state_preview = state[:8] if len(state) >= 8 else state
+        logger.debug(
+            f"Storing OAuth state: state_preview={state_preview}..., "
+            f"tenant_id={tenant_id}, expires_in={expires_in_seconds}s"
+        )
+        
         try:
             self.supabase.table("oauth_states").insert({
                 "state": state,
                 "tenant_id": tenant_id,
                 "expires_at": expires_at.isoformat(),
             }).execute()
-        except Exception:
-            logger.error("Failed to store OAuth state", exc_info=True)
+            logger.debug(f"Successfully stored OAuth state for tenant_id={tenant_id}")
+        except Exception as e:
+            logger.error(
+                f"Failed to store OAuth state: {str(e)} "
+                f"(state_preview={state_preview}..., tenant_id={tenant_id})",
+                exc_info=True
+            )
             raise
     
     async def get_tenant_id(self, state: str) -> Optional[str]:
@@ -55,6 +67,9 @@ class OAuthStateStore:
         Returns:
             Tenant ID if state is valid and not expired, None otherwise
         """
+        state_preview = state[:8] if len(state) >= 8 else state
+        logger.debug(f"Retrieving tenant_id for OAuth state: state_preview={state_preview}...")
+        
         try:
             result = (
                 self.supabase.table("oauth_states")
@@ -65,20 +80,82 @@ class OAuthStateStore:
             )
             
             if not result.data:
+                logger.debug(f"No OAuth state found for state_preview={state_preview}...")
                 return None
             
-            expires_at = datetime.fromisoformat(result.data["expires_at"].replace("Z", "+00:00"))
-            
-            if datetime.now(timezone.utc) > expires_at:
+            # Safely access expires_at - if missing, treat as corrupted and clean up
+            try:
+                expires_at_str = result.data.get("expires_at")
+                if not expires_at_str:
+                    # Missing expires_at - treat as corrupted, clean up and return None
+                    logger.warning(
+                        f"OAuth state missing expires_at field: state_preview={state_preview}..., "
+                        "treating as corrupted and cleaning up"
+                    )
+                    self.supabase.table("oauth_states").delete().eq("state", state).execute()
+                    return None
+                
+                expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
+            except (KeyError, AttributeError, TypeError, ValueError) as e:
+                # Corrupted expires_at - clean up corrupted state
+                logger.error(
+                    f"OAuth state has invalid expires_at field: state_preview={state_preview}..., "
+                    f"error={str(e)}, cleaning up corrupted state",
+                    exc_info=True
+                )
                 self.supabase.table("oauth_states").delete().eq("state", state).execute()
                 return None
             
-            tenant_id = result.data["tenant_id"]
+            if datetime.now(timezone.utc) > expires_at:
+                # CRITICAL: Delete expired state first, then log tenant_id if available
+                # This ensures cleanup happens even if tenant_id access fails
+                self.supabase.table("oauth_states").delete().eq("state", state).execute()
+                
+                # Safely access tenant_id for logging - don't let logging failure prevent cleanup
+                try:
+                    tenant_id = result.data.get("tenant_id", "unknown")
+                    logger.debug(
+                        f"OAuth state expired and deleted: state_preview={state_preview}..., "
+                        f"tenant_id={tenant_id}, expired_at={expires_at.isoformat()}"
+                    )
+                except (KeyError, AttributeError, TypeError) as log_error:
+                    # Log without tenant_id if access fails - cleanup already completed
+                    logger.debug(
+                        f"OAuth state expired and deleted: state_preview={state_preview}..., "
+                        f"expired_at={expires_at.isoformat()} (tenant_id unavailable: {str(log_error)})"
+                    )
+                
+                return None
             
+            # Safely access tenant_id - required for return value
+            try:
+                tenant_id = result.data["tenant_id"]
+            except (KeyError, AttributeError, TypeError) as e:
+                # If tenant_id is missing, log error and clean up corrupted state
+                logger.error(
+                    f"OAuth state missing tenant_id field: state_preview={state_preview}..., "
+                    f"error={str(e)}",
+                    exc_info=True
+                )
+                # Clean up corrupted state
+                self.supabase.table("oauth_states").delete().eq("state", state).execute()
+                return None
+            
+            logger.debug(
+                f"Successfully retrieved OAuth state: state_preview={state_preview}..., "
+                f"tenant_id={tenant_id}"
+            )
+            
+            # Clean up state after successful retrieval
             self.supabase.table("oauth_states").delete().eq("state", state).execute()
+            logger.debug(f"Cleaned up OAuth state for tenant_id={tenant_id}")
             
             return tenant_id
             
-        except Exception:
-            logger.error("Failed to retrieve OAuth state", exc_info=True)
+        except Exception as e:
+            logger.error(
+                f"Failed to retrieve OAuth state: {str(e)} "
+                f"(state_preview={state_preview}...)",
+                exc_info=True
+            )
             return None

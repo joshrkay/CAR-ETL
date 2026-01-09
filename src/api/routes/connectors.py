@@ -133,6 +133,9 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     """
     Decrypt sensitive fields in connector config.
     
+    CRITICAL: This function does NOT retry decryption on failure. If decryption fails,
+    it immediately raises HTTPException. Do NOT add retry logic in exception handlers.
+    
     Args:
         config: Connector configuration dictionary with encrypted fields
         
@@ -140,25 +143,115 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
         Configuration with decrypted sensitive fields
         
     Raises:
-        ValueError: If decryption fails
+        HTTPException: If decryption fails or encryption key cannot be loaded
     """
     decrypted = config.copy()
     
+    # Validate key-loading step
+    try:
+        from src.utils.encryption import get_encryption_key
+        _ = get_encryption_key()
+        logger.debug("Encryption key loaded successfully for decryption")
+    except Exception as key_error:
+        logger.error(f"Failed to load encryption key: {str(key_error)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "KEY_LOAD_ERROR", "message": "Failed to load encryption key"},
+        )
+    
     if "access_token" in decrypted:
+        # Store original encrypted token - DO NOT use decrypted["access_token"] in except block
+        encrypted_token = decrypted["access_token"]
+        
+        # Log token format (redacted) for debugging - handle None safely
         try:
-            decrypted["access_token"] = decrypt_value(decrypted["access_token"])
-        except ValueError:
-            logger.error("Failed to decrypt access_token", exc_info=True)
+            if encrypted_token is not None and isinstance(encrypted_token, str):
+                token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token
+                logger.debug(f"Token format pre-decryption (access_token): {token_preview}... (length: {len(encrypted_token)})")
+            else:
+                token_type = type(encrypted_token).__name__ if encrypted_token is not None else "None"
+                logger.debug(f"Token format pre-decryption (access_token): None or non-string (type: {token_type})")
+        except (TypeError, AttributeError) as log_error:
+            # Safely handle any edge cases in logging
+            logger.debug(f"Token format pre-decryption (access_token): Unable to log format (error: {str(log_error)})")
+        
+        # SINGLE decryption attempt - no retry logic allowed
+        try:
+            decrypted["access_token"] = decrypt_value(encrypted_token)
+            logger.debug("Successfully decrypted access_token")
+        except ValueError as e:
+            # SECURITY: Do NOT retry decryption here. Using the same encrypted_token
+            # will fail again. Do NOT call decrypt_value() in this except block.
+            # Do NOT use decrypted["access_token"] - it may be partially set or None.
+            
+            # Safely handle None or non-string tokens in error logging
+            try:
+                if encrypted_token and isinstance(encrypted_token, str) and len(encrypted_token) >= 8:
+                    token_preview = encrypted_token[:8]
+                    token_length = len(encrypted_token)
+                else:
+                    token_preview = "None" if encrypted_token is None else str(encrypted_token)[:8] if encrypted_token else "None"
+                    token_length = len(encrypted_token) if isinstance(encrypted_token, str) else "N/A"
+            except (TypeError, AttributeError):
+                token_preview = "None"
+                token_length = "N/A"
+            
+            logger.error(
+                f"Failed to decrypt access_token: {str(e)} "
+                f"(token format preview: {token_preview}..., length: {token_length})",
+                exc_info=True
+            )
+            # Immediately raise HTTPException - this is the ONLY action allowed here
+            # DO NOT add any decrypt_value() calls or retry logic
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
             )
     
     if "refresh_token" in decrypted:
+        # Store original encrypted token - DO NOT use decrypted["refresh_token"] in except block
+        encrypted_token = decrypted["refresh_token"]
+        
+        # Log token format (redacted) for debugging - handle None safely
         try:
-            decrypted["refresh_token"] = decrypt_value(decrypted["refresh_token"])
-        except ValueError:
-            logger.error("Failed to decrypt refresh_token", exc_info=True)
+            if encrypted_token is not None and isinstance(encrypted_token, str):
+                token_preview = encrypted_token[:8] if len(encrypted_token) >= 8 else encrypted_token
+                logger.debug(f"Token format pre-decryption (refresh_token): {token_preview}... (length: {len(encrypted_token)})")
+            else:
+                token_type = type(encrypted_token).__name__ if encrypted_token is not None else "None"
+                logger.debug(f"Token format pre-decryption (refresh_token): None or non-string (type: {token_type})")
+        except (TypeError, AttributeError) as log_error:
+            # Safely handle any edge cases in logging
+            logger.debug(f"Token format pre-decryption (refresh_token): Unable to log format (error: {str(log_error)})")
+        
+        # SINGLE decryption attempt - no retry logic allowed
+        try:
+            decrypted["refresh_token"] = decrypt_value(encrypted_token)
+            logger.debug("Successfully decrypted refresh_token")
+        except ValueError as e:
+            # SECURITY: Do NOT retry decryption here. Using the same encrypted_token
+            # will fail again. Do NOT call decrypt_value() in this except block.
+            # Do NOT use decrypted["refresh_token"] - it may be partially set or None.
+            
+            # Safely handle None or non-string tokens in error logging
+            try:
+                if encrypted_token and isinstance(encrypted_token, str) and len(encrypted_token) >= 8:
+                    token_preview = encrypted_token[:8]
+                    token_length = len(encrypted_token)
+                else:
+                    token_preview = "None" if encrypted_token is None else str(encrypted_token)[:8] if encrypted_token else "None"
+                    token_length = len(encrypted_token) if isinstance(encrypted_token, str) else "N/A"
+            except (TypeError, AttributeError):
+                token_preview = "None"
+                token_length = "N/A"
+            
+            logger.error(
+                f"Failed to decrypt refresh_token: {str(e)} "
+                f"(token format preview: {token_preview}..., length: {token_length})",
+                exc_info=True
+            )
+            # Immediately raise HTTPException - this is the ONLY action allowed here
+            # DO NOT add any decrypt_value() calls or retry logic
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
