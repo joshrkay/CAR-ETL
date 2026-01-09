@@ -7,7 +7,7 @@ This is the entry point for file ingestion into the CAR Platform.
 
 import logging
 from typing import Annotated, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
@@ -20,6 +20,8 @@ from src.services.file_validator import (
     ValidationResult,
     FileValidator,
 )
+from src.services.file_storage import FileStorageService, StorageUploadError
+from src.services.redaction import presidio_redact_bytes
 from supabase import Client
 
 logger = logging.getLogger(__name__)
@@ -191,19 +193,43 @@ async def upload_document(
             },
         )
     
-    # Step 5: Store document metadata in database
+    # Step 5: Redact PII before storage (defense in depth)
+    redacted_content = presidio_redact_bytes(content, validation_result.mime_type)
+    
+    # Step 6: Upload file to storage and store document metadata
     document_id = str(uuid4())
+    storage_service = FileStorageService(supabase)
     
     try:
         await store_document_metadata(
             supabase=supabase,
+            storage_service=storage_service,
             document_id=document_id,
             tenant_id=tenant_id,
             user_id=user_id,
             filename=file.filename or "untitled",
             mime_type=validation_result.mime_type,
-            file_size=validation_result.file_size,
+            file_size=len(redacted_content),
+            content=redacted_content,
             description=description,
+        )
+    except StorageUploadError as e:
+        logger.error(
+            "Failed to upload file to storage",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "document_id": document_id,
+                "error": str(e),
+            },
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "STORAGE_ERROR",
+                "message": "Failed to upload file to storage",
+            },
         )
     except Exception as e:
         logger.error(
@@ -289,44 +315,62 @@ async def fetch_tenant_max_file_size(
 
 async def store_document_metadata(
     supabase: Client,
+    storage_service: FileStorageService,
     document_id: str,
     tenant_id: str,
     user_id: str,
     filename: str,
     mime_type: str,
     file_size: int,
+    content: bytes,
     description: Optional[str],
 ) -> None:
     """
-    Store document metadata in database.
+    Upload file to storage and store document metadata in database.
     
-    This creates a record in the documents table which automatically
-    triggers document processing via database trigger.
+    This function:
+    1. Calculates file hash
+    2. Uploads file content to Supabase Storage
+    3. Creates a record in the documents table which automatically
+       triggers document processing via database trigger.
     
     Args:
         supabase: Supabase client with user JWT
+        storage_service: File storage service for uploading files
         document_id: Unique document identifier
         tenant_id: Tenant identifier
         user_id: User identifier
         filename: Original filename
         mime_type: Validated MIME type
         file_size: File size in bytes
+        content: File content bytes
         description: Optional document description (stored in source_path)
         
     Raises:
+        StorageUploadError: If file upload fails
         Exception: If database insert fails
     """
-    # Note: file_hash would be calculated and stored in a real implementation
-    # For now, using a placeholder to satisfy schema requirements
+    # SECURITY: Content is already redacted before this function is called
+    # Calculate file hash (using redacted content)
+    file_hash = storage_service.calculate_file_hash(content)
     
-    # Generate storage path (placeholder - in production, upload to S3)
+    # Generate storage path
     storage_path = f"uploads/{tenant_id}/{document_id}/{filename}"
     
+    # Upload file to storage
+    storage_service.upload_file(
+        content=content,
+        storage_path=storage_path,
+        tenant_id=UUID(tenant_id),
+        mime_type=mime_type,
+    )
+    
+    # Store document metadata
     document_data = {
         "id": document_id,
         "tenant_id": tenant_id,
         "uploaded_by": user_id,
-        "file_hash": f"placeholder-{document_id}",  # TODO: Calculate actual hash
+        "file_hash": file_hash,
         "storage_path": storage_path,
         "original_filename": filename,
         "mime_type": mime_type,
@@ -343,10 +387,11 @@ async def store_document_metadata(
         raise Exception("Database insert returned no data")
     
     logger.info(
-        "Document metadata stored",
+        "Document uploaded and metadata stored",
         extra={
             "document_id": document_id,
             "tenant_id": tenant_id,
             "filename": filename,
+            "file_hash": file_hash,
         },
     )

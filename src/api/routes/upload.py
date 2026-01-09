@@ -7,7 +7,7 @@ Part of Ingestion Plane - validates and buffers data only.
 
 import logging
 from typing import Annotated, Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel, Field
@@ -21,6 +21,8 @@ from src.services.bulk_upload import (
     FileProcessingResult,
     create_bulk_upload_service,
 )
+from src.services.file_storage import FileStorageService, StorageUploadError
+from src.services.redaction import presidio_redact_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -221,19 +223,25 @@ async def upload_bulk_documents(
             mime_type=mime_type,
         )
         
-        # If validation succeeded, store document metadata
+        # If validation succeeded, redact and store document metadata
         if processing_result.status == "processing":
             try:
-                file_hash = bulk_service.calculate_file_hash(content)
+                # SECURITY: Redact PII before storage (defense in depth)
+                redacted_content = presidio_redact_bytes(content, processing_result.mime_type)
+                
+                storage_service = FileStorageService(supabase)
+                file_hash = storage_service.calculate_file_hash(redacted_content)
                 
                 await store_document_metadata(
                     supabase=supabase,
+                    storage_service=storage_service,
                     document_id=processing_result.document_id,
                     tenant_id=tenant_id,
                     user_id=user_id,
                     filename=filename,
                     mime_type=processing_result.mime_type,
-                    file_size=processing_result.file_size,
+                    file_size=len(redacted_content),
+                    content=redacted_content,
                     file_hash=file_hash,
                     batch_id=batch_id,
                 )
@@ -251,6 +259,29 @@ async def upload_bulk_documents(
                     },
                 )
             
+            except StorageUploadError as e:
+                # If file upload fails, mark as failed
+                logger.error(
+                    "Failed to upload file to storage",
+                    extra={
+                        "request_id": request_id,
+                        "tenant_id": tenant_id,
+                        "batch_id": batch_id,
+                        "filename": filename,
+                        "error": str(e),
+                    },
+                    exc_info=True,
+                )
+                
+                processing_result = FileProcessingResult(
+                    filename=filename,
+                    document_id=None,
+                    status="failed",
+                    error="Failed to upload file to storage",
+                    file_size=processing_result.file_size,
+                    mime_type=processing_result.mime_type,
+                )
+                failed_count += 1
             except Exception as e:
                 # If storage fails, mark as failed
                 logger.error(
@@ -350,35 +381,55 @@ async def fetch_tenant_max_file_size(
 
 async def store_document_metadata(
     supabase: Client,
+    storage_service: FileStorageService,
     document_id: str,
     tenant_id: str,
     user_id: str,
     filename: str,
     mime_type: str,
     file_size: int,
+    content: bytes,
     file_hash: str,
     batch_id: str,
 ) -> None:
     """
-    Store document metadata in database.
+    Upload file to storage and store document metadata in database.
+    
+    This function:
+    1. Uploads file content to Supabase Storage
+    2. Creates a record in the documents table which automatically
+       triggers document processing via database trigger.
     
     Args:
         supabase: Supabase client with user JWT
+        storage_service: File storage service for uploading files
         document_id: Unique document identifier
         tenant_id: Tenant identifier
         user_id: User identifier
         filename: Original filename
         mime_type: Validated MIME type
         file_size: File size in bytes
+        content: File content bytes
         file_hash: SHA-256 hash of file content
         batch_id: Batch identifier for bulk upload
         
     Raises:
+        StorageUploadError: If file upload fails
         Exception: If database insert fails
     """
-    # Generate storage path (placeholder - in production, upload to S3)
+    # SECURITY: Content is already redacted before this function is called
+    # Generate storage path
     storage_path = f"uploads/{tenant_id}/{document_id}/{filename}"
     
+    # Upload file to storage
+    storage_service.upload_file(
+        content=content,
+        storage_path=storage_path,
+        tenant_id=UUID(tenant_id),
+        mime_type=mime_type,
+    )
+    
+    # Store document metadata
     document_data = {
         "id": document_id,
         "tenant_id": tenant_id,
