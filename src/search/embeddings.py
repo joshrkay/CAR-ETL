@@ -7,7 +7,7 @@ Embeds text in batches for efficiency.
 
 import logging
 import os
-from typing import List
+from typing import List, Optional
 from openai import AsyncOpenAI
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class EmbeddingService:
     Automatically batches requests for efficiency.
     """
     
-    def __init__(self, api_key: str | None = None, batch_size: int = DEFAULT_BATCH_SIZE):
+    def __init__(self, api_key: Optional[str] = None, batch_size: int = DEFAULT_BATCH_SIZE):
         """
         Initialize embedding service.
         
