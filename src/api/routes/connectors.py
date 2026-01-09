@@ -142,26 +142,92 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     Raises:
         ValueError: If decryption fails
     """
+    import os
+    
     decrypted = config.copy()
     
+    # Validate encryption environment setup
+    encryption_key = os.getenv("ENCRYPTION_KEY")
+    jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+    
+    if not encryption_key and not jwt_secret:
+        logger.error(
+            "Decryption environment not configured",
+            extra={
+                "has_encryption_key": bool(encryption_key),
+                "has_jwt_secret": bool(jwt_secret),
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "code": "DECRYPTION_CONFIG_ERROR",
+                "message": "Encryption keys not configured. Contact system administrator.",
+            },
+        )
+    
     if "access_token" in decrypted:
+        encrypted_token = decrypted["access_token"]
         try:
-            decrypted["access_token"] = decrypt_value(decrypted["access_token"])
+            decrypted["access_token"] = decrypt_value(encrypted_token)
+            logger.debug(
+                "Successfully decrypted access_token",
+                extra={
+                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
+                    "token_length": len(encrypted_token),
+                },
+            )
         except ValueError as e:
-            logger.error("Failed to decrypt access_token", exc_info=True)
+            # Log detailed error for debugging with partial token info
+            logger.error(
+                "Failed to decrypt access_token",
+                extra={
+                    "error": str(e),
+                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
+                    "token_suffix": encrypted_token[-8:] if len(encrypted_token) > 8 else "***",
+                    "token_length": len(encrypted_token),
+                    "has_encryption_key": bool(encryption_key),
+                },
+                exc_info=True,
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
+                detail={
+                    "code": "DECRYPTION_ERROR",
+                    "message": "Failed to decrypt access token. Token may be corrupted or encryption key mismatch.",
+                },
             )
     
     if "refresh_token" in decrypted:
+        encrypted_token = decrypted["refresh_token"]
         try:
-            decrypted["refresh_token"] = decrypt_value(decrypted["refresh_token"])
+            decrypted["refresh_token"] = decrypt_value(encrypted_token)
+            logger.debug(
+                "Successfully decrypted refresh_token",
+                extra={
+                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
+                    "token_length": len(encrypted_token),
+                },
+            )
         except ValueError as e:
-            logger.error("Failed to decrypt refresh_token", exc_info=True)
+            # Log detailed error for debugging with partial token info
+            logger.error(
+                "Failed to decrypt refresh_token",
+                extra={
+                    "error": str(e),
+                    "token_prefix": encrypted_token[:8] if len(encrypted_token) > 8 else "***",
+                    "token_suffix": encrypted_token[-8:] if len(encrypted_token) > 8 else "***",
+                    "token_length": len(encrypted_token),
+                    "has_encryption_key": bool(encryption_key),
+                },
+                exc_info=True,
+            )
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
+                detail={
+                    "code": "DECRYPTION_ERROR",
+                    "message": "Failed to decrypt refresh token. Token may be corrupted or encryption key mismatch.",
+                },
             )
     
     return decrypted
