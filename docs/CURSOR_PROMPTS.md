@@ -385,8 +385,8 @@ pytest tests/test_file_validator.py -v
 
 ## 🔗 Related Documentation
 
-- See [SECURITY.md](/home/user/CAR-ETL/SECURITY.md) for security best practices
-- See [README_DEPLOYMENT.md](/home/user/CAR-ETL/README_DEPLOYMENT.md) for deployment guidance
+- See [SECURITY.md](../SECURITY.md) for security best practices
+- See [README_DEPLOYMENT.md](../README_DEPLOYMENT.md) for deployment guidance
 - See test files for examples of proper usage
 
 ---
