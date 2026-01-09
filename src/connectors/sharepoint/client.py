@@ -1,6 +1,6 @@
 """Microsoft Graph API client for SharePoint operations."""
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, cast
 import httpx
 from src.connectors.sharepoint.oauth import SharePointOAuth
 
@@ -96,7 +96,7 @@ class SharePointClient:
                         )
                 
                 response.raise_for_status()
-                return response.json()
+                return cast(Dict[str, Any], response.json())
                 
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text if e.response else str(e)
@@ -125,7 +125,7 @@ class SharePointClient:
         """
         sites = []
         endpoint = "/sites"
-        params = {"$select": "id,name,webUrl,displayName,description"}
+        params: Optional[Dict[str, Any]] = {"$select": "id,name,webUrl,displayName,description"}
         
         while True:
             response = await self._make_request("GET", endpoint, params=params)
@@ -154,7 +154,8 @@ class SharePointClient:
         params = {"$select": "id,name,webUrl,description,driveType"}
         
         response = await self._make_request("GET", endpoint, params=params)
-        return response.get("value", [])
+        value = response.get("value", [])
+        return cast(List[Dict[str, Any]], value)
     
     async def get_drive_items(
         self,
@@ -183,7 +184,7 @@ class SharePointClient:
                 endpoint = f"/drives/{drive_id}/root:/{folder_path.lstrip('/')}:/children"
             params = {
                 "$select": "id,name,webUrl,size,lastModifiedDateTime,file,folder",
-                "$top": 1000,
+                "$top": "1000",
             }
         
         response = await self._make_request("GET", endpoint, params=params)

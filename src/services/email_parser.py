@@ -8,7 +8,7 @@ Extracts email metadata, body content, and attachments.
 import base64
 import binascii
 from email.utils import parseaddr
-from typing import Optional
+from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 
@@ -33,7 +33,7 @@ class ParsedEmail(BaseModel):
 class EmailParser:
     """Service for parsing email content from Resend webhook payloads."""
     
-    def parse_resend_webhook(self, payload: dict) -> ParsedEmail:
+    def parse_resend_webhook(self, payload: dict[str, Any]) -> ParsedEmail:
         """
         Parse Resend webhook payload into ParsedEmail model.
         
@@ -111,7 +111,7 @@ class EmailParser:
         
         return addr or address_string.strip()
     
-    def _parse_attachment(self, att_data: dict) -> Optional[Attachment]:
+    def _parse_attachment(self, att_data: dict[str, Any]) -> Optional[Attachment]:
         """
         Parse attachment data from Resend webhook.
         

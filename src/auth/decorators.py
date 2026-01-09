@@ -1,5 +1,6 @@
 """FastAPI dependencies for RBAC permission enforcement."""
 import logging
+from typing import Awaitable, Callable
 from fastapi import Depends, HTTPException, Request, status
 
 from src.auth.models import AuthContext
@@ -40,7 +41,9 @@ def _log_permission_denial(
     )
 
 
-def require_permission(permission: str):
+def require_permission(
+    permission: str,
+) -> Callable[[Request], Awaitable[AuthContext]]:
     """
     Dependency factory to require a specific permission.
     

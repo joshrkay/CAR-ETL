@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class PandasParser(BaseParser):
     """Parser implementation using pandas for Excel files."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize Pandas parser."""
         pass
     

@@ -7,7 +7,7 @@ This service must be used for all chunk storage operations.
 
 import logging
 from uuid import UUID
-from typing import List
+from typing import Any, List
 from supabase import Client
 
 from src.services.redaction import presidio_redact
@@ -36,7 +36,7 @@ class ChunkStorageService:
         self,
         tenant_id: UUID,
         document_id: UUID,
-        chunks: List[dict],
+        chunks: List[dict[str, Any]],
     ) -> List[str]:
         """
         Store document chunks with embeddings.

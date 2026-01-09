@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class OpenPyXLParser(BaseParser):
     """Parser implementation using openpyxl for Excel files."""
     
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize OpenPyXL parser."""
         pass
     

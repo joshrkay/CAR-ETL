@@ -4,7 +4,7 @@ from uuid import UUID, uuid4
 from unittest.mock import Mock
 from datetime import datetime, timedelta
 
-from src.features.service import FeatureFlagService
+from src.features.service import FeatureFlagService, _shared_cache
 
 
 @pytest.fixture

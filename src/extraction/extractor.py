@@ -13,7 +13,7 @@ from typing import Dict, Any, Optional
 try:
     from openai import AsyncOpenAI
 except ImportError:  # pragma: no cover - handled in runtime environments without openai
-    AsyncOpenAI = None  # type: ignore
+    AsyncOpenAI = None
 from pydantic import BaseModel, Field
 
 from src.extraction.cre_fields import get_field_config, get_field_definitions_for_prompt

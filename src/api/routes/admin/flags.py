@@ -1,7 +1,7 @@
 """Admin endpoints for feature flag management."""
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from typing import Annotated, List
+from typing import Annotated, Any, Dict, List, cast
 from uuid import UUID
 from supabase import Client
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1/admin/flags", tags=["admin", "feature-flags"]
 async def list_all_flags(
     supabase: Annotated[Client, Depends(get_supabase_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-):
+) -> List[FeatureFlag]:
     """
     List all feature flags (admin only).
     
@@ -38,9 +38,12 @@ async def list_all_flags(
             .execute()
         )
         
-        return [
-            FeatureFlag(**flag) for flag in (result.data or [])
-        ]
+        flags_list: List[FeatureFlag] = []
+        if result.data:
+            for flag in result.data:
+                flag_dict = cast(Dict[str, Any], flag)
+                flags_list.append(FeatureFlag(**flag_dict))
+        return flags_list
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -56,7 +59,7 @@ async def create_flag(
     flag_data: FeatureFlagCreate,
     supabase: Annotated[Client, Depends(get_supabase_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-):
+) -> FeatureFlag:
     """
     Create a new feature flag (admin only).
     
@@ -101,7 +104,8 @@ async def create_flag(
                 },
             )
         
-        return FeatureFlag(**result.data[0])
+        flag_dict = cast(Dict[str, Any], result.data[0])
+        return FeatureFlag(**flag_dict)
         
     except HTTPException:
         raise
@@ -122,7 +126,7 @@ async def set_tenant_override(
     override_data: TenantFeatureFlagUpdate,
     supabase: Annotated[Client, Depends(get_supabase_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-):
+) -> Dict[str, Any]:
     """
     Set tenant-specific feature flag override (admin only).
     
@@ -174,24 +178,27 @@ async def set_tenant_override(
                 },
             )
         
-        flag_id = flag_result.data[0]["id"]
+        flag_dict = cast(Dict[str, Any], flag_result.data[0])
+        flag_id = str(flag_dict.get("id", ""))
         
         # Check if override already exists
         existing = (
             supabase.table("tenant_feature_flags")
             .select("id")
             .eq("tenant_id", str(validated_tenant_id))
-            .eq("flag_id", str(flag_id))
+            .eq("flag_id", flag_id)
             .limit(1)
             .execute()
         )
         
         if existing.data:
             # Update existing override
+            existing_dict = cast(Dict[str, Any], existing.data[0])
+            existing_id = str(existing_dict.get("id", ""))
             (
                 supabase.table("tenant_feature_flags")
                 .update({"enabled": override_data.enabled})
-                .eq("id", existing.data[0]["id"])
+                .eq("id", existing_id)
                 .execute()
             )
         else:
@@ -235,7 +242,7 @@ async def delete_tenant_override(
     tenant_id: UUID,
     supabase: Annotated[Client, Depends(get_supabase_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-):
+) -> None:
     """
     Delete tenant-specific feature flag override (admin only).
     
@@ -288,7 +295,8 @@ async def delete_tenant_override(
                 },
             )
         
-        flag_id = flag_result.data[0]["id"]
+        flag_dict = cast(Dict[str, Any], flag_result.data[0])
+        flag_id = str(flag_dict.get("id", ""))
         
         # Delete the override
         (
@@ -321,7 +329,7 @@ async def delete_tenant_override(
 async def get_flag_details(
     flag_name: str,
     flags: Annotated[FeatureFlagService, Depends(get_feature_flags)],
-):
+) -> FeatureFlagResponse:
     """
     Get details about a specific feature flag for the current tenant.
     

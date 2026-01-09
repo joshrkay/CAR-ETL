@@ -5,7 +5,7 @@ Handles OAuth authentication and sync configuration for external data sources.
 Enforces tenant isolation and encrypts sensitive credentials.
 """
 import logging
-from typing import Annotated, Optional, List, Dict, Any
+from typing import Annotated, Any, Dict, List, Optional, cast
 from uuid import UUID, uuid4
 from datetime import datetime, timedelta, timezone
 
@@ -191,10 +191,10 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
                     token_length = len(encrypted_token)
                 else:
                     token_preview = "None" if encrypted_token is None else str(encrypted_token)[:8] if encrypted_token else "None"
-                    token_length = len(encrypted_token) if isinstance(encrypted_token, str) else "N/A"
+                    token_length = len(encrypted_token) if isinstance(encrypted_token, str) else 0
             except (TypeError, AttributeError):
                 token_preview = "None"
-                token_length = "N/A"
+                token_length = 0
             
             logger.error(
                 f"Failed to decrypt access_token: {str(e)} "
@@ -240,10 +240,10 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
                     token_length = len(encrypted_token)
                 else:
                     token_preview = "None" if encrypted_token is None else str(encrypted_token)[:8] if encrypted_token else "None"
-                    token_length = len(encrypted_token) if isinstance(encrypted_token, str) else "N/A"
+                    token_length = len(encrypted_token) if isinstance(encrypted_token, str) else 0
             except (TypeError, AttributeError):
                 token_preview = "None"
-                token_length = "N/A"
+                token_length = 0
             
             logger.error(
                 f"Failed to decrypt refresh_token: {str(e)} "
@@ -285,11 +285,11 @@ async def _get_or_create_connector(
         .execute()
     )
     
-    if result.data:
-        return result.data
+    if result and result.data:
+        return cast(Dict[str, Any], result.data)
     
     connector_id = str(uuid4())
-    connector_data = {
+    connector_data: Dict[str, Any] = {
         "id": connector_id,
         "tenant_id": str(tenant_id),
         "type": connector_type,
@@ -297,15 +297,15 @@ async def _get_or_create_connector(
         "status": "active",
     }
     
-    result = supabase.table("connectors").insert(connector_data).execute()
+    insert_result = supabase.table("connectors").insert(connector_data).execute()
     
-    if not result.data:
+    if not insert_result.data:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "DATABASE_ERROR", "message": "Failed to create connector"},
         )
     
-    return result.data[0]
+    return cast(Dict[str, Any], insert_result.data[0])
 
 
 # API Endpoints
@@ -815,7 +815,11 @@ async def trigger_sync(
             .execute()
         )
         
-        last_sync_at = result.data.get("last_sync_at") if result.data else None
+        if result and result.data:
+            result_dict = cast(Dict[str, Any], result.data)
+            last_sync_at = result_dict.get("last_sync_at")
+        else:
+            last_sync_at = None
         
         logger.info(
             "Sync completed",
