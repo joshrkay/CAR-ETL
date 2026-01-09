@@ -400,60 +400,13 @@ async def save_extraction(
         ) from e
 
 
-async def update_document_status(
-    supabase: Client,
-    document_id: UUID,
-    status: str,
-    error_message: Optional[str] = None,
-) -> None:
-    """
-    Update document status in database.
-
-    Args:
-        supabase: Supabase client (service role)
-        document_id: Document UUID
-        status: New status (pending, processing, ready, failed)
-        error_message: Optional error message if status is failed
-
-    Raises:
-        ExtractionPipelineError: If update fails
-    """
-    try:
-        update_data = {
-            "status": status,
-            "updated_at": datetime.utcnow().isoformat(),
-        }
-
-        if error_message:
-            update_data["error_message"] = error_message
-
-        supabase.table("documents").update(update_data).eq(
-            "id", str(document_id)
-        ).execute()
-
-        logger.info(
-            "Document status updated",
-            extra={
-                "document_id": str(document_id),
-                "status": status,
-                "has_error": error_message is not None,
-            },
-        )
-
-    except Exception as e:
-        error_info = get_loggable_error(e)
-        logger.error(
-            "Failed to update document status",
-            extra={
-                "document_id": str(document_id),
-                "status": status,
-                **error_info,
-            },
-            exc_info=True,
-        )
-        raise ExtractionPipelineError(
-            f"Failed to update document status: {error_info['sanitized_message']}"
-        ) from e
+# REMOVED: update_document_status()
+# Documents table is IMMUTABLE per architectural invariant.
+# Status tracking is now handled via extractions.status:
+#   - No extraction record = pending
+#   - extraction.status = "processing" = processing
+#   - extraction.status = "completed" = ready
+#   - extraction.status = "failed" = failed
 
 
 async def _validate_and_prepare(
@@ -462,6 +415,8 @@ async def _validate_and_prepare(
 ) -> tuple[Dict[str, Any], UUID]:
     """
     Validate document exists and prepare for processing.
+
+    Documents table remains immutable - status tracking via extractions table.
 
     Args:
         supabase: Supabase client (service role)
@@ -475,7 +430,7 @@ async def _validate_and_prepare(
     """
     document = await get_document(supabase, document_id)
     tenant_id = UUID(document["tenant_id"])
-    await update_document_status(supabase, document_id, "processing")
+    # Status tracking now via extraction record (created in _extract_and_persist)
     return document, tenant_id
 
 
@@ -562,6 +517,8 @@ async def _finalize_success(
     """
     Finalize successful processing.
 
+    Documents table remains immutable - status is extraction.status="completed".
+
     Args:
         supabase: Supabase client (service role)
         document_id: Document UUID
@@ -571,7 +528,7 @@ async def _finalize_success(
     Returns:
         Success result dictionary
     """
-    await update_document_status(supabase, document_id, "ready")
+    # No document status update - extraction record status="completed" is source of truth
 
     logger.info(
         "Document processing completed",
@@ -599,6 +556,8 @@ async def _finalize_failure(
     """
     Finalize failed processing.
 
+    Creates a failed extraction record to track failure without mutating documents table.
+
     SECURITY: Sanitizes error message before logging and database storage
     to prevent PII leakage.
 
@@ -623,27 +582,52 @@ async def _finalize_failure(
         exc_info=True,
     )
 
+    # Get document to retrieve tenant_id
     try:
-        # Store ONLY sanitized error in database
-        await update_document_status(
-            supabase,
-            document_id,
-            "failed",
-            error_message=sanitized_message,
+        document = await get_document(supabase, document_id)
+        tenant_id = document["tenant_id"]
+
+        # Create failed extraction record (immutable log of failure)
+        # This ensures extraction table is single source of truth for status
+        extraction_data = {
+            "tenant_id": str(tenant_id),
+            "document_id": str(document_id),
+            "status": "failed",
+            "error_message": sanitized_message,
+            "overall_confidence": 0.0,
+        }
+
+        extraction_response = (
+            supabase.table("extractions")
+            .insert(extraction_data)
+            .execute()
         )
-    except Exception as status_error:
-        status_error_info = get_loggable_error(status_error)
+
+        extraction_id = None
+        if extraction_response.data:
+            extraction_id = extraction_response.data[0]["id"]
+            logger.info(
+                "Failed extraction record created",
+                extra={
+                    "extraction_id": extraction_id,
+                    "document_id": str(document_id),
+                },
+            )
+
+    except Exception as save_error:
+        save_error_info = get_loggable_error(save_error)
         logger.error(
-            "Failed to update document status after error",
+            "Failed to create failure extraction record",
             extra={
                 "document_id": str(document_id),
-                **status_error_info,
+                **save_error_info,
             },
         )
+        extraction_id = None
 
     return {
         "document_id": str(document_id),
-        "extraction_id": None,
+        "extraction_id": extraction_id,
         "status": "failed",
         "overall_confidence": 0.0,
         "error": sanitized_message,

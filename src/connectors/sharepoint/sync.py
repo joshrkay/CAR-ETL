@@ -223,13 +223,16 @@ class SharePointSync:
         file_hash = hashlib.sha256(redacted_content).hexdigest()
         
         source_path = f"sharepoint:{drive_id}:{file_id}"
-        
+
         existing_doc = await self._find_existing_document(source_path)
-        
+
         if existing_doc and existing_doc.get("file_hash") == file_hash:
-            return
-        
-        document_id = str(uuid4()) if not existing_doc else existing_doc["id"]
+            return  # Same content - no action needed
+
+        # IMMUTABILITY: Always create new document record for changed content
+        # Link to previous version via parent_id to preserve history
+        document_id = str(uuid4())
+        parent_id = existing_doc["id"] if existing_doc else None
         
         # Upload redacted content to Supabase Storage
         bucket_name = f"documents-{self.tenant_id}"
@@ -270,34 +273,64 @@ class SharePointSync:
             "file_size_bytes": len(redacted_content),  # Use actual redacted content size
             "source_type": "sharepoint",
             "source_path": source_path,
-            "status": "pending",
+            "parent_id": parent_id,  # Link to previous version if exists
         }
-        
-        if existing_doc:
-            self.supabase.table("documents").update(document_data).eq(
-                "id", document_data["id"]
-            ).execute()
-        else:
-            self.supabase.table("documents").insert(document_data).execute()
+
+        # IMMUTABILITY: Always INSERT, never UPDATE
+        # Documents table is append-only per architectural invariant
+        self.supabase.table("documents").insert(document_data).execute()
     
     async def _handle_deleted_item(self, item: Dict[str, Any]) -> None:
-        """Handle deleted file item (mark document as deleted or remove)."""
+        """
+        Handle deleted file item from SharePoint.
+
+        IMMUTABILITY: Documents table remains unchanged.
+        Deletion is logged in document_source_deletions table.
+        """
         file_id = item.get("id")
         if not file_id:
             return
-        
+
         drive_id = item.get("parentReference", {}).get("driveId")
         if not drive_id:
             return
-        
+
         source_path = f"sharepoint:{drive_id}:{file_id}"
         existing_doc = await self._find_existing_document(source_path)
-        
+
         if existing_doc:
-            self.supabase.table("documents").update({
-                "status": "failed",
-                "error_message": "File deleted from SharePoint",
-            }).eq("id", existing_doc["id"]).execute()
+            # Log deletion without mutating documents table
+            deletion_data = {
+                "tenant_id": str(self.tenant_id),
+                "document_id": existing_doc["id"],
+                "source_type": "sharepoint",
+                "source_path": source_path,
+                "deletion_reason": "File deleted from SharePoint",
+            }
+
+            try:
+                self.supabase.table("document_source_deletions").insert(
+                    deletion_data
+                ).execute()
+
+                logger.info(
+                    "Document source deletion logged",
+                    extra={
+                        "tenant_id": str(self.tenant_id),
+                        "document_id": existing_doc["id"],
+                        "source_path": source_path,
+                    },
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to log source deletion",
+                    extra={
+                        "tenant_id": str(self.tenant_id),
+                        "document_id": existing_doc["id"],
+                        "error": str(e),
+                    },
+                    exc_info=True,
+                )
     
     async def _update_delta_token(self, delta_token: str) -> None:
         """Update delta token in connector config."""

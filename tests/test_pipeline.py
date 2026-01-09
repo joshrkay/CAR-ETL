@@ -16,7 +16,6 @@ from src.extraction.pipeline import (
     redact_pii,
     extract_cre_fields,
     save_extraction,
-    update_document_status,
     process_document,
     DocumentNotFoundError,
     DocumentAccessError,
@@ -384,50 +383,9 @@ class TestSaveExtraction:
             )
 
 
-class TestUpdateDocumentStatus:
-    """Tests for update_document_status function."""
-
-    @pytest.mark.asyncio
-    async def test_update_document_status_success(self):
-        """Test successful status update."""
-        document_id = uuid4()
-
-        mock_supabase = Mock()
-
-        await update_document_status(mock_supabase, document_id, "ready")
-
-        mock_supabase.table.assert_called_once_with("documents")
-
-    @pytest.mark.asyncio
-    async def test_update_document_status_with_error(self):
-        """Test status update with error message."""
-        document_id = uuid4()
-        error_message = "Parser failed"
-
-        mock_supabase = Mock()
-
-        await update_document_status(
-            mock_supabase,
-            document_id,
-            "failed",
-            error_message=error_message,
-        )
-
-        # Verify update was called with error_message
-        mock_supabase.table.assert_called_once()
-
-    @pytest.mark.asyncio
-    async def test_update_document_status_database_error(self):
-        """Test status update with database error."""
-        document_id = uuid4()
-
-        mock_supabase = Mock()
-        mock_supabase.table.return_value.update.return_value.eq.return_value.execute.side_effect = Exception(
-            "Database error"
-        )
-
-        with pytest.raises(ExtractionPipelineError, match="Failed to update document status"):
-            await update_document_status(mock_supabase, document_id, "ready")
+# REMOVED: TestUpdateDocumentStatus
+# update_document_status function removed per architectural invariant:
+# Documents table is IMMUTABLE. Status tracking via extractions table.
 
 
 class TestProcessDocument:
@@ -600,8 +558,7 @@ class TestHelperFunctions:
 
         mock_supabase = Mock()
 
-        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get, \
-             patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get:
 
             mock_get.return_value = mock_document
 
@@ -609,7 +566,7 @@ class TestHelperFunctions:
 
             assert doc == mock_document
             assert tid == tenant_id
-            mock_update.assert_called_once_with(mock_supabase, document_id, "processing")
+            # No document status update - documents table is immutable
 
     @pytest.mark.asyncio
     async def test_parse_and_redact_success(self):
@@ -690,40 +647,50 @@ class TestHelperFunctions:
 
         mock_supabase = Mock()
 
-        with patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        result = await _finalize_success(
+            mock_supabase,
+            document_id,
+            extraction_id,
+            0.88,
+        )
 
-            result = await _finalize_success(
-                mock_supabase,
-                document_id,
-                extraction_id,
-                0.88,
-            )
-
-            assert result["status"] == "ready"
-            assert result["extraction_id"] == str(extraction_id)
-            assert result["overall_confidence"] == 0.88
-            assert result["error"] is None
-            mock_update.assert_called_once_with(mock_supabase, document_id, "ready")
+        assert result["status"] == "ready"
+        assert result["extraction_id"] == str(extraction_id)
+        assert result["overall_confidence"] == 0.88
+        assert result["error"] is None
+        # No document status update - extraction record status is source of truth
 
     @pytest.mark.asyncio
     async def test_finalize_failure(self):
-        """Test _finalize_failure creates correct result."""
+        """Test _finalize_failure creates failed extraction record."""
         from src.extraction.pipeline import _finalize_failure
 
         document_id = uuid4()
+        tenant_id = uuid4()
+        extraction_id = uuid4()
         error = Exception("Test error")
 
-        mock_supabase = Mock()
+        mock_document = {
+            "id": str(document_id),
+            "tenant_id": str(tenant_id),
+        }
 
-        with patch("src.extraction.pipeline.update_document_status", new_callable=AsyncMock) as mock_update:
+        mock_supabase = Mock()
+        mock_supabase.table.return_value.insert.return_value.execute.return_value.data = [
+            {"id": str(extraction_id)}
+        ]
+
+        with patch("src.extraction.pipeline.get_document", new_callable=AsyncMock) as mock_get:
+            mock_get.return_value = mock_document
 
             result = await _finalize_failure(mock_supabase, document_id, error)
 
             assert result["status"] == "failed"
-            assert result["extraction_id"] is None
+            assert result["extraction_id"] == str(extraction_id)
             assert result["overall_confidence"] == 0.0
-            assert result["error"] == "Test error"
-            mock_update.assert_called_once()
+            assert "Test error" in result["error"]
+            # Verify failed extraction record was created
+            mock_supabase.table.assert_called_with("extractions")
 
 
 class TestPipelineEdgeCases:
