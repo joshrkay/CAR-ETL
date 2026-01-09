@@ -11,6 +11,7 @@ Features:
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 from datetime import datetime, timedelta
@@ -645,5 +646,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    import os
     asyncio.run(main())
