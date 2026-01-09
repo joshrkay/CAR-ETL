@@ -328,3 +328,84 @@ class TestAuthRateLimiter:
             # RateLimitError should always propagate
             with pytest.raises(RateLimitError):
                 limiter.check_rate_limit("192.168.1.1")
+
+    def test_attempt_count_none_defaults_to_zero(self, mock_config, mock_supabase):
+        """Test that None attempt_count defaults to 0."""
+        with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
+            limiter = AuthRateLimiter(mock_config)
+
+            # Mock record with None attempt_count
+            mock_execute = MagicMock()
+            mock_execute.data = [
+                {
+                    "id": "record-123",
+                    "ip_address": "192.168.1.1",
+                    "attempt_count": None,  # None value
+                    "window_start": datetime.utcnow().isoformat(),
+                }
+            ]
+            mock_supabase.table.return_value.select.return_value.eq.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = (
+                mock_execute
+            )
+
+            # Should not raise (defaults to 0)
+            limiter.check_rate_limit("192.168.1.1")
+
+            # Verify update was called with incremented count from 0
+            mock_supabase.table.return_value.update.assert_called_once()
+            call_args = mock_supabase.table.return_value.update.call_args[0][0]
+            assert call_args["attempt_count"] == 1
+
+    def test_attempt_count_invalid_string_defaults_to_zero(self, mock_config, mock_supabase):
+        """Test that invalid string attempt_count defaults to 0."""
+        with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
+            limiter = AuthRateLimiter(mock_config)
+
+            # Mock record with invalid string attempt_count
+            mock_execute = MagicMock()
+            mock_execute.data = [
+                {
+                    "id": "record-123",
+                    "ip_address": "192.168.1.1",
+                    "attempt_count": "invalid",  # Non-numeric string
+                    "window_start": datetime.utcnow().isoformat(),
+                }
+            ]
+            mock_supabase.table.return_value.select.return_value.eq.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = (
+                mock_execute
+            )
+
+            # Should not raise (defaults to 0)
+            limiter.check_rate_limit("192.168.1.1")
+
+            # Verify update was called with incremented count from 0
+            mock_supabase.table.return_value.update.assert_called_once()
+            call_args = mock_supabase.table.return_value.update.call_args[0][0]
+            assert call_args["attempt_count"] == 1
+
+    def test_attempt_count_numeric_string_converts_correctly(self, mock_config, mock_supabase):
+        """Test that numeric string attempt_count is converted correctly."""
+        with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
+            limiter = AuthRateLimiter(mock_config)
+
+            # Mock record with numeric string attempt_count
+            mock_execute = MagicMock()
+            mock_execute.data = [
+                {
+                    "id": "record-123",
+                    "ip_address": "192.168.1.1",
+                    "attempt_count": "3",  # Numeric string
+                    "window_start": datetime.utcnow().isoformat(),
+                }
+            ]
+            mock_supabase.table.return_value.select.return_value.eq.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = (
+                mock_execute
+            )
+
+            # Should not raise
+            limiter.check_rate_limit("192.168.1.1")
+
+            # Verify update was called with incremented count from 3
+            mock_supabase.table.return_value.update.assert_called_once()
+            call_args = mock_supabase.table.return_value.update.call_args[0][0]
+            assert call_args["attempt_count"] == 4
