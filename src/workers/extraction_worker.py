@@ -489,16 +489,16 @@ class ExtractionWorker:
             update_data = {"status": status}
 
             if increment_attempts:
-                # Use Supabase RPC to increment atomically
-                # For now, fetch current value and increment
-                current = (
-                    self.supabase.table("processing_queue")
-                    .select("attempts")
-                    .eq("id", item_id)
-                    .execute()
-                )
-                if current.data:
-                    update_data["attempts"] = current.data[0]["attempts"] + 1
+                # Use Supabase RPC to increment attempts atomically to avoid
+                # race conditions between concurrent workers.
+                # The RPC should perform something like:
+                #   UPDATE processing_queue
+                #   SET attempts = attempts + 1
+                #   WHERE id = <item_id>;
+                self.supabase.rpc(
+                    "increment_processing_queue_attempts",
+                    {"item_id": str(item_id)},
+                ).execute()
 
             if last_error is not None:
                 update_data["last_error"] = last_error
