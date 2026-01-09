@@ -7,7 +7,7 @@ Enforces tenant isolation and encrypts sensitive credentials.
 import logging
 from typing import Annotated, Optional, List, Dict, Any
 from uuid import UUID, uuid4
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from pydantic import BaseModel, Field
@@ -147,7 +147,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if "access_token" in decrypted:
         try:
             decrypted["access_token"] = decrypt_value(decrypted["access_token"])
-        except ValueError as e:
+        except ValueError:
             logger.error("Failed to decrypt access_token", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -157,7 +157,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
     if "refresh_token" in decrypted:
         try:
             decrypted["refresh_token"] = decrypt_value(decrypted["refresh_token"])
-        except ValueError as e:
+        except ValueError:
             logger.error("Failed to decrypt refresh_token", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -294,7 +294,6 @@ async def oauth_callback(
     """
     Handle OAuth callback and store encrypted tokens (authenticated version).
     """
-    request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
     return await _handle_oauth_callback(request, code, state, tenant_id, supabase)
 
@@ -386,7 +385,7 @@ async def _handle_oauth_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "OAUTH_ERROR", "message": str(e)},
         )
-    except Exception as e:
+    except Exception:
         logger.error("Unexpected error in OAuth callback", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -431,13 +430,6 @@ async def oauth_callback_public(
                 "message": "Invalid or expired state parameter",
             },
         )
-    
-    from src.dependencies import get_supabase_client
-    from src.auth.client import create_user_client
-    
-    supabase = create_user_client(
-        access_token="",  # Will use service client for this operation
-    )
     
     return await _handle_oauth_callback(
         request=request,

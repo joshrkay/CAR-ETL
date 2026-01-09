@@ -14,6 +14,7 @@ from src.api.routes import documents as document_routes
 from src.api.routes import upload as upload_routes
 from src.api.routes import connectors as connector_routes
 from src.api.routes.webhooks import email as webhook_email_routes
+from src.api.routes.connectors import oauth_callback_public
 from src.middleware.audit import AuditMiddleware
 from src.middleware.request_id import RequestIDMiddleware
 from src.middleware.error_handler import ErrorHandlerMiddleware
@@ -110,7 +111,6 @@ app.include_router(connector_routes.router)
 app.include_router(webhook_email_routes.router)
 
 # Public OAuth callback route (outside router prefix)
-from src.api.routes.connectors import oauth_callback_public
 app.add_api_route(
     "/oauth/microsoft/callback",
     oauth_callback_public,

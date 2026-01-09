@@ -6,7 +6,6 @@ Does NOT download file bytes - downstream will fetch.
 """
 import logging
 from typing import Dict, Any, List, Optional, Set
-from datetime import datetime, timezone
 from uuid import UUID
 
 from src.connectors.google_drive.client import (
