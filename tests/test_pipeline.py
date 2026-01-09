@@ -6,7 +6,7 @@ for the full workflow.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, AsyncMock, patch
 from uuid import UUID, uuid4
 from datetime import datetime
 from typing import Dict, Any
