@@ -311,7 +311,7 @@ async def store_document_metadata(
         filename: Original filename
         mime_type: Validated MIME type
         file_size: File size in bytes
-        description: Optional document description
+        description: Optional document description (stored in source_path)
         
     Raises:
         Exception: If database insert fails
@@ -319,15 +319,20 @@ async def store_document_metadata(
     # Note: file_hash would be calculated and stored in a real implementation
     # For now, using a placeholder to satisfy schema requirements
     
+    # Generate storage path (placeholder - in production, upload to S3)
+    storage_path = f"uploads/{tenant_id}/{document_id}/{filename}"
+    
     document_data = {
         "id": document_id,
         "tenant_id": tenant_id,
         "uploaded_by": user_id,
-        "filename": filename,
-        "mime_type": mime_type,
-        "file_size": file_size,
         "file_hash": f"placeholder-{document_id}",  # TODO: Calculate actual hash
-        "description": description,
+        "storage_path": storage_path,
+        "original_filename": filename,
+        "mime_type": mime_type,
+        "file_size_bytes": file_size,
+        "source_type": "upload",
+        "source_path": description,  # Store description in source_path if provided
         "status": "pending",
     }
     

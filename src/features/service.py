@@ -122,7 +122,7 @@ class FeatureFlagService:
             self._set_cached_value(flag_name, result)
             return result
             
-        except Exception as e:
+        except Exception:
             # On error, return False (fail closed)
             # In production, you might want to log this
             return False
@@ -176,7 +176,7 @@ class FeatureFlagService:
             
             return result
             
-        except Exception as e:
+        except Exception:
             # On error, return empty dict
             return {}
     

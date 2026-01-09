@@ -18,6 +18,7 @@ from src.services.email_rate_limiter import EmailRateLimiter
 from src.services.resend_verifier import ResendVerifier
 from src.dependencies import get_service_client
 from src.exceptions import RateLimitError, ValidationError, NotFoundError
+from src.utils.pii_protection import hash_email
 from supabase import Client
 
 logger = logging.getLogger(__name__)
@@ -151,7 +152,7 @@ async def handle_inbound_email(
             "Could not extract tenant slug from recipient",
             extra={
                 "request_id": request_id,
-                "to_address": to_address,
+                "to_address_hash": hash_email(to_address),
             },
         )
         raise HTTPException(
@@ -214,7 +215,7 @@ async def handle_inbound_email(
             extra={
                 "request_id": request_id,
                 "tenant_slug": tenant_slug,
-                "from_address": parsed_email.from_address,
+                "from_address_hash": hash_email(parsed_email.from_address),
             },
         )
         raise HTTPException(
@@ -341,18 +342,22 @@ async def get_tenant_id_by_slug(supabase: Client, slug: str) -> Optional[UUID]:
     """
     Get tenant ID by slug.
     
+    Only returns tenants with status 'active' to prevent ingestion into
+    inactive or suspended accounts.
+    
     Args:
         supabase: Supabase client
         slug: Tenant slug
         
     Returns:
-        Tenant ID or None if not found
+        Tenant ID or None if not found or not active
     """
     try:
         result = (
             supabase.table("tenants")
             .select("id")
             .eq("slug", slug)
+            .eq("status", "active")
             .maybe_single()
             .execute()
         )

@@ -376,15 +376,20 @@ async def store_document_metadata(
     Raises:
         Exception: If database insert fails
     """
+    # Generate storage path (placeholder - in production, upload to S3)
+    storage_path = f"uploads/{tenant_id}/{document_id}/{filename}"
+    
     document_data = {
         "id": document_id,
         "tenant_id": tenant_id,
         "uploaded_by": user_id,
-        "filename": filename,
-        "mime_type": mime_type,
-        "file_size": file_size,
         "file_hash": file_hash,
-        "description": f"Bulk upload batch: {batch_id}",
+        "storage_path": storage_path,
+        "original_filename": filename,
+        "mime_type": mime_type,
+        "file_size_bytes": file_size,
+        "source_type": "upload",
+        "source_path": f"bulk_upload_batch:{batch_id}",
         "status": "pending",
     }
     
