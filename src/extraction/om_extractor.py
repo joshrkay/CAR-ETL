@@ -2,6 +2,8 @@
 OM field extraction with marketing-aware confidence scoring.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os
@@ -20,7 +22,7 @@ from src.extraction.om_confidence import (
     OMExtractedField,
     OM_FIELDS,
 )
-from src.extraction.om_fields import OMFieldDefinition, OMFieldType
+from src.extraction.om_fields import OMFieldDefinition
 from src.extraction.om_prompts import build_om_extraction_prompt
 from src.services.redaction import presidio_redact
 
@@ -40,7 +42,7 @@ class OMExtractionResult(BaseModel):
 class OMExtractor:
     """Extracts structured OM fields using RAG + LLM."""
 
-    def __init__(self, api_key: str | None = None, model: str = DEFAULT_LLM_MODEL):
+    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_LLM_MODEL):
         if AsyncOpenAI is None:
             raise ImportError("openai package is required for OM extraction. Please install openai>=1.0.0.")
         api_key = api_key or OPENAI_API_KEY
