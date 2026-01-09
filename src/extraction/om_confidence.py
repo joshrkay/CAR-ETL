@@ -2,7 +2,9 @@
 Offering Memorandum confidence calculation.
 """
 
-from typing import Dict, List
+from __future__ import annotations
+
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -13,10 +15,10 @@ class OMExtractedField(BaseModel):
     """Extracted OM field with metadata for scoring."""
 
     name: str
-    value: object | None
+    value: Optional[object]
     confidence: float = Field(..., ge=0.0, le=1.0)
-    source_section: str | None = None
-    value_type: str | None = None
+    source_section: Optional[str] = None
+    value_type: Optional[str] = None
 
 
 # Source and value factors
@@ -86,10 +88,10 @@ def check_om_consistency(fields: Dict[str, float]) -> Dict[str, float]:
 def calculate_om_field_confidence(
     field_name: str,
     base_confidence: float,
-    source_section: str | None,
-    value_type: str | None,
+    source_section: Optional[str],
+    value_type: Optional[str],
     fields: Dict[str, float],
-    field_definitions: Dict[str, OMFieldDefinition] | None = None,
+    field_definitions: Optional[Dict[str, OMFieldDefinition]] = None,
 ) -> float:
     """
     Calculate marketing-aware confidence for a single field.
@@ -115,7 +117,7 @@ def calculate_om_field_confidence(
 
 
 def calculate_om_document_confidence(
-    fields: List[OMExtractedField], field_definitions: Dict[str, OMFieldDefinition] | None = None
+    fields: List[OMExtractedField], field_definitions: Optional[Dict[str, OMFieldDefinition]] = None
 ) -> float:
     """
     Compute document-level confidence with critical field emphasis.
