@@ -104,7 +104,7 @@ class Retriever:
 
         result = self.client.rpc("match_document_chunks", params).execute()
 
-        if not result.data:
+        if result.data is None or result.data == []:
             return []
 
         chunks = []
