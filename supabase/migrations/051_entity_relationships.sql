@@ -5,14 +5,25 @@
 CREATE TABLE IF NOT EXISTS public.entity_relationships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  from_entity_id UUID NOT NULL REFERENCES public.entities(id) ON DELETE CASCADE,
-  to_entity_id UUID NOT NULL REFERENCES public.entities(id) ON DELETE CASCADE,
+  from_entity_id UUID NOT NULL,
+  to_entity_id UUID NOT NULL,
   relationship_type TEXT NOT NULL,
   attributes JSONB DEFAULT '{}',
   start_date DATE,
   end_date DATE,
   source_document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
-  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  -- Composite foreign keys to enforce tenant isolation
+  -- Ensures from_entity belongs to the same tenant as the relationship
+  CONSTRAINT fk_from_entity_tenant 
+    FOREIGN KEY (from_entity_id, tenant_id) 
+    REFERENCES public.entities(id, tenant_id) 
+    ON DELETE CASCADE,
+  -- Ensures to_entity belongs to the same tenant as the relationship
+  CONSTRAINT fk_to_entity_tenant 
+    FOREIGN KEY (to_entity_id, tenant_id) 
+    REFERENCES public.entities(id, tenant_id) 
+    ON DELETE CASCADE
 );
 
 -- Indexes for common query patterns
