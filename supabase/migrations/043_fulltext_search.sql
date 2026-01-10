@@ -25,7 +25,7 @@ BEGIN
     dc.page_numbers,
     ts_rank(dc.fts, websearch_to_tsquery('english', query_text)) as rank
   FROM document_chunks dc
-  WHERE dc.tenant_id = current_tenant_id
+  WHERE dc.tenant_id = filter_tenant_id
     AND dc.fts @@ websearch_to_tsquery('english', query_text)
   ORDER BY rank DESC
   LIMIT match_count;
