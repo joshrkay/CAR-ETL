@@ -212,7 +212,7 @@ class HealthChecker:
         
         for i, result in enumerate(results):
             component = component_names[i]
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 checks[component] = HealthCheckResult(
                     status="down",
                     latency_ms=0,
