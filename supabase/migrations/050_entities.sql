@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.entities (
   attributes JSONB NOT NULL DEFAULT '{}',
   source_document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
   confidence FLOAT CHECK (confidence BETWEEN 0 AND 1),
-  status TEXT DEFAULT 'active',
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive')),
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
@@ -57,15 +57,14 @@ WITH CHECK (tenant_id = public.tenant_id());
 CREATE POLICY "Service role manages entities" 
 ON public.entities 
 FOR ALL
+TO service_role
 USING (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 )
 WITH CHECK (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 );
 
 -- Grant direct permissions to service_role

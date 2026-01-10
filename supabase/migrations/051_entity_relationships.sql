@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.entity_relationships (
   from_entity_id UUID NOT NULL REFERENCES public.entities(id) ON DELETE CASCADE,
   to_entity_id UUID NOT NULL REFERENCES public.entities(id) ON DELETE CASCADE,
   relationship_type TEXT NOT NULL,
-  attributes JSONB DEFAULT '{}',
+  attributes JSONB NOT NULL DEFAULT '{}',
   start_date DATE,
   end_date DATE,
   source_document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS public.entity_relationships (
       OR start_date IS NULL
       OR end_date >= start_date
     ),
+  CONSTRAINT chk_entity_relationships_no_self_reference
+    CHECK (from_entity_id != to_entity_id),
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
@@ -59,15 +61,14 @@ WITH CHECK (tenant_id = public.tenant_id());
 CREATE POLICY "Service role manages relationships" 
 ON public.entity_relationships 
 FOR ALL
+TO service_role
 USING (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 )
 WITH CHECK (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 );
 
 -- Grant direct permissions to service_role
