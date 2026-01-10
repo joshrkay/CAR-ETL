@@ -20,8 +20,8 @@ class RAGPipeline:
 
     Pipeline flow:
     1. Embed question
-    2. Retrieve top-k chunks (k=20)
-    3. Re-rank to top-5
+    2. Retrieve candidate chunks (up to a fixed maximum, e.g. 20)
+    3. Re-rank and select top-N chunks based on request.max_chunks (configurable, typically 1–20)
     4. Build LLM context
     5. Generate answer with citations
     6. Validate citations
