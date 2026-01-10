@@ -6,6 +6,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_fts ON document_chunks USING GIN(fts);
 
 CREATE OR REPLACE FUNCTION search_chunks_keyword(
   query_text TEXT,
+  filter_tenant_id UUID DEFAULT auth.tenant_id(),
   match_count INT DEFAULT 20
 )
 RETURNS TABLE (
@@ -15,12 +16,7 @@ RETURNS TABLE (
   page_numbers INT[],
   rank FLOAT
 ) AS $$
-DECLARE
-  current_tenant_id UUID;
 BEGIN
-  -- Derive tenant ID from JWT claims for security
-  current_tenant_id := public.tenant_id();
-  
   RETURN QUERY
   SELECT
     dc.id,

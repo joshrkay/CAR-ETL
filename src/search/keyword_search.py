@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
 from uuid import UUID
 
 from supabase import Client
@@ -37,27 +37,40 @@ class KeywordSearchService:
         """
         self.client = supabase_client
 
-    def search_chunks(
+    async def search_chunks(
         self,
         query_text: str,
         match_count: int = 20,
+        tenant_id: Optional[UUID] = None,
     ) -> List[KeywordSearchResult]:
         """
         Search document chunks using PostgreSQL full-text search.
 
-        The tenant_id is automatically derived from the JWT claims by the
-        database function for security.
-
         Args:
-            query_text: Query string for full-text search
-            match_count: Maximum number of matches to return
+            query_text: Query string for full-text search.
+            match_count: Maximum number of matches to return.
+            tenant_id: Optional tenant ID used to scope results when this service
+                is called with a trusted service_role Supabase client.
 
         Returns:
-            List of keyword search results
+            List of keyword search results.
+
+        Security:
+            - When using a client authenticated with a user JWT, callers MUST pass
+              ``tenant_id=None``. In that case, tenant scoping must be enforced by
+              the database layer based on claims in the JWT, and any
+              ``filter_tenant_id`` parameter sent to the database should be
+              ignored or validated against the JWT.
+            - The ``tenant_id`` parameter MUST NOT be taken from untrusted
+              end-user input or used to "switch tenants" on behalf of a user.
+              It is intended only for backend-internal use with service_role
+              credentials, after the application has performed appropriate
+              authorization checks to ensure the caller is allowed to access
+              the specified tenant.
 
         Raises:
-            ValueError: If query_text is empty or match_count < 1
-            Exception: If search fails
+            ValueError: If query_text is empty or match_count < 1.
+            Exception: If search fails.
         """
         if not query_text or not query_text.strip():
             raise ValueError("query_text must be a non-empty string")
@@ -70,6 +83,9 @@ class KeywordSearchService:
             "match_count": match_count,
         }
 
+        if tenant_id is not None:
+            params["filter_tenant_id"] = str(tenant_id)
+
         try:
             result = self.client.rpc("search_chunks_keyword", params).execute()
             rows = result.data or []
@@ -77,6 +93,7 @@ class KeywordSearchService:
             logger.error(
                 "Keyword search failed",
                 extra={
+                    "tenant_id": str(tenant_id) if tenant_id else None,
                     "match_count": match_count,
                     "error": str(exc),
                 },
@@ -85,7 +102,7 @@ class KeywordSearchService:
 
         return [self._parse_result(row) for row in rows]
 
-    def _parse_result(self, row: Dict[str, object]) -> KeywordSearchResult:
+    def _parse_result(self, row: dict[str, object]) -> KeywordSearchResult:
         """Parse a search result row into a KeywordSearchResult."""
         return KeywordSearchResult(
             id=UUID(str(row["id"])),

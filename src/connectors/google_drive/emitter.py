@@ -146,3 +146,7 @@ class SupabaseIngestionEmitter(IngestionEmitter):
                     },
                     exc_info=True,
                 )
+
+
+# Alias for backward compatibility and clarity in tests
+GoogleDriveEventEmitter = SupabaseIngestionEmitter

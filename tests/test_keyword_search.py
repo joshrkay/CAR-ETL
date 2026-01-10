@@ -7,19 +7,13 @@ from uuid import UUID, uuid4
 
 import pytest
 from supabase import Client
-import importlib.util
 
 project_root = Path(__file__).resolve().parent.parent
-keyword_search_path = project_root / "src" / "search" / "keyword_search.py"
-spec = importlib.util.spec_from_file_location(
-    "src.search.keyword_search",
-    keyword_search_path,
-)
-keyword_search_module = importlib.util.module_from_spec(spec)
-assert spec.loader is not None  # for type checkers and safety
-spec.loader.exec_module(keyword_search_module)
-KeywordSearchResult = keyword_search_module.KeywordSearchResult
-KeywordSearchService = keyword_search_module.KeywordSearchService
+sys.path.insert(0, str(project_root))
+
+from src.search.keyword_search import KeywordSearchResult, KeywordSearchService
+
+
 class TestKeywordSearchService:
     """Unit tests for KeywordSearchService."""
 
@@ -31,8 +25,9 @@ class TestKeywordSearchService:
         client.execute = Mock(return_value=Mock(data=[]))
         return client
 
-    def test_search_chunks_basic_query(self, mock_supabase_client):
-        """Search should execute with basic query parameters."""
+    def test_search_chunks_with_tenant_id(self, mock_supabase_client):
+        """Search should include tenant filter when provided."""
+        tenant_id = uuid4()
         document_id = uuid4()
         mock_supabase_client.rpc.return_value.execute.return_value.data = [
             {
@@ -45,9 +40,12 @@ class TestKeywordSearchService:
         ]
 
         service = KeywordSearchService(mock_supabase_client)
-        results = service.search_chunks(
-            query_text="lease terms",
-            match_count=5,
+        results = asyncio.run(
+            service.search_chunks(
+                query_text="lease terms",
+                match_count=5,
+                tenant_id=tenant_id,
+            )
         )
 
         assert len(results) == 1
@@ -58,15 +56,16 @@ class TestKeywordSearchService:
             {
                 "query_text": "lease terms",
                 "match_count": 5,
+                "filter_tenant_id": str(tenant_id),
             },
         )
 
-    def test_search_chunks_without_results(self, mock_supabase_client):
-        """Search should return empty list when no matches found."""
+    def test_search_chunks_without_tenant_id(self, mock_supabase_client):
+        """Search should omit tenant filter when not provided."""
         mock_supabase_client.rpc.return_value.execute.return_value.data = []
 
         service = KeywordSearchService(mock_supabase_client)
-        results = service.search_chunks(query_text="rent", match_count=3)
+        results = asyncio.run(service.search_chunks(query_text="rent", match_count=3))
 
         assert results == []
         mock_supabase_client.rpc.assert_called_once_with(
@@ -91,7 +90,7 @@ class TestKeywordSearchService:
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(ValueError, match="match_count must be >= 1"):
-            service.search_chunks(query_text="terms", match_count=0)
+            asyncio.run(service.search_chunks(query_text="terms", match_count=0))
 
     def test_parse_result_defaults_page_numbers(self, mock_supabase_client):
         """Parse should default page_numbers to empty list when missing."""
