@@ -22,7 +22,11 @@ def main() -> int:
     sys.path.insert(0, str(ROOT))
     from tests.regression_suite import build_pytest_args  # noqa: PLC0415
 
-    pytest_args = build_pytest_args(args.pytest_args)
+    raw_pytest_args = args.pytest_args
+    if raw_pytest_args and raw_pytest_args[0] == "--":
+        raw_pytest_args = raw_pytest_args[1:]
+
+    pytest_args = build_pytest_args(raw_pytest_args)
     command = [sys.executable, "-m", "pytest", *pytest_args]
     return subprocess.call(command)
 
