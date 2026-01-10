@@ -261,8 +261,16 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
     execute_call_count = {"tenants": 0}
     tenant_insert_data = {}
 
+    # Cache mock tables so test can override them later
+    mock_tables = {}
+
     # Configure table chain for tenant operations
     def table_side_effect(table_name):
+        # Return cached mock if it exists (allows test to override)
+        if table_name in mock_tables:
+            return mock_tables[table_name]
+
+        # Create new mock table
         mock_table = Mock()
         mock_table.select.return_value = mock_table
         mock_table.update.return_value = mock_table
@@ -318,6 +326,8 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
             mock_table.insert.return_value = mock_table
             mock_table.execute.return_value = Mock(data=[])
 
+        # Cache the mock for reuse
+        mock_tables[table_name] = mock_table
         return mock_table
 
     mock_client.table.side_effect = table_side_effect
