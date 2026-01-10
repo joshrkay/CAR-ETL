@@ -10,6 +10,13 @@ import logging
 import os
 from typing import Any, Dict, Optional
 
+AsyncOpenAIClient: type[Any] | None
+try:
+    from openai import AsyncOpenAI as _AsyncOpenAIClient
+except ImportError:  # pragma: no cover - handled in runtime environments without openai
+    AsyncOpenAIClient = None
+else:
+    AsyncOpenAIClient = _AsyncOpenAIClient
 from pydantic import BaseModel, Field
 
 from src.extraction.cre_fields import get_field_config, get_field_definitions_for_prompt

@@ -73,6 +73,11 @@ class OMCalibrationTracker:
         get_extraction_fn: Callable[[UUID], Awaitable[Any]],
         store_calibration_fn: Callable[[CalibrationRecord], Awaitable[None]],
     ):
+        # Defensive runtime validation to guard against None/non-callable values
+        if get_extraction_fn is None or not callable(get_extraction_fn):
+            raise ValueError("get_extraction_fn must be a callable that takes a UUID and returns an awaitable.")
+        if store_calibration_fn is None or not callable(store_calibration_fn):
+            raise ValueError("store_calibration_fn must be a callable that takes a CalibrationRecord and returns an awaitable.")
         self.get_extraction_fn = get_extraction_fn
         self.store_calibration_fn = store_calibration_fn
 
