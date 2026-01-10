@@ -1,7 +1,7 @@
 """Pydantic models for RAG pipeline."""
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class ChunkMatch(BaseModel):
@@ -9,9 +9,9 @@ class ChunkMatch(BaseModel):
     id: UUID = Field(..., description="Chunk UUID")
     document_id: UUID = Field(..., description="Document UUID")
     content: str = Field(..., description="Chunk content (redacted)")
-    page_numbers: List[int] = Field(default_factory=list, description="Pages where chunk appears")
+    page_numbers: list[int] = Field(default_factory=list, description="Pages where chunk appears")
     similarity: float = Field(..., ge=0.0, le=1.0, description="Cosine similarity score")
-    section_header: Optional[str] = Field(None, description="Section header if available")
+    section_header: str | None = Field(None, description="Section header if available")
 
 
 class Citation(BaseModel):
@@ -25,7 +25,7 @@ class Citation(BaseModel):
 class AskRequest(BaseModel):
     """Request to ask a question about documents."""
     question: str = Field(..., min_length=1, description="Question to answer")
-    document_ids: Optional[List[UUID]] = Field(
+    document_ids: list[UUID] | None = Field(
         None, description="Optional filter to specific documents"
     )
     max_chunks: int = Field(
@@ -36,13 +36,13 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     """Response to a document question."""
     answer: str = Field(..., description="Generated answer with citations")
-    citations: List[Citation] = Field(
+    citations: list[Citation] = Field(
         default_factory=list, description="Citations backing the answer"
     )
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Confidence in the answer"
     )
     chunks_used: int = Field(..., ge=0, description="Number of chunks used")
-    suggestion: Optional[str] = Field(
+    suggestion: str | None = Field(
         None, description="Suggestion for improving query if no answer"
     )

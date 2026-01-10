@@ -2,7 +2,7 @@
 Pro forma validation for OM assumptions.
 """
 
-from typing import List, Dict, Any
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -17,7 +17,7 @@ class ValidationWarning(BaseModel):
 class ProFormaValidator:
     """Validate reasonableness of pro forma assumptions."""
 
-    MARKET_BENCHMARKS: Dict[str, Dict[str, Any]] = {
+    MARKET_BENCHMARKS: dict[str, dict[str, Any]] = {
         "rent_growth_annual": {"min": 0.0, "max": 0.05, "typical": 0.03},
         "expense_growth_annual": {"min": 0.02, "max": 0.04, "typical": 0.025},
         "cap_rate_compression": {"min": 0, "max": 0.0075, "typical": 0.0025},
@@ -25,8 +25,8 @@ class ProFormaValidator:
         "lease_up_months": {"min": 6, "max": 36, "typical": 18},
     }
 
-    def validate(self, om_data: Dict[str, Any]) -> List[ValidationWarning]:
-        warnings: List[ValidationWarning] = []
+    def validate(self, om_data: dict[str, Any]) -> list[ValidationWarning]:
+        warnings: list[ValidationWarning] = []
 
         rent_growth = om_data.get("rent_growth_assumption")
         if rent_growth is not None and rent_growth > self.MARKET_BENCHMARKS["rent_growth_annual"]["max"]:

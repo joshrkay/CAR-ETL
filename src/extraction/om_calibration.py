@@ -3,7 +3,8 @@ Calibration utilities for OM extraction vs actual closing data.
 """
 
 import logging
-from typing import Awaitable, Callable, Dict, Any, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -13,16 +14,16 @@ logger = logging.getLogger(__name__)
 
 class CalibrationRecord(BaseModel):
     extraction_id: UUID
-    field_variances: Dict[str, float]
+    field_variances: dict[str, float]
     extraction_confidence: float = Field(..., ge=0.0, le=1.0)
 
 
 def _safe_relative_variance(
     field_name: str,
     actual: float,
-    baseline: Optional[float],
+    baseline: float | None,
     extraction_id: UUID,
-) -> Optional[float]:
+) -> float | None:
     """
     Compute relative variance while guarding against missing/zero baselines.
     """
@@ -50,9 +51,9 @@ def _safe_relative_variance(
 def _safe_difference(
     field_name: str,
     actual: float,
-    baseline: Optional[float],
+    baseline: float | None,
     extraction_id: UUID,
-) -> Optional[float]:
+) -> float | None:
     """
     Compute difference while guarding against missing baselines.
     """
@@ -88,7 +89,7 @@ class OMCalibrationTracker:
         """
         extraction = await self.get_extraction_fn(om_extraction_id)
 
-        field_variances: Dict[str, float] = {}
+        field_variances: dict[str, float] = {}
 
         price_var = _safe_relative_variance(
             "asking_price",

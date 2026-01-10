@@ -1,19 +1,19 @@
 """Entity resolution and merge utilities."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import logging
-from typing import Optional, cast
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import cast
 from uuid import UUID
 
 from pydantic import BaseModel
-from supabase import Client
 
 from src.audit.logger import AuditLogger
 from src.entities.matching import EntityRecord, JsonValue, evaluate_entity_match
 from src.exceptions import NotFoundError
 from src.services.redaction import presidio_redact
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -173,7 +173,7 @@ def update_entity_record(
     payload = {
         "canonical_name": redacted_name,
         "attributes": redacted_attributes,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
     result = (
         supabase.table("entities")
@@ -197,7 +197,7 @@ def mark_entity_merged(
     merged_attributes = dict(duplicate.attributes)
     merged_attributes["merge_status"] = "merged"
     merged_attributes["merged_into_id"] = str(canonical_id)
-    merged_attributes["merged_at"] = datetime.now(timezone.utc).isoformat()
+    merged_attributes["merged_at"] = datetime.now(UTC).isoformat()
 
     _, redacted_attributes = redact_entity_payload(
         duplicate.canonical_name,
@@ -250,7 +250,7 @@ def record_duplicate_resolution(
         "match_score": match_score,
         "status": "merged",
         "reviewed_by": str(reviewed_by),
-        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_at": datetime.now(UTC).isoformat(),
     }
     result = supabase.table("entity_duplicates").insert(payload).execute()
     if result.data is None:
@@ -258,8 +258,8 @@ def record_duplicate_resolution(
 
 
 def _is_newer_record(
-    candidate: Optional[datetime],
-    baseline: Optional[datetime],
+    candidate: datetime | None,
+    baseline: datetime | None,
 ) -> bool:
     if candidate and baseline:
         return candidate >= baseline
@@ -295,7 +295,7 @@ async def merge_entities(
     source_entity_id: UUID,
     target_entity_id: UUID,
     reviewed_by: UUID,
-    audit_logger: Optional[AuditLogger] = None,
+    audit_logger: AuditLogger | None = None,
 ) -> MergeResult:
     """Merge two entities and update references."""
     source_entity = fetch_entity_record(supabase, tenant_id, source_entity_id)

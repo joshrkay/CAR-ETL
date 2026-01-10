@@ -1,16 +1,14 @@
 """Tests for effective rent calculation service and API."""
-import pytest
-from uuid import uuid4
 from unittest.mock import Mock
-from datetime import datetime
+from uuid import uuid4
 
-from src.services.effective_rent import EffectiveRentService
+import pytest
+
 from src.db.models.effective_rent import (
-    TenantEffectiveRent,
-    RentComponents,
     EffectiveRentListResponse,
     EffectiveRentSummary,
 )
+from src.services.effective_rent import EffectiveRentService
 
 
 class TestEffectiveRentService:

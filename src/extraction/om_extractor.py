@@ -7,16 +7,16 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from src.extraction.normalizers import normalize_field_value
 from src.extraction.om_confidence import (
-    calculate_om_field_confidence,
-    calculate_om_document_confidence,
-    OMExtractedField,
     OM_FIELDS,
+    OMExtractedField,
+    calculate_om_document_confidence,
+    calculate_om_field_confidence,
 )
 from src.extraction.om_fields import OMFieldDefinition
 from src.extraction.om_prompts import build_om_extraction_prompt
@@ -37,16 +37,16 @@ DEFAULT_LLM_MODEL = "gpt-4o-mini"
 
 
 class OMExtractionResult(BaseModel):
-    fields: Dict[str, OMExtractedField]
+    fields: dict[str, OMExtractedField]
     overall_confidence: float = Field(..., ge=0.0, le=1.0)
-    warnings: List[str] = Field(default_factory=list)
-    missing_critical: List[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    missing_critical: list[str] = Field(default_factory=list)
 
 
 class OMExtractor:
     """Extracts structured OM fields using RAG + LLM."""
 
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_LLM_MODEL):
+    def __init__(self, api_key: str | None = None, model: str = DEFAULT_LLM_MODEL):
         if AsyncOpenAIClient is None:
             raise ImportError("openai package is required for OM extraction. Please install openai>=1.0.0.")
         api_key = api_key or OPENAI_API_KEY
@@ -55,7 +55,7 @@ class OMExtractor:
         self.client = AsyncOpenAIClient(api_key=api_key)
         self.model = model
 
-    async def extract_fields(self, document_text: str, rag_snippets: Optional[List[str]] = None) -> OMExtractionResult:
+    async def extract_fields(self, document_text: str, rag_snippets: list[str] | None = None) -> OMExtractionResult:
         """Extract OM fields with marketing-aware scoring."""
         rag_context = "\n\n".join(rag_snippets) if rag_snippets else ""
         combined_text = f"{document_text}\n\nRAG_CONTEXT:\n{rag_context}" if rag_context else document_text
@@ -86,12 +86,12 @@ class OMExtractor:
             logger.error("LLM response not JSON", extra={"content": response.choices[0].message.content})
             raise ValueError("LLM response was not valid JSON") from exc
 
-        extracted_fields: Dict[str, OMExtractedField] = {}
-        flat_values: Dict[str, float] = {}
+        extracted_fields: dict[str, OMExtractedField] = {}
+        flat_values: dict[str, float] = {}
         warnings = payload.get("warnings", []) or []
         missing_critical = payload.get("missing_critical", []) or []
 
-        def _process_section(section: Dict[str, Any]) -> None:
+        def _process_section(section: dict[str, Any]) -> None:
             for fname, meta in section.items():
                 if fname not in OM_FIELDS:
                     continue

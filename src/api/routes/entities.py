@@ -4,7 +4,6 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from supabase import Client
 
 from src.audit.logger import AuditLogger
 from src.auth.decorators import require_permission
@@ -12,6 +11,7 @@ from src.auth.models import AuthContext
 from src.dependencies import get_audit_logger, get_supabase_client
 from src.entities.resolution import merge_entities
 from src.exceptions import NotFoundError
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
