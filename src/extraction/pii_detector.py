@@ -6,7 +6,7 @@ Property addresses, company names, and business contacts are NOT redacted.
 """
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, cast
 from pathlib import Path
 import yaml
 from presidio_analyzer import AnalyzerEngine, RecognizerResult
@@ -15,17 +15,17 @@ logger = logging.getLogger(__name__)
 
 # Load CRE exceptions configuration
 _CONFIG_PATH = Path(__file__).parent.parent.parent / "config" / "pii_patterns.yaml"
-_cre_exceptions: Optional[dict] = None
+_cre_exceptions: Optional[dict[str, object]] = None
 
 
-def _load_cre_exceptions() -> dict:
+def _load_cre_exceptions() -> dict[str, object]:
     """Load CRE exception patterns from configuration."""
     global _cre_exceptions
     if _cre_exceptions is None:
         try:
             with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
-                config = yaml.safe_load(f)
-                _cre_exceptions = config.get("cre_exceptions", {})
+                config = cast(dict[str, object], yaml.safe_load(f) or {})
+                _cre_exceptions = cast(dict[str, object], config.get("cre_exceptions", {}))
         except Exception as e:
             logger.warning(
                 "Failed to load CRE exceptions config, using defaults",
@@ -48,7 +48,7 @@ def _is_property_address(text: str, entity_text: str, context_window: int = 100)
         True if this appears to be a property address
     """
     exceptions = _load_cre_exceptions()
-    patterns = exceptions.get("property_address_patterns", [])
+    patterns = cast(List[str], exceptions.get("property_address_patterns", []))
     
     # Find entity position in text
     entity_pos = text.find(entity_text)
@@ -81,7 +81,7 @@ def _is_company_name(text: str, entity_text: str, context_window: int = 100) -> 
         True if this appears to be a company name
     """
     exceptions = _load_cre_exceptions()
-    patterns = exceptions.get("company_name_patterns", [])
+    patterns = cast(List[str], exceptions.get("company_name_patterns", []))
     
     # Find entity position in text
     entity_pos = text.find(entity_text)
@@ -130,12 +130,12 @@ def _is_business_contact(
         return False
     
     exceptions = _load_cre_exceptions()
-    indicators = exceptions.get("business_contact_context", {}).get(
-        "business_indicators", []
+    business_context = cast(
+        dict[str, List[str]],
+        exceptions.get("business_contact_context", {}),
     )
-    business_domains = exceptions.get("business_contact_context", {}).get(
-        "business_email_domains", []
-    )
+    indicators = business_context.get("business_indicators", [])
+    business_domains = business_context.get("business_email_domains", [])
     
     # Check email domain for business domains
     if entity_type == "EMAIL_ADDRESS" and "@" in entity_text:

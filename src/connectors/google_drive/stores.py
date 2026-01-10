@@ -42,12 +42,12 @@ class SupabaseTokenStore(TokenStore):
             .execute()
         )
         
-        if not result.data:  # type: ignore[union-attr]
+        if not result.data:
             return None
         
         # Type narrowing: result.data is not None after the check above
-        assert result.data is not None  # type: ignore[union-attr]
-        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        assert result.data is not None
+        data = cast(Dict[str, Any], result.data)
         config = cast(Dict[str, Any], data.get("config", {}))
         access_token = config.get("access_token")
         
@@ -78,12 +78,12 @@ class SupabaseTokenStore(TokenStore):
             .execute()
         )
         
-        if not result.data:  # type: ignore[union-attr]
+        if not result.data:
             raise ValueError(f"Connector {connector_id} not found")
         
         # Type narrowing: result.data is not None after the check above
-        assert result.data is not None  # type: ignore[union-attr]
-        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        assert result.data is not None
+        data = cast(Dict[str, Any], result.data)
         config = cast(Dict[str, Any], data.get("config", {}))
         config["access_token"] = access_token
         if refresh_token:
@@ -125,12 +125,12 @@ class SupabaseConnectorConfigStore(ConnectorConfigStore):
             .execute()
         )
         
-        if not result.data:  # type: ignore[union-attr]
+        if not result.data:
             raise ValueError(f"Connector {connector_id} not found")
         
         # Type narrowing: result.data is not None after the check above
-        assert result.data is not None  # type: ignore[union-attr]
-        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        assert result.data is not None
+        data = cast(Dict[str, Any], result.data)
         config = data.get("config", {})
         return cast(Dict[str, Any], config)
     
@@ -249,12 +249,12 @@ class SupabaseSyncStateStore(SyncStateStore):
             .execute()
         )
         
-        if not result.data:  # type: ignore[union-attr]
+        if not result.data:
             raise ValueError(f"Connector {connector_id} not found")
         
         # Type narrowing: result.data is not None after the check above
-        assert result.data is not None  # type: ignore[union-attr]
-        data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        assert result.data is not None
+        data = cast(Dict[str, Any], result.data)
         config = data.get("config", {})
         return cast(Dict[str, Any], config)
     

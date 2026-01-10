@@ -14,6 +14,7 @@ Orchestrates the end-to-end document extraction workflow:
 """
 
 import logging
+from typing import cast
 from datetime import datetime
 from typing import Dict, Any, Optional
 from uuid import UUID
@@ -32,7 +33,7 @@ from src.exceptions import (
     ValidationError,
     ParserError,
 )
-from src.services.error_sanitizer import sanitize_exception, get_loggable_error
+from src.services.error_sanitizer import get_loggable_error
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ async def get_document(supabase: Client, document_id: UUID) -> Dict[str, Any]:
         if not response.data or len(response.data) == 0:
             raise DocumentNotFoundError(f"Document not found: {document_id}")
 
-        document = response.data[0]
+        document = cast(Dict[str, Any], response.data[0])
         logger.info(
             "Document retrieved",
             extra={
@@ -121,7 +122,7 @@ async def download_document(supabase: Client, storage_path: str, tenant_id: UUID
 
     try:
         # Download file from storage
-        response = supabase.storage.from_(bucket_name).download(storage_path)
+        response = cast(bytes, supabase.storage.from_(bucket_name).download(storage_path))
 
         if not response:
             raise DocumentAccessError(
@@ -133,8 +134,8 @@ async def download_document(supabase: Client, storage_path: str, tenant_id: UUID
             extra={
                 "bucket": bucket_name,
                 "storage_path": storage_path,
-                "size": len(response),
-            },
+            "size": len(response),
+        },
         )
         return response
 

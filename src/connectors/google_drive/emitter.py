@@ -109,10 +109,10 @@ class SupabaseIngestionEmitter(IngestionEmitter):
             .execute()
         )
 
-        if result.data:  # type: ignore[union-attr]
+        if result.data:
             # Type narrowing: result.data is not None after the check above
-            assert result.data is not None  # type: ignore[union-attr]
-            data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+            assert result.data is not None
+            data = cast(Dict[str, Any], result.data)
 
             # Log deletion without mutating documents table
             deletion_data = {
@@ -146,3 +146,7 @@ class SupabaseIngestionEmitter(IngestionEmitter):
                     },
                     exc_info=True,
                 )
+
+
+# Alias for backward compatibility and clarity in tests
+GoogleDriveEventEmitter = SupabaseIngestionEmitter
