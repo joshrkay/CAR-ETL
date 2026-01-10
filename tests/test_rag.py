@@ -1,6 +1,6 @@
 """Tests for RAG Q&A pipeline."""
 import pytest
-from uuid import uuid4, UUID
+from uuid import uuid4
 from unittest.mock import Mock, AsyncMock, patch
 
 from src.rag.models import ChunkMatch, Citation, AskRequest, AskResponse
