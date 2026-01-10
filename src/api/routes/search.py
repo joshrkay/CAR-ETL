@@ -199,20 +199,29 @@ async def search_documents(
             logger.warning("Reranking requested but cross-encoder unavailable")
 
     # Enrich results with document metadata and highlights
+    # Batch-fetch document metadata to avoid N+1 query pattern
     enriched_results = []
-    for result in results:
-        # Fetch document metadata
-        doc_result = (
+
+    # Collect unique document IDs from search results
+    document_ids = list({str(result.document_id) for result in results})
+
+    documents_by_id = {}
+    if document_ids:
+        doc_response = (
             supabase.table("documents")
-            .select("original_filename")
-            .eq("id", str(result.document_id))
-            .single()
+            .select("id, original_filename")
+            .in_("id", document_ids)
             .execute()
         )
+        if doc_response.data:
+            documents_by_id = {
+                doc["id"]: doc.get("original_filename", "Unknown")
+                for doc in doc_response.data
+            }
 
-        document_name = "Unknown"
-        if doc_result.data:
-            document_name = doc_result.data.get("original_filename", "Unknown")
+    for result in results:
+        # Resolve document name from pre-fetched metadata
+        document_name = documents_by_id.get(str(result.document_id), "Unknown")
 
         # Generate highlights
         highlights = highlighter.highlight(result.content, search_request.query)
