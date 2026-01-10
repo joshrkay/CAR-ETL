@@ -175,7 +175,9 @@ def update_entity_record(
         .execute()
     )
     if result.data is None:
-        raise RuntimeError("Failed to update canonical entity")
+        raise RuntimeError(
+            f"Failed to update canonical entity id={entity.id}, tenant_id={entity.tenant_id}"
+        )
 
 
 def mark_entity_merged(
