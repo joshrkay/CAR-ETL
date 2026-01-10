@@ -220,13 +220,13 @@ def update_entity_document_references(
     canonical_id: UUID,
 ) -> int:
     """Update document references to point at the canonical entity."""
-    redacted_canonical_id = presidio_redact(str(canonical_id))
-    redacted_duplicate_id = presidio_redact(str(duplicate_id))
+    canonical_id_str = str(canonical_id)
+    duplicate_id_str = str(duplicate_id)
     result = (
         supabase.table("entity_documents")
-        .update({"entity_id": redacted_canonical_id})
+        .update({"entity_id": canonical_id_str})
         .eq("tenant_id", str(tenant_id))
-        .eq("entity_id", redacted_duplicate_id)
+        .eq("entity_id", duplicate_id_str)
         .execute()
     )
     return len(result.data or [])
