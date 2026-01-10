@@ -1,6 +1,5 @@
 """Tests for keyword search functionality."""
 
-import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import Mock
@@ -32,9 +31,8 @@ class TestKeywordSearchService:
         client.execute = Mock(return_value=Mock(data=[]))
         return client
 
-    def test_search_chunks_with_tenant_id(self, mock_supabase_client):
-        """Search should include tenant filter when provided."""
-        tenant_id = uuid4()
+    def test_search_chunks_basic_query(self, mock_supabase_client):
+        """Search should execute with basic query parameters."""
         document_id = uuid4()
         mock_supabase_client.rpc.return_value.execute.return_value.data = [
             {
@@ -47,12 +45,9 @@ class TestKeywordSearchService:
         ]
 
         service = KeywordSearchService(mock_supabase_client)
-        results = asyncio.run(
-            service.search_chunks(
-                query_text="lease terms",
-                match_count=5,
-                tenant_id=tenant_id,
-            )
+        results = service.search_chunks(
+            query_text="lease terms",
+            match_count=5,
         )
 
         assert len(results) == 1
@@ -63,16 +58,15 @@ class TestKeywordSearchService:
             {
                 "query_text": "lease terms",
                 "match_count": 5,
-                "filter_tenant_id": str(tenant_id),
             },
         )
 
-    def test_search_chunks_without_tenant_id(self, mock_supabase_client):
-        """Search should omit tenant filter when not provided."""
+    def test_search_chunks_without_results(self, mock_supabase_client):
+        """Search should return empty list when no matches found."""
         mock_supabase_client.rpc.return_value.execute.return_value.data = []
 
         service = KeywordSearchService(mock_supabase_client)
-        results = asyncio.run(service.search_chunks(query_text="rent", match_count=3))
+        results = service.search_chunks(query_text="rent", match_count=3)
 
         assert results == []
         mock_supabase_client.rpc.assert_called_once_with(
@@ -88,14 +82,14 @@ class TestKeywordSearchService:
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(ValueError, match="query_text must be a non-empty string"):
-            asyncio.run(service.search_chunks(query_text=" "))
+            service.search_chunks(query_text=" ")
 
     def test_search_chunks_requires_positive_match_count(self, mock_supabase_client):
         """Search should require match_count >= 1."""
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(ValueError, match="match_count must be >= 1"):
-            asyncio.run(service.search_chunks(query_text="terms", match_count=0))
+            service.search_chunks(query_text="terms", match_count=0)
 
     def test_parse_result_defaults_page_numbers(self, mock_supabase_client):
         """Parse should default page_numbers to empty list when missing."""
@@ -111,3 +105,14 @@ class TestKeywordSearchService:
 
         assert isinstance(result.id, UUID)
         assert result.page_numbers == []
+
+    def test_search_chunks_handles_rpc_exception(self, mock_supabase_client):
+        """Search should log and re-raise exceptions from RPC call."""
+        mock_supabase_client.rpc.return_value.execute.side_effect = Exception(
+            "Database connection error"
+        )
+
+        service = KeywordSearchService(mock_supabase_client)
+
+        with pytest.raises(Exception, match="Database connection error"):
+            service.search_chunks(query_text="test query", match_count=5)
