@@ -90,11 +90,12 @@ class Generator:
                 )
                 raise RuntimeError("LLM response choice had no content.")
 
+            tokens_used = response.usage.total_tokens if response.usage else None
             logger.info(
                 "Generated answer",
                 extra={
                     "answer_length": len(answer),
-                    "tokens_used": response.usage.total_tokens,
+                    "tokens_used": tokens_used,
                 },
             )
 
