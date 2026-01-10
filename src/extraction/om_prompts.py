@@ -4,14 +4,12 @@ OM extraction prompts - Understanding Plane.
 
 from __future__ import annotations
 
-from typing import Dict, Optional
-
-from .om_fields import format_om_field_definitions_for_prompt, OM_FIELDS, OMFieldDefinition
+from .om_fields import OM_FIELDS, OMFieldDefinition, format_om_field_definitions_for_prompt
 
 
 def build_om_extraction_prompt(
     document_text: str,
-    field_defs: Optional[Dict[str, OMFieldDefinition]] = None,
+    field_defs: dict[str, OMFieldDefinition] | None = None,
 ) -> str:
     """
     Build the OM extraction prompt with marketing-aware guidance.

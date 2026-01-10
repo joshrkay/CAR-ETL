@@ -10,7 +10,8 @@ import binascii
 import logging
 import re
 from email.utils import parseaddr
-from typing import Any, Optional
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -28,23 +29,23 @@ class ParsedEmail(BaseModel):
     to_address: str
     subject: str
     body_text: str
-    body_html: Optional[str] = None
+    body_html: str | None = None
     attachments: list[Attachment] = Field(default_factory=list)
 
 
 class EmailParser:
     """Service for parsing email content from Resend webhook payloads."""
-    
+
     def parse_resend_webhook(self, payload: dict[str, Any]) -> ParsedEmail:
         """
         Parse Resend webhook payload into ParsedEmail model.
-        
+
         Args:
             payload: Resend webhook payload dictionary
-            
+
         Returns:
             ParsedEmail with extracted email data
-            
+
         Raises:
             ValueError: If required fields are missing or invalid
         """
@@ -52,21 +53,21 @@ class EmailParser:
         from_address = self._extract_address(payload.get("from") or "")
         to_address = self._extract_address(payload.get("to") or "")
         subject = payload.get("subject") or ""
-        
+
         # Parse email body
         body_text = ""
-        body_html: Optional[str] = None
-        
+        body_html: str | None = None
+
         # Resend provides text and html separately
         if payload.get("text"):
             body_text = payload["text"]
         elif payload.get("html"):
             # Fallback: extract text from HTML if no text version
             body_text = self._html_to_text(payload["html"])
-        
+
         if payload.get("html"):
             body_html = payload["html"]
-        
+
         # Parse attachments
         attachments: list[Attachment] = []
         if payload.get("attachments"):
@@ -74,7 +75,7 @@ class EmailParser:
                 attachment = self._parse_attachment(att_data)
                 if attachment:
                     attachments.append(attachment)
-        
+
         return ParsedEmail(
             from_address=from_address,
             to_address=to_address,
@@ -83,63 +84,63 @@ class EmailParser:
             body_html=body_html,
             attachments=attachments,
         )
-    
+
     def _extract_address(self, address_string: str) -> str:
         """
         Extract email address from address string.
-        
+
         Handles formats like:
         - "user@example.com"
         - "Name <user@example.com>"
         - "user@example.com, other@example.com" (takes first)
-        
+
         Args:
             address_string: Email address string
-            
+
         Returns:
             Clean email address
         """
         if not address_string:
             return ""
-        
+
         # Parse using email.utils.parseaddr
         name, addr = parseaddr(address_string)
-        
+
         # If parseaddr didn't work, try splitting by comma and taking first
         if not addr:
             parts = address_string.split(",")
             if parts:
                 name, addr = parseaddr(parts[0].strip())
-        
+
         return addr or address_string.strip()
-    
-    def _parse_attachment(self, att_data: dict[str, Any]) -> Optional[Attachment]:
+
+    def _parse_attachment(self, att_data: dict[str, Any]) -> Attachment | None:
         """
         Parse attachment data from Resend webhook.
-        
+
         Args:
             att_data: Attachment data dictionary
-            
+
         Returns:
             Attachment model or None if invalid
         """
         filename = att_data.get("filename") or att_data.get("name") or "attachment"
         content_type = att_data.get("content_type") or att_data.get("type") or "application/octet-stream"
-        
+
         # Resend provides base64-encoded content
         content_b64 = att_data.get("content") or att_data.get("data")
         if not content_b64:
             return None
-        
+
         try:
             # Decode base64 content
             if isinstance(content_b64, str):
                 content = base64.b64decode(content_b64)
             else:
                 content = content_b64
-            
+
             size = len(content)
-            
+
             return Attachment(
                 filename=filename,
                 content_type=content_type,
@@ -163,7 +164,7 @@ class EmailParser:
                 exc_info=True,
             )
             return None
-    
+
     def _html_to_text(self, html: str) -> str:
         """
         Convert HTML to plain text (simple implementation).

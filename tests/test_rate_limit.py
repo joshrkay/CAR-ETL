@@ -1,9 +1,11 @@
 """Tests for authentication rate limiting."""
-import pytest
 from datetime import datetime, timedelta
-from unittest.mock import Mock, MagicMock, patch
-from src.auth.rate_limit import AuthRateLimiter, get_rate_limiter
+from unittest.mock import MagicMock, Mock, patch
+
+import pytest
+
 from src.auth.config import AuthConfig
+from src.auth.rate_limit import AuthRateLimiter, get_rate_limiter
 from src.exceptions import RateLimitError
 
 

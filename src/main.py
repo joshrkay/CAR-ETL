@@ -1,31 +1,33 @@
 """Example FastAPI application with auth middleware."""
+import logging
 import signal
 import sys
-import logging
-from fastapi import FastAPI, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from typing import Annotated, Any
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from typing import Annotated, Any, Dict
-from src.auth.middleware import AuthMiddleware
-from src.auth.models import AuthContext
-from src.dependencies import get_current_user, require_role, get_feature_flags
-from src.features.service import FeatureFlagService
+from fastapi.responses import JSONResponse
+
+from src.api.routes import ask as ask_routes
+from src.api.routes import connectors as connector_routes
+from src.api.routes import documents as document_routes
+from src.api.routes import effective_rent as effective_rent_routes
+from src.api.routes import health as health_routes
+from src.api.routes import review as review_routes
+from src.api.routes import upload as upload_routes
 from src.api.routes.admin import flags as admin_flags
 from src.api.routes.admin import tenants as admin_tenants
-from src.api.routes import health as health_routes
-from src.api.routes import documents as document_routes
-from src.api.routes import upload as upload_routes
-from src.api.routes import connectors as connector_routes
-from src.api.routes import ask as ask_routes
-from src.api.routes import effective_rent as effective_rent_routes
-from src.api.routes import extractions as extractions_routes
-from src.api.routes.webhooks import email as webhook_email_routes
 from src.api.routes.connectors import oauth_callback_public
-from src.middleware.audit import AuditMiddleware
-from src.middleware.request_id import RequestIDMiddleware
-from src.middleware.error_handler import ErrorHandlerMiddleware
-from src.exceptions import CARException
+from src.api.routes.webhooks import email as webhook_email_routes
 from src.audit.logger import shutdown_all_audit_loggers
+from src.auth.middleware import AuthMiddleware
+from src.auth.models import AuthContext
+from src.dependencies import get_current_user, get_feature_flags, require_role
+from src.exceptions import CARException
+from src.features.service import FeatureFlagService
+from src.middleware.audit import AuditMiddleware
+from src.middleware.error_handler import ErrorHandlerMiddleware
+from src.middleware.request_id import RequestIDMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,7 @@ app = FastAPI(title="CAR Platform API", version="1.0.0")
 # 4. ErrorHandlerMiddleware - catches all exceptions (outermost, executes first)
 
 app.add_middleware(RequestIDMiddleware)
-app.add_middleware(AuthMiddleware)  # type: ignore[arg-type]
+app.add_middleware(AuthMiddleware)
 app.add_middleware(AuditMiddleware)
 app.add_middleware(ErrorHandlerMiddleware)
 
@@ -46,7 +48,7 @@ app.add_middleware(ErrorHandlerMiddleware)
 def _shutdown_handler(signum: int, frame: Any) -> None:
     """
     Signal handler for graceful shutdown.
-    
+
     Handles SIGTERM and SIGINT to flush audit logs before exit.
     Note: Signal handlers run in the main thread and must be synchronous.
     FastAPI's shutdown event handler will handle async flush.
@@ -56,7 +58,7 @@ def _shutdown_handler(signum: int, frame: Any) -> None:
         f"Received {signal_name} signal, initiating graceful shutdown",
         extra={"signal": signal_name, "signum": signum},
     )
-    
+
     # FastAPI's shutdown event will handle async flush
     # Signal handler just logs and lets FastAPI handle cleanup
 
@@ -70,22 +72,23 @@ signal.signal(signal.SIGINT, _shutdown_handler)
 async def startup_event() -> None:
     """
     Validate environment variables and pre-warm Presidio models on application startup.
-    
+
     This ensures all required credentials are configured before accepting requests
     and reduces latency on first redaction request by loading models during
     application initialization rather than on first use.
     """
     import logging
+
     from src.auth.config import get_auth_config
     from src.services.redaction import _get_analyzer, _get_anonymizer
-    
+
     logger = logging.getLogger(__name__)
-    
+
     # Step 1: Validate environment variables
     try:
         auth_config = get_auth_config()
         validation_errors = auth_config.validate_environment()
-        
+
         if validation_errors:
             logger.error(
                 "Environment variable validation failed",
@@ -94,7 +97,7 @@ async def startup_event() -> None:
                     "errors": validation_errors,
                 },
             )
-            
+
             print("\n" + "=" * 80, file=sys.stderr)
             print("ERROR: Required environment variables are missing or invalid", file=sys.stderr)
             print("=" * 80, file=sys.stderr)
@@ -111,9 +114,9 @@ async def startup_event() -> None:
             print("  - SUPABASE_SERVICE_KEY", file=sys.stderr)
             print("  - SUPABASE_JWT_SECRET", file=sys.stderr)
             print("=" * 80 + "\n", file=sys.stderr)
-            
+
             sys.exit(1)
-        
+
         # Log success (without secrets)
         logger.info(
             "Environment variables validated successfully",
@@ -124,7 +127,7 @@ async def startup_event() -> None:
                 # Intentionally NOT logging secret values
             },
         )
-        
+
     except Exception as e:
         logger.error(
             "Failed to validate environment variables",
@@ -143,7 +146,7 @@ async def startup_event() -> None:
         print("  2. See docs/SECURITY.md for configuration details", file=sys.stderr)
         print("=" * 80 + "\n", file=sys.stderr)
         sys.exit(1)
-    
+
     # Step 2: Pre-warm Presidio models
     try:
         # Pre-warm Presidio models
@@ -163,12 +166,12 @@ async def startup_event() -> None:
 async def shutdown_event() -> None:
     """
     FastAPI shutdown event handler.
-    
+
     Flushes all audit log buffers before application exit.
     Ensures no audit events are lost during graceful shutdown.
     """
     logger.info("Application shutdown initiated, flushing audit logs")
-    
+
     try:
         shutdown_all_audit_loggers(timeout=5.0)
         logger.info("Audit logs flushed successfully")
@@ -185,12 +188,12 @@ async def shutdown_event() -> None:
 async def car_exception_handler(request: Request, exc: CARException) -> JSONResponse:
     """
     Handle CAR Platform custom exceptions.
-    
+
     CRITICAL: Client errors (4xx) are never converted to 500.
     Only unknown CARException types default to 500.
     """
     request_id = getattr(request.state, "request_id", None)
-    
+
     error_response = {
         "error": {
             "code": exc.code,
@@ -199,7 +202,7 @@ async def car_exception_handler(request: Request, exc: CARException) -> JSONResp
             "request_id": request_id,
         }
     }
-    
+
     # Map exception type to status code
     # All mapped codes are client errors (4xx) - never 500
     from fastapi import status
@@ -210,13 +213,13 @@ async def car_exception_handler(request: Request, exc: CARException) -> JSONResp
         "NOT_FOUND": status.HTTP_404_NOT_FOUND,  # 404 - Client error
         "RATE_LIMIT_ERROR": status.HTTP_429_TOO_MANY_REQUESTS,  # 429 - Client error
     }
-    
+
     status_code = status_code_map.get(exc.code, status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+
     # Add retry_after for rate limit errors
     if hasattr(exc, "retry_after"):
         error_response["error"]["retry_after"] = exc.retry_after
-    
+
     return JSONResponse(status_code=status_code, content=error_response)
 
 
@@ -224,13 +227,13 @@ async def car_exception_handler(request: Request, exc: CARException) -> JSONResp
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle FastAPI request validation errors."""
     request_id = getattr(request.state, "request_id", None)
-    
+
     details = []
     for error in exc.errors():
         field = ".".join(str(loc) for loc in error.get("loc", []))
         issue = error.get("msg", "Invalid value")
         details.append({"field": field, "issue": issue})
-    
+
     error_response = {
         "error": {
             "code": "VALIDATION_ERROR",
@@ -239,7 +242,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "request_id": request_id,
         }
     }
-    
+
     return JSONResponse(
         status_code=400,
         content=error_response,
@@ -255,7 +258,7 @@ app.include_router(upload_routes.router)
 app.include_router(connector_routes.router)
 app.include_router(ask_routes.router)
 app.include_router(effective_rent_routes.router)
-app.include_router(extractions_routes.router)
+app.include_router(review_routes.router)
 app.include_router(webhook_email_routes.router)
 
 # Public OAuth callback route (outside router prefix)
@@ -270,7 +273,7 @@ app.add_api_route(
 
 
 @app.get("/me")
-async def get_current_user_info(user: Annotated[AuthContext, Depends(get_current_user)]) -> Dict[str, Any]:
+async def get_current_user_info(user: Annotated[AuthContext, Depends(get_current_user)]) -> dict[str, Any]:
     """Get current authenticated user info."""
     return {
         "user_id": str(user.user_id),
@@ -282,7 +285,7 @@ async def get_current_user_info(user: Annotated[AuthContext, Depends(get_current
 
 
 @app.get("/admin")
-async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]) -> Dict[str, Any]:
+async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]) -> dict[str, Any]:
     """Admin-only endpoint."""
     return {
         "message": "Admin access granted",
@@ -294,10 +297,10 @@ async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admi
 async def experimental_feature(
     flags: Annotated[FeatureFlagService, Depends(get_feature_flags)],
     user: Annotated[AuthContext, Depends(get_current_user)],
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Example endpoint using feature flags.
-    
+
     This endpoint is only accessible if the 'experimental_search' feature flag
     is enabled for the current tenant.
     """
@@ -309,7 +312,7 @@ async def experimental_feature(
                 "message": "This feature is not available for your tenant",
             },
         )
-    
+
     return {
         "data": "experimental results",
         "message": "You have access to the experimental feature!",

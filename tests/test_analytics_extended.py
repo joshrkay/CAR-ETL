@@ -1,7 +1,8 @@
 """Tests for extended analytics endpoints."""
-import pytest
-from uuid import uuid4
 from unittest.mock import Mock, patch
+from uuid import uuid4
+
+import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app

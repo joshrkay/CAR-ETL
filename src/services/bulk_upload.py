@@ -11,7 +11,6 @@ import zipfile
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 from src.services.file_validator import FileValidator
@@ -37,11 +36,11 @@ MAX_UNCOMPRESSED_FILE_SIZE = 10 * MAX_ZIP_SIZE_BYTES
 class FileProcessingResult:
     """Result of processing a single file from ZIP."""
     filename: str
-    document_id: Optional[str]
+    document_id: str | None
     status: str  # "processing", "failed"
-    error: Optional[str]
+    error: str | None
     file_size: int
-    mime_type: Optional[str]
+    mime_type: str | None
 
 
 @dataclass
@@ -57,7 +56,7 @@ class BulkUploadResult:
 class BulkUploadService:
     """
     Service for handling bulk document uploads via ZIP files.
-    
+
     Responsibilities:
     - Extract ZIP archives securely
     - Validate individual files
@@ -73,7 +72,7 @@ class BulkUploadService:
     ):
         """
         Initialize bulk upload service.
-        
+
         Args:
             file_validator: File validator instance for individual files
             max_zip_size: Maximum ZIP file size in bytes
@@ -88,26 +87,26 @@ class BulkUploadService:
     def validate_zip_file(self, content: bytes) -> list[str]:
         """
         Validate ZIP file structure and constraints.
-        
+
         Args:
             content: ZIP file bytes
-            
+
         Returns:
             List of validation errors (empty if valid)
         """
         errors: list[str] = []
-        
+
         # Check size
         if len(content) > self.max_zip_size:
             errors.append(
                 f"ZIP file size {len(content)} exceeds maximum {self.max_zip_size} bytes"
             )
             return errors
-        
+
         if len(content) == 0:
             errors.append("ZIP file is empty")
             return errors
-        
+
         # Validate ZIP structure
         try:
             with zipfile.ZipFile(BytesIO(content), 'r') as zip_file:
@@ -115,24 +114,24 @@ class BulkUploadService:
                 if zip_file.testzip() is not None:
                     errors.append("ZIP file is corrupted")
                     return errors
-                
+
                 # Count files (exclude directories)
                 file_count = sum(
                     1 for name in zip_file.namelist()
                     if not name.endswith('/') and not self._is_system_file(name)
                 )
-                
+
                 if file_count == 0:
                     errors.append("ZIP file contains no valid files")
-                
+
                 if file_count > self.max_files:
                     errors.append(
                         f"ZIP contains {file_count} files, maximum is {self.max_files}"
                     )
-        
+
         except zipfile.BadZipFile:
             errors.append("Invalid ZIP file format")
-        except (IOError, OSError, MemoryError) as e:
+        except (OSError, MemoryError) as e:
             errors.append(f"ZIP validation failed: {str(e)}")
         except Exception as e:
             logger.warning(
@@ -144,7 +143,7 @@ class BulkUploadService:
                 exc_info=True,
             )
             errors.append(f"ZIP validation failed: {str(e)}")
-        
+
         return errors
 
     def extract_and_validate_files(
@@ -155,35 +154,35 @@ class BulkUploadService:
     ) -> list[tuple[str, bytes, str]]:
         """
         Extract files from ZIP and return valid file data.
-        
+
         Args:
             zip_content: ZIP file bytes
             tenant_id: Tenant identifier for logging
             request_id: Request identifier for logging
-            
+
         Returns:
             List of tuples: (filename, content, detected_mime_type)
-            
+
         Raises:
             Exception: If ZIP extraction fails
         """
         valid_files: list[tuple[str, bytes, str]] = []
-        
+
         try:
             with zipfile.ZipFile(BytesIO(zip_content), 'r') as zip_file:
                 for file_info in zip_file.infolist():
                     # Skip directories and system files
                     if file_info.is_dir() or self._is_system_file(file_info.filename):
                         continue
-                    
+
                     # ZIP bomb protection: Check uncompressed size before reading
                     uncompressed_size = file_info.file_size
                     compressed_size = file_info.compress_size
-                    
+
                     # Skip empty files (they'll be rejected by validator anyway)
                     if uncompressed_size == 0:
                         continue
-                    
+
                     # Skip files with invalid compression data (corrupted ZIP)
                     if compressed_size == 0 and uncompressed_size > 0:
                         logger.warning(
@@ -195,7 +194,7 @@ class BulkUploadService:
                             },
                         )
                         continue
-                    
+
                     # Check uncompressed size against limit
                     if uncompressed_size > self.max_file_size:
                         logger.warning(
@@ -209,7 +208,7 @@ class BulkUploadService:
                             },
                         )
                         continue
-                    
+
                     # Check for ZIP bomb: suspicious compression ratio
                     if compressed_size > 0:
                         compression_ratio = compressed_size / uncompressed_size
@@ -226,7 +225,7 @@ class BulkUploadService:
                                 },
                             )
                             continue
-                    
+
                     # Additional safety: check against absolute maximum
                     if uncompressed_size > MAX_UNCOMPRESSED_FILE_SIZE:
                         logger.warning(
@@ -240,14 +239,14 @@ class BulkUploadService:
                             },
                         )
                         continue
-                    
+
                     # Extract file content (now safe - size checked)
                     try:
                         file_content = zip_file.read(file_info.filename)
-                        
+
                         # Detect MIME type from filename extension
                         mime_type = self._detect_mime_type(file_info.filename)
-                        
+
                         if mime_type:
                             valid_files.append((file_info.filename, file_content, mime_type))
                         else:
@@ -259,8 +258,8 @@ class BulkUploadService:
                                     "filename": file_info.filename,
                                 },
                             )
-                    
-                    except (zipfile.BadZipFile, IOError, OSError, MemoryError) as e:
+
+                    except (zipfile.BadZipFile, OSError, MemoryError) as e:
                         logger.error(
                             "Failed to extract file from ZIP",
                             extra={
@@ -286,8 +285,8 @@ class BulkUploadService:
                             exc_info=True,
                         )
                         continue
-        
-        except (zipfile.BadZipFile, IOError, OSError, MemoryError) as e:
+
+        except (zipfile.BadZipFile, OSError, MemoryError) as e:
             logger.error(
                 "Failed to process ZIP file",
                 extra={
@@ -311,7 +310,7 @@ class BulkUploadService:
                 exc_info=True,
             )
             raise
-        
+
         return valid_files
 
     def process_file(
@@ -322,12 +321,12 @@ class BulkUploadService:
     ) -> FileProcessingResult:
         """
         Process a single file: validate and prepare for storage.
-        
+
         Args:
             filename: Original filename
             content: File content bytes
             mime_type: Detected MIME type
-            
+
         Returns:
             FileProcessingResult with validation outcome
         """
@@ -336,7 +335,7 @@ class BulkUploadService:
             content=content,
             claimed_mime=mime_type,
         )
-        
+
         # If validation failed, return error result
         if not validation_result.valid:
             return FileProcessingResult(
@@ -347,10 +346,10 @@ class BulkUploadService:
                 file_size=len(content),
                 mime_type=mime_type,
             )
-        
+
         # Generate document ID for valid file
         document_id = str(uuid4())
-        
+
         return FileProcessingResult(
             filename=filename,
             document_id=document_id,
@@ -363,10 +362,10 @@ class BulkUploadService:
     def calculate_file_hash(self, content: bytes) -> str:
         """
         Calculate SHA-256 hash of file content.
-        
+
         Args:
             content: File content bytes
-            
+
         Returns:
             Hexadecimal hash string
         """
@@ -375,34 +374,34 @@ class BulkUploadService:
     def _is_system_file(self, filename: str) -> bool:
         """
         Check if filename represents a system/metadata file.
-        
+
         Args:
             filename: File path within ZIP
-            
+
         Returns:
             True if system file should be skipped
         """
         # Skip macOS metadata files
         if filename.startswith('__MACOSX/'):
             return True
-        
+
         # Skip hidden files
         if Path(filename).name.startswith('.'):
             return True
-        
+
         # Skip Windows thumbs
         if Path(filename).name.lower() == 'thumbs.db':
             return True
-        
+
         return False
 
-    def _detect_mime_type(self, filename: str) -> Optional[str]:
+    def _detect_mime_type(self, filename: str) -> str | None:
         """
         Detect MIME type from file extension.
-        
+
         Args:
             filename: Original filename
-            
+
         Returns:
             MIME type string or None if unsupported
         """
@@ -416,7 +415,7 @@ class BulkUploadService:
             '.txt': 'text/plain',
             '.csv': 'text/csv',
         }
-        
+
         extension = Path(filename).suffix.lower()
         return extension_map.get(extension)
 
@@ -424,10 +423,10 @@ class BulkUploadService:
 def create_bulk_upload_service(max_file_size: int) -> BulkUploadService:
     """
     Factory function to create BulkUploadService with configured validator.
-    
+
     Args:
         max_file_size: Maximum individual file size in bytes
-        
+
     Returns:
         Configured BulkUploadService instance
     """

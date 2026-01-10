@@ -6,16 +6,16 @@ Creates documents for email body and attachments.
 """
 
 import logging
+from typing import Any
 from uuid import UUID, uuid4
-from typing import Any, Optional
-from supabase import Client
 
-from src.services.email_parser import ParsedEmail, Attachment
-from src.services.file_validator import FileValidator
+from src.exceptions import NotFoundError, ValidationError
+from src.services.email_parser import Attachment, ParsedEmail
 from src.services.file_storage import FileStorageService, StorageUploadError
+from src.services.file_validator import FileValidator
 from src.services.redaction import presidio_redact, presidio_redact_bytes
 from src.utils.pii_protection import hash_email
-from src.exceptions import ValidationError, NotFoundError
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +25,18 @@ DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 
 class EmailIngestionService:
     """Service for ingesting emails and creating documents."""
-    
+
     def __init__(self, supabase_client: Client):
         """
         Initialize email ingestion service.
-        
+
         Args:
             supabase_client: Supabase client with service_role key
         """
         self.client = supabase_client
         self.validator = FileValidator(max_file_size=DEFAULT_MAX_FILE_SIZE_BYTES)
         self.storage_service = FileStorageService(supabase_client)
-    
+
     def ingest_email(
         self,
         parsed_email: ParsedEmail,
@@ -44,11 +44,11 @@ class EmailIngestionService:
     ) -> dict[str, Any]:
         """
         Ingest email and create documents for body and attachments.
-        
+
         Args:
             parsed_email: Parsed email data
             tenant_id: Tenant identifier
-            
+
         Returns:
             Dictionary with ingestion results:
             {
@@ -56,22 +56,22 @@ class EmailIngestionService:
                 "body_document_id": str,
                 "attachment_document_ids": list[str],
             }
-            
+
         Raises:
             ValidationError: If email data is invalid
             NotFoundError: If tenant not found
         """
         # Step 1: Verify tenant exists
         self._verify_tenant(tenant_id)
-        
+
         # Step 2: Create document for email body
-        body_document_id: Optional[str] = None
+        body_document_id: str | None = None
         if parsed_email.body_text:
             body_document_id = self._create_body_document(
                 parsed_email=parsed_email,
                 tenant_id=tenant_id,
             )
-        
+
         # Step 3: Create documents for attachments
         attachment_document_ids: list[str] = []
         for attachment in parsed_email.attachments:
@@ -107,7 +107,7 @@ class EmailIngestionService:
                 )
                 # Re-raise unexpected errors to fail-fast
                 raise
-        
+
         # Step 4: Create email_ingestions record
         email_ingestion_id = self._create_email_ingestion_record(
             parsed_email=parsed_email,
@@ -115,7 +115,7 @@ class EmailIngestionService:
             body_document_id=body_document_id,
             attachment_count=len(attachment_document_ids),
         )
-        
+
         logger.info(
             "Email ingested successfully",
             extra={
@@ -126,23 +126,23 @@ class EmailIngestionService:
                 "attachment_count": len(attachment_document_ids),
             },
         )
-        
+
         return {
             "email_ingestion_id": email_ingestion_id,
             "body_document_id": body_document_id,
             "attachment_document_ids": attachment_document_ids,
         }
-    
+
     def _verify_tenant(self, tenant_id: UUID) -> None:
         """
         Verify tenant exists and is active.
-        
+
         Only allows ingestion for tenants with status 'active' to prevent
         data ingestion into inactive or suspended accounts.
-        
+
         Args:
             tenant_id: Tenant identifier
-            
+
         Raises:
             NotFoundError: If tenant not found or not active
         """
@@ -154,10 +154,10 @@ class EmailIngestionService:
             .maybe_single()
             .execute()
         )
-        
+
         if not result.data:
             raise NotFoundError(resource_type="Tenant", resource_id=str(tenant_id))
-    
+
     def _create_body_document(
         self,
         parsed_email: ParsedEmail,
@@ -165,16 +165,16 @@ class EmailIngestionService:
     ) -> str:
         """
         Create document for email body.
-        
+
         SECURITY: Explicitly redacts PII before persisting.
-        
+
         Args:
             parsed_email: Parsed email data
             tenant_id: Tenant identifier
-            
+
         Returns:
             Document ID
-            
+
         Raises:
             ValidationError: If body content is invalid
         """
@@ -182,23 +182,23 @@ class EmailIngestionService:
         redacted_body_text = presidio_redact(parsed_email.body_text)
         body_content = redacted_body_text.encode("utf-8")
         file_hash = self.storage_service.calculate_file_hash(body_content)
-        
+
         # Validate body content (as text/plain)
         validation_result = self.validator.validate_file(
             content=body_content,
             claimed_mime="text/plain",
         )
-        
+
         if not validation_result.valid:
             raise ValidationError(
                 message="Email body validation failed",
                 details=[{"field": "body", "issue": err} for err in validation_result.errors],
             )
-        
+
         # Generate storage path and upload file
         document_id = str(uuid4())
         storage_path = f"emails/{tenant_id}/{document_id}/body.txt"
-        
+
         # Upload file to storage
         try:
             self.storage_service.upload_file(
@@ -218,13 +218,13 @@ class EmailIngestionService:
                 exc_info=True,
             )
             raise Exception(f"Failed to upload email body to storage: {str(e)}") from e
-        
+
         # Create document record
         # Sanitize subject for filename
         safe_subject = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in parsed_email.subject[:50]).strip()
         if not safe_subject:
             safe_subject = "email_body"
-        
+
         document_data = {
             "id": document_id,
             "tenant_id": str(tenant_id),
@@ -238,30 +238,30 @@ class EmailIngestionService:
             "uploaded_by": None,  # Email ingestion has no user
             "status": "pending",
         }
-        
+
         result = self.client.table("documents").insert(document_data).execute()
-        
+
         if not result.data:
             raise Exception("Failed to create body document")
-        
+
         return document_id
-    
+
     def _create_attachment_document(
         self,
         attachment: Attachment,
         tenant_id: UUID,
-        parent_id: Optional[str],
-    ) -> Optional[str]:
+        parent_id: str | None,
+    ) -> str | None:
         """
         Create document for email attachment.
-        
+
         SECURITY: Explicitly redacts PII before persisting.
-        
+
         Args:
             attachment: Attachment data
             tenant_id: Tenant identifier
             parent_id: Parent document ID (body document)
-            
+
         Returns:
             Document ID or None if validation fails
         """
@@ -270,13 +270,13 @@ class EmailIngestionService:
             attachment.content,
             attachment.content_type,
         )
-        
+
         # Validate attachment (using redacted content)
         validation_result = self.validator.validate_file(
             content=redacted_content,
             claimed_mime=attachment.content_type,
         )
-        
+
         if not validation_result.valid:
             logger.warning(
                 "Attachment validation failed",
@@ -287,14 +287,14 @@ class EmailIngestionService:
                 },
             )
             return None
-        
+
         # Calculate hash (using redacted content)
         file_hash = self.storage_service.calculate_file_hash(redacted_content)
-        
+
         # Generate storage path and upload file
         document_id = str(uuid4())
         storage_path = f"emails/{tenant_id}/{document_id}/{attachment.filename}"
-        
+
         # Upload file to storage
         try:
             self.storage_service.upload_file(
@@ -315,7 +315,7 @@ class EmailIngestionService:
                 exc_info=True,
             )
             return None
-        
+
         # Create document record
         document_data = {
             "id": document_id,
@@ -331,9 +331,9 @@ class EmailIngestionService:
             "uploaded_by": None,
             "status": "pending",
         }
-        
+
         result = self.client.table("documents").insert(document_data).execute()
-        
+
         if not result.data:
             logger.error(
                 "Failed to create attachment document",
@@ -343,25 +343,25 @@ class EmailIngestionService:
                 },
             )
             return None
-        
+
         return document_id
-    
+
     def _create_email_ingestion_record(
         self,
         parsed_email: ParsedEmail,
         tenant_id: UUID,
-        body_document_id: Optional[str],
+        body_document_id: str | None,
         attachment_count: int,
     ) -> str:
         """
         Create email_ingestions record.
-        
+
         Args:
             parsed_email: Parsed email data
             tenant_id: Tenant identifier
             body_document_id: Body document ID
             attachment_count: Number of attachments processed
-            
+
         Returns:
             Email ingestion ID
         """
@@ -373,11 +373,11 @@ class EmailIngestionService:
             "body_document_id": body_document_id,
             "attachment_count": attachment_count,
         }
-        
+
         result = self.client.table("email_ingestions").insert(ingestion_data).execute()
-        
+
         if not result.data:
             raise Exception("Failed to create email ingestion record")
-        
+
         return str(result.data[0]["id"])
-    
+

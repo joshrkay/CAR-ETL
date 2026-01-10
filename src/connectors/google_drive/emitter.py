@@ -5,28 +5,28 @@ Emits normalized ingestion references/events for downstream processing.
 This is part of the Ingestion Plane - it only emits references, not raw data.
 """
 import logging
-from typing import Optional, List, Dict, Any, cast
+from typing import Any, cast
 from uuid import UUID, uuid4
-from supabase import Client
 
 from src.connectors.google_drive.interfaces import IngestionEmitter
 from src.services.redaction import presidio_redact
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
 
 class SupabaseIngestionEmitter(IngestionEmitter):
     """Supabase-backed ingestion event emitter."""
-    
+
     def __init__(self, supabase: Client):
         """
         Initialize ingestion emitter.
-        
+
         Args:
             supabase: Supabase client
         """
         self.supabase = supabase
-    
+
     async def emit_file_reference(
         self,
         tenant_id: UUID,
@@ -35,19 +35,19 @@ class SupabaseIngestionEmitter(IngestionEmitter):
         mime_type: str,
         file_size: int,
         modified_time: str,
-        drive_id: Optional[str],
-        folder_ids: List[str],
+        drive_id: str | None,
+        folder_ids: list[str],
         source_path: str,
     ) -> str:
         """
         Emit file reference event.
-        
+
         SECURITY: Redact file name before persisting (defense in depth).
         """
         # Redact filename before persisting
         redacted_filename = presidio_redact(file_name)
-        
-        ingestion_data: Dict[str, Any] = {
+
+        ingestion_data: dict[str, Any] = {
             "id": str(uuid4()),
             "tenant_id": str(tenant_id),
             "source_type": "google_drive",
@@ -62,17 +62,17 @@ class SupabaseIngestionEmitter(IngestionEmitter):
             "status": "pending",
             "created_at": modified_time,
         }
-        
+
         # Store in a connector-specific ingestion table or documents table
         # For now, using documents table as ingestion reference
         result = self.supabase.table("documents").insert(ingestion_data).execute()
-        
+
         if not result.data:
             raise ValueError("Failed to emit file reference")
-        
-        data_list = cast(List[Dict[str, Any]], result.data)
+
+        data_list = cast(list[dict[str, Any]], result.data)
         ingestion_id = cast(str, data_list[0]["id"])
-        
+
         logger.info(
             "File reference emitted",
             extra={
@@ -82,14 +82,14 @@ class SupabaseIngestionEmitter(IngestionEmitter):
                 "source_path": source_path,
             },
         )
-        
+
         return ingestion_id
-    
+
     async def emit_deletion_reference(
         self,
         tenant_id: UUID,
         file_id: str,
-        drive_id: Optional[str],
+        drive_id: str | None,
         source_path: str,
     ) -> None:
         """
@@ -112,7 +112,7 @@ class SupabaseIngestionEmitter(IngestionEmitter):
         if result.data:
             # Type narrowing: result.data is not None after the check above
             assert result.data is not None
-            data = cast(Dict[str, Any], result.data)
+            data = cast(dict[str, Any], result.data)
 
             # Log deletion without mutating documents table
             deletion_data = {

@@ -4,13 +4,14 @@ Tests for hybrid search functionality.
 Tests RRF algorithm, search modes, highlighting, and API endpoint.
 """
 
+from unittest.mock import AsyncMock, Mock
+from uuid import UUID, uuid4
+
 import pytest
-from unittest.mock import Mock, AsyncMock
-from uuid import uuid4, UUID
 from pydantic import ValidationError
 
-from src.search.hybrid import HybridSearchService, SearchResult
 from src.search.highlighter import SearchHighlighter
+from src.search.hybrid import HybridSearchService, SearchResult
 from src.search.reranker import SearchReranker
 from supabase import Client
 
@@ -503,7 +504,6 @@ class TestSearchPropertyBased:
     def test_rrf_algorithm_properties(self):
         """Test mathematical properties of RRF algorithm."""
         from src.search.hybrid import HybridSearchService
-        from src.search.embeddings import EmbeddingService
 
         mock_client = Mock()
         mock_embedding = Mock()

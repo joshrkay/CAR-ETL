@@ -1,19 +1,18 @@
 """Custom exceptions for consistent error handling."""
-from typing import Optional, List, Dict
 
 
 class CARException(Exception):
     """Base exception for all CAR Platform errors."""
-    
+
     def __init__(
         self,
         code: str,
         message: str,
-        details: Optional[List[Dict[str, str]]] = None,
+        details: list[dict[str, str]] | None = None,
     ):
         """
         Initialize CAR exception.
-        
+
         Args:
             code: Error code (e.g., "VALIDATION_ERROR")
             message: Human-readable error message
@@ -27,11 +26,11 @@ class CARException(Exception):
 
 class ValidationError(CARException):
     """Raised when request validation fails (400)."""
-    
+
     def __init__(
         self,
         message: str = "Validation failed",
-        details: Optional[List[Dict[str, str]]] = None,
+        details: list[dict[str, str]] | None = None,
     ):
         super().__init__(
             code="VALIDATION_ERROR",
@@ -42,7 +41,7 @@ class ValidationError(CARException):
 
 class AuthenticationError(CARException):
     """Raised when authentication fails (401)."""
-    
+
     def __init__(self, message: str = "Authentication required"):
         super().__init__(
             code="AUTHENTICATION_ERROR",
@@ -52,7 +51,7 @@ class AuthenticationError(CARException):
 
 class PermissionError(CARException):
     """Raised when user lacks required permissions (403)."""
-    
+
     def __init__(self, message: str = "Insufficient permissions"):
         super().__init__(
             code="PERMISSION_ERROR",
@@ -62,12 +61,12 @@ class PermissionError(CARException):
 
 class NotFoundError(CARException):
     """Raised when a resource is not found (404)."""
-    
-    def __init__(self, resource_type: str = "Resource", resource_id: Optional[str] = None):
+
+    def __init__(self, resource_type: str = "Resource", resource_id: str | None = None):
         message = f"{resource_type} not found"
         if resource_id:
             message = f"{resource_type} '{resource_id}' not found"
-        
+
         super().__init__(
             code="NOT_FOUND",
             message=message,
@@ -76,11 +75,11 @@ class NotFoundError(CARException):
 
 class RateLimitError(CARException):
     """Raised when rate limit is exceeded (429)."""
-    
-    def __init__(self, retry_after: int, message: Optional[str] = None):
+
+    def __init__(self, retry_after: int, message: str | None = None):
         if message is None:
             message = f"Rate limit exceeded. Retry after {retry_after} seconds"
-        
+
         super().__init__(
             code="RATE_LIMIT_ERROR",
             message=message,
@@ -90,7 +89,7 @@ class RateLimitError(CARException):
 
 class ParserError(CARException):
     """Raised when document parsing fails."""
-    
+
     def __init__(self, parser_name: str, message: str = "Parser failed"):
         super().__init__(
             code="PARSER_ERROR",
