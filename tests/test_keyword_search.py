@@ -76,16 +76,14 @@ class TestKeywordSearchService:
             },
         )
 
-    @pytest.mark.asyncio
-    async def test_search_chunks_requires_query(self, mock_supabase_client):
+    def test_search_chunks_requires_query(self, mock_supabase_client):
         """Search should require non-empty query text."""
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(ValueError, match="query_text must be a non-empty string"):
             service.search_chunks(query_text=" ")
 
-    @pytest.mark.asyncio
-    async def test_search_chunks_requires_positive_match_count(self, mock_supabase_client):
+    def test_search_chunks_requires_positive_match_count(self, mock_supabase_client):
         """Search should require match_count >= 1."""
         service = KeywordSearchService(mock_supabase_client)
 
