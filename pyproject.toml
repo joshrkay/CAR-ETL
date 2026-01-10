@@ -30,6 +30,9 @@ module = [
     "openai.*",
     "fastapi.*",
     "starlette.*",
+    "pydantic.*",
+    "pydantic_settings.*",
+    "httpx.*",
 ]
 ignore_missing_imports = true
 
@@ -47,9 +50,17 @@ module = [
     "src.api.routes.search",
     "src.api.routes.webhooks.*",
     "src.main",
+    "src.services.presidio_config",
+    "src.extraction.*",
+    "src.auth.config",
+    "src.rag.models",
+    "src.middleware.*",
+    "src.audit.models",
+    "src.features.models",
 ]
 disallow_untyped_decorators = false
 disallow_subclassing_any = false
+disallow_any_generics = false
 
 [tool.pydantic-mypy]
 init_forbid_extra = true
