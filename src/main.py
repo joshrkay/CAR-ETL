@@ -38,7 +38,7 @@ app = FastAPI(title="CAR Platform API", version="1.0.0")
 # 4. ErrorHandlerMiddleware - catches all exceptions (outermost, executes first)
 
 app.add_middleware(RequestIDMiddleware)
-app.add_middleware(AuthMiddleware)  # type: ignore[arg-type]
+app.add_middleware(AuthMiddleware)
 app.add_middleware(AuditMiddleware)
 app.add_middleware(ErrorHandlerMiddleware)
 
