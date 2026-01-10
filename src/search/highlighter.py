@@ -167,8 +167,8 @@ class SearchHighlighter:
 
             snippets.append(snippet)
 
-            # Mark positions as used
-            for pos in range(start, end):
+            # Mark entire snippet range as used to avoid overlapping snippets
+            for pos in range(snippet_start, snippet_end):
                 used_positions.add(pos)
 
         return snippets
