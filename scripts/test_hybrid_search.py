@@ -20,6 +20,7 @@ try:
     else:
         load_dotenv()
 except ImportError:
+    # python-dotenv is optional; if it's not installed, rely on existing environment variables.
     pass
 
 import httpx
