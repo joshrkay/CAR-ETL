@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from supabase import Client
@@ -37,19 +37,20 @@ class KeywordSearchService:
         """
         self.client = supabase_client
 
-    async def search_chunks(
+    def search_chunks(
         self,
         query_text: str,
         match_count: int = 20,
-        tenant_id: Optional[UUID] = None,
     ) -> List[KeywordSearchResult]:
         """
         Search document chunks using PostgreSQL full-text search.
 
+        The tenant_id is automatically derived from the JWT claims by the
+        database function for security.
+
         Args:
             query_text: Query string for full-text search
             match_count: Maximum number of matches to return
-            tenant_id: Optional tenant ID for service_role usage
 
         Returns:
             List of keyword search results
@@ -69,9 +70,6 @@ class KeywordSearchService:
             "match_count": match_count,
         }
 
-        if tenant_id is not None:
-            params["filter_tenant_id"] = str(tenant_id)
-
         try:
             result = self.client.rpc("search_chunks_keyword", params).execute()
             rows = result.data or []
@@ -79,7 +77,6 @@ class KeywordSearchService:
             logger.error(
                 "Keyword search failed",
                 extra={
-                    "tenant_id": str(tenant_id) if tenant_id else None,
                     "match_count": match_count,
                     "error": str(exc),
                 },
@@ -88,7 +85,7 @@ class KeywordSearchService:
 
         return [self._parse_result(row) for row in rows]
 
-    def _parse_result(self, row: dict[str, object]) -> KeywordSearchResult:
+    def _parse_result(self, row: Dict[str, object]) -> KeywordSearchResult:
         """Parse a search result row into a KeywordSearchResult."""
         return KeywordSearchResult(
             id=UUID(str(row["id"])),
