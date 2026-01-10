@@ -7,6 +7,7 @@ Tests RRF algorithm, search modes, highlighting, and API endpoint.
 import pytest
 from unittest.mock import Mock, AsyncMock
 from uuid import uuid4, UUID
+from pydantic import ValidationError
 
 from src.search.hybrid import HybridSearchService, SearchResult
 from src.search.highlighter import SearchHighlighter
@@ -444,15 +445,15 @@ class TestSearchAPI:
         assert request.mode == "hybrid"
 
         # Invalid mode should fail validation
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SearchRequest(query="test", mode="invalid_mode", limit=20)
 
         # Limit too high should fail validation
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SearchRequest(query="test", mode="hybrid", limit=200)
 
         # Limit too low should fail validation
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             SearchRequest(query="test", mode="hybrid", limit=0)
 
 
