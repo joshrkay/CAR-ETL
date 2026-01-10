@@ -58,8 +58,8 @@ class TestKeywordSearchService:
             },
         )
 
-    def test_search_chunks_empty_results(self, mock_supabase_client):
-        """Search should handle empty results."""
+    def test_search_chunks_returns_empty_list(self, mock_supabase_client):
+        """Search should return empty list when no results found."""
         mock_supabase_client.rpc.return_value.execute.return_value.data = []
 
         service = KeywordSearchService(mock_supabase_client)
