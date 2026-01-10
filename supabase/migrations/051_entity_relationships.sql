@@ -12,6 +12,12 @@ CREATE TABLE IF NOT EXISTS public.entity_relationships (
   start_date DATE,
   end_date DATE,
   source_document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
+  CONSTRAINT chk_entity_relationships_end_after_start
+    CHECK (
+      end_date IS NULL
+      OR start_date IS NULL
+      OR end_date >= start_date
+    ),
   created_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
@@ -55,13 +61,11 @@ ON public.entity_relationships
 FOR ALL
 USING (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 )
 WITH CHECK (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 );
 
 -- Grant direct permissions to service_role
