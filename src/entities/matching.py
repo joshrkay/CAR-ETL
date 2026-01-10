@@ -66,25 +66,40 @@ def compare_addresses(address1: str, address2: str) -> float:
 def calculate_match_score(entity1: EntityRecord, entity2: EntityRecord) -> float:
     """Calculate match score for two entities."""
     score = 0.0
+    max_score = 0.0
 
+    # Name similarity always contributes; canonical_name is required
     name_similarity = calculate_similarity(
         normalize_text(entity1.canonical_name),
         normalize_text(entity2.canonical_name),
     )
-    score += name_similarity * 0.5
+    name_weight = 0.5
+    max_score += name_weight
+    score += name_similarity * name_weight
 
+    # Address similarity only considered when both entities have an address string
     address1 = entity1.attributes.get("address")
     address2 = entity2.attributes.get("address")
+    address_weight = 0.3
     if isinstance(address1, str) and isinstance(address2, str):
         address_similarity = compare_addresses(address1, address2)
-        score += address_similarity * 0.3
+        max_score += address_weight
+        score += address_similarity * address_weight
 
-    if entity1.external_id and entity1.external_id == entity2.external_id:
-        score += 0.2
+    # External ID contributes only when both IDs are present; a mismatch reduces the
+    # maximum achievable raw score, reflecting a conflict.
+    external_id_weight = 0.2
+    if entity1.external_id is not None and entity2.external_id is not None:
+        max_score += external_id_weight
+        if entity1.external_id == entity2.external_id:
+            score += external_id_weight
 
-    return min(score, 1.0)
+    if max_score <= 0.0:
+        normalized_score = 0.0
+    else:
+        normalized_score = score / max_score
 
-
+    return min(normalized_score, 1.0)
 def classify_match_score(score: float) -> MatchDecision:
     """Classify match score into resolution decision."""
     if score >= 0.95:

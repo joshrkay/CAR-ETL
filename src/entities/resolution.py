@@ -58,13 +58,19 @@ def fetch_entity_record(
     if not isinstance(attributes, dict):
         attributes = {}
 
+    updated_at_raw = record.get("updated_at")
+    if isinstance(updated_at_raw, str):
+        updated_at = datetime.fromisoformat(updated_at_raw)
+    else:
+        updated_at = updated_at_raw
+
     return EntityRecord(
         id=UUID(record["id"]),
         tenant_id=UUID(record["tenant_id"]),
         canonical_name=record["canonical_name"],
         attributes=attributes,
         external_id=record.get("external_id"),
-        updated_at=record.get("updated_at"),
+        updated_at=updated_at,
     )
 
 
@@ -175,7 +181,9 @@ def update_entity_record(
         .execute()
     )
     if result.data is None:
-        raise RuntimeError("Failed to update canonical entity")
+        raise RuntimeError(
+            f"Failed to update canonical entity id={entity.id}, tenant_id={entity.tenant_id}"
+        )
 
 
 def mark_entity_merged(
@@ -212,11 +220,13 @@ def update_entity_document_references(
     canonical_id: UUID,
 ) -> int:
     """Update document references to point at the canonical entity."""
+    canonical_id_str = str(canonical_id)
+    duplicate_id_str = str(duplicate_id)
     result = (
         supabase.table("entity_documents")
-        .update({"entity_id": str(canonical_id)})
+        .update({"entity_id": canonical_id_str})
         .eq("tenant_id", str(tenant_id))
-        .eq("entity_id", str(duplicate_id))
+        .eq("entity_id", duplicate_id_str)
         .execute()
     )
     return len(result.data or [])
