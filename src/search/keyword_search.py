@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Dict, List, Optional
 from uuid import UUID
 
 from supabase import Client
@@ -88,7 +88,7 @@ class KeywordSearchService:
 
         return [self._parse_result(row) for row in rows]
 
-    def _parse_result(self, row: dict[str, object]) -> KeywordSearchResult:
+    def _parse_result(self, row: Dict[str, object]) -> KeywordSearchResult:
         """Parse a search result row into a KeywordSearchResult."""
         return KeywordSearchResult(
             id=UUID(str(row["id"])),
