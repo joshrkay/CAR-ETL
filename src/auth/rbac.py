@@ -14,6 +14,7 @@ PERMISSIONS: Dict[str, List[str]] = {
         "extractions:override",
         "exports:read",
         "exports:write",
+        "entities:merge",
     ],
     "Viewer": [
         "documents:read",
