@@ -32,7 +32,7 @@ from src.exceptions import (
     ValidationError,
     ParserError,
 )
-from src.services.error_sanitizer import sanitize_exception, get_loggable_error
+from src.services.error_sanitizer import get_loggable_error
 
 logger = logging.getLogger(__name__)
 
