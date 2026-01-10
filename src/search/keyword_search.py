@@ -47,30 +47,16 @@ class KeywordSearchService:
         Search document chunks using PostgreSQL full-text search.
 
         Args:
-            query_text: Query string for full-text search.
-            match_count: Maximum number of matches to return.
-            tenant_id: Optional tenant ID used to scope results when this service
-                is called with a trusted service_role Supabase client.
+            query_text: Query string for full-text search
+            match_count: Maximum number of matches to return
+            tenant_id: Optional tenant ID for service_role usage
 
         Returns:
-            List of keyword search results.
-
-        Security:
-            - When using a client authenticated with a user JWT, callers MUST pass
-              ``tenant_id=None``. In that case, tenant scoping must be enforced by
-              the database layer based on claims in the JWT, and any
-              ``filter_tenant_id`` parameter sent to the database should be
-              ignored or validated against the JWT.
-            - The ``tenant_id`` parameter MUST NOT be taken from untrusted
-              end-user input or used to "switch tenants" on behalf of a user.
-              It is intended only for backend-internal use with service_role
-              credentials, after the application has performed appropriate
-              authorization checks to ensure the caller is allowed to access
-              the specified tenant.
+            List of keyword search results
 
         Raises:
-            ValueError: If query_text is empty or match_count < 1.
-            Exception: If search fails.
+            ValueError: If query_text is empty or match_count < 1
+            Exception: If search fails
         """
         if not query_text or not query_text.strip():
             raise ValueError("query_text must be a non-empty string")
@@ -105,11 +91,10 @@ class KeywordSearchService:
     def _parse_result(self, row: dict[str, object]) -> KeywordSearchResult:
         """Parse a search result row into a KeywordSearchResult."""
         page_numbers = cast(list[int], row.get("page_numbers") or [])
-        rank_value = cast(float | int | str, row["rank"])
         return KeywordSearchResult(
             id=UUID(str(row["id"])),
             document_id=UUID(str(row["document_id"])),
             content=str(row["content"]),
-            page_numbers=list(row.get("page_numbers") or []),
-            rank=float(row["rank"]),
+            page_numbers=page_numbers,
+            rank=float(cast(float | int | str, row["rank"])),
         )
