@@ -8,13 +8,19 @@ from uuid import UUID, uuid4
 
 import pytest
 from supabase import Client
+import importlib.util
 
 project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
-
-from src.search.keyword_search import KeywordSearchResult, KeywordSearchService
-
-
+keyword_search_path = project_root / "src" / "search" / "keyword_search.py"
+spec = importlib.util.spec_from_file_location(
+    "src.search.keyword_search",
+    keyword_search_path,
+)
+keyword_search_module = importlib.util.module_from_spec(spec)
+assert spec.loader is not None  # for type checkers and safety
+spec.loader.exec_module(keyword_search_module)
+KeywordSearchResult = keyword_search_module.KeywordSearchResult
+KeywordSearchService = keyword_search_module.KeywordSearchService
 class TestKeywordSearchService:
     """Unit tests for KeywordSearchService."""
 
