@@ -353,7 +353,7 @@ class GoogleDriveClient:
                     timeout=60.0,
                 )
                 response.raise_for_status()
-                return response.content
+                return bytes(response.content)
                 
         except httpx.HTTPStatusError as e:
             error_detail = e.response.text if e.response else str(e)

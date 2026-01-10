@@ -39,15 +39,15 @@ def _build_update_query_mock(data):
     return query
 
 
-def test_normalize_text_collapses_whitespace():
+def test_normalize_text_collapses_whitespace() -> None:
     assert normalize_text("  123 Main St. ") == "123 main st"
 
 
-def test_compare_addresses_exact_match():
+def test_compare_addresses_exact_match() -> None:
     assert compare_addresses("123 Main St", "123 Main St") == 1.0
 
 
-def test_calculate_match_score_full_match():
+def test_calculate_match_score_full_match() -> None:
     tenant_id = uuid4()
     entity1 = EntityRecord(
         id=uuid4(),
@@ -67,13 +67,13 @@ def test_calculate_match_score_full_match():
     assert calculate_match_score(entity1, entity2) == 1.0
 
 
-def test_classify_match_score_thresholds():
+def test_classify_match_score_thresholds() -> None:
     assert classify_match_score(0.95) == MatchDecision.AUTO_MERGE
     assert classify_match_score(0.80) == MatchDecision.SUGGEST_MERGE
     assert classify_match_score(0.79) == MatchDecision.DIFFERENT
 
 
-def test_merge_entity_attributes_prefers_newer():
+def test_merge_entity_attributes_prefers_newer() -> None:
     tenant_id = uuid4()
     older = EntityRecord(
         id=uuid4(),
@@ -97,7 +97,7 @@ def test_merge_entity_attributes_prefers_newer():
     assert merged["email"] == "a@example.com"
 
 
-def test_select_merge_plan_prefers_higher_document_count():
+def test_select_merge_plan_prefers_higher_document_count() -> None:
     tenant_id = uuid4()
     entity_primary = EntityRecord(
         id=uuid4(),
@@ -118,14 +118,14 @@ def test_select_merge_plan_prefers_higher_document_count():
     assert plan.duplicate == entity_secondary
 
 
-def test_redact_json_value_redacts_strings():
+def test_redact_json_value_redacts_strings() -> None:
     with patch("src.entities.resolution.presidio_redact", return_value="[REDACTED]"):
         result = redact_json_value({"name": "John Doe", "tags": ["ACME"]})
 
     assert result == {"name": "[REDACTED]", "tags": ["[REDACTED]"]}
 
 
-def test_fetch_entity_record_not_found():
+def test_fetch_entity_record_not_found() -> None:
     supabase = MagicMock()
     entities_table = MagicMock()
     entities_table.select.return_value = _build_query_mock([])
@@ -135,7 +135,7 @@ def test_fetch_entity_record_not_found():
         fetch_entity_record(supabase, uuid4(), uuid4())
 
 
-def test_fetch_document_reference_count_returns_count():
+def test_fetch_document_reference_count_returns_count() -> None:
     supabase = MagicMock()
     documents_table = MagicMock()
     documents_table.select.return_value = _build_query_mock([{"id": "1"}, {"id": "2"}])

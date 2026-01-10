@@ -40,7 +40,7 @@ def provisioning_service(mock_supabase_client):
         return service
 
 
-def test_provision_tenant_success(provisioning_service, mock_supabase_client):
+def test_provision_tenant_success(provisioning_service, mock_supabase_client) -> None:
     """Test successful tenant provisioning."""
     tenant_id = uuid4()
     user_id = str(uuid4())
@@ -108,7 +108,7 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client):
         assert result["admin_invite_sent"] is True
 
 
-def test_provision_tenant_duplicate_slug(provisioning_service, mock_supabase_client):
+def test_provision_tenant_duplicate_slug(provisioning_service, mock_supabase_client) -> None:
     """Test provisioning fails with duplicate slug."""
     # Mock slug validation (tenant exists)
     mock_supabase_client.execute.return_value = Mock(data=[{"id": str(uuid4())}])
@@ -126,7 +126,7 @@ def test_provision_tenant_duplicate_slug(provisioning_service, mock_supabase_cli
 def test_provision_tenant_rollback_on_bucket_failure(
     provisioning_service,
     mock_supabase_client
-):
+) -> None:
     """Test that rollback occurs when bucket creation fails."""
     tenant_id = uuid4()
     
@@ -184,7 +184,7 @@ def test_provision_tenant_rollback_on_bucket_failure(
 def test_provision_tenant_rollback_on_user_failure(
     provisioning_service,
     mock_supabase_client
-):
+) -> None:
     """Test that rollback occurs when user creation fails."""
     tenant_id = uuid4()
     
@@ -228,7 +228,7 @@ def test_provision_tenant_rollback_on_user_failure(
                 )
 
 
-def test_storage_setup_create_bucket(mock_supabase_client):
+def test_storage_setup_create_bucket(mock_supabase_client) -> None:
     """Test storage bucket creation."""
     from src.services.storage_setup import StorageSetupService
     
@@ -259,7 +259,7 @@ def test_storage_setup_create_bucket(mock_supabase_client):
         assert result == bucket_name
 
 
-def test_storage_setup_delete_bucket(mock_supabase_client):
+def test_storage_setup_delete_bucket(mock_supabase_client) -> None:
     """Test storage bucket deletion."""
     from src.services.storage_setup import StorageSetupService
     

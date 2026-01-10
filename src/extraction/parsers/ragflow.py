@@ -128,6 +128,6 @@ class RagFlowParser(BaseParser):
             url = f"{self.api_url}/health"
             async with httpx.AsyncClient(timeout=TIMEOUT_HEALTH_CHECK) as client:
                 response = await client.get(url)
-                return response.status_code == 200
+                return bool(response.status_code == 200)
         except Exception:
             return False

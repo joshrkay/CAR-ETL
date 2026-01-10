@@ -6,7 +6,7 @@ from hypothesis import given, strategies as st
 from src.services.redaction import presidio_redact, presidio_redact_bytes
 
 
-def test_presidio_redact_email():
+def test_presidio_redact_email() -> None:
     """Test redaction of email addresses."""
     text = "Contact us at john.doe@example.com for support."
     redacted = presidio_redact(text)
@@ -16,7 +16,7 @@ def test_presidio_redact_email():
     assert "@example.com" not in redacted
 
 
-def test_presidio_redact_phone():
+def test_presidio_redact_phone() -> None:
     """Test redaction of phone numbers."""
     text = "Call us at (555) 123-4567."
     redacted = presidio_redact(text)
@@ -25,7 +25,7 @@ def test_presidio_redact_phone():
     assert "Call us at" in redacted
 
 
-def test_presidio_redact_ssn():
+def test_presidio_redact_ssn() -> None:
     """Test redaction of SSN."""
     text = "SSN: 123-45-6789"
     redacted = presidio_redact(text)
@@ -34,7 +34,7 @@ def test_presidio_redact_ssn():
     assert "SSN:" in redacted
 
 
-def test_presidio_redact_credit_card():
+def test_presidio_redact_credit_card() -> None:
     """Test redaction of credit card numbers."""
     text = "Card number: 4532-1234-5678-9010"
     redacted = presidio_redact(text)
@@ -43,7 +43,7 @@ def test_presidio_redact_credit_card():
     assert "Card number:" in redacted
 
 
-def test_presidio_redact_bytes():
+def test_presidio_redact_bytes() -> None:
     """Test redaction of bytes content."""
     content = b"Contact john.doe@example.com"
     redacted = presidio_redact_bytes(content, "text/plain")
@@ -52,13 +52,13 @@ def test_presidio_redact_bytes():
     assert b"Contact" in redacted
 
 
-def test_presidio_redact_empty():
+def test_presidio_redact_empty() -> None:
     """Test redaction of empty text."""
     assert presidio_redact("") == ""
     assert presidio_redact("   ") == "   "
 
 
-def test_presidio_redact_no_pii():
+def test_presidio_redact_no_pii() -> None:
     """Test redaction of text with no PII."""
     text = "This is a simple text with no personal information."
     redacted = presidio_redact(text)
@@ -67,7 +67,7 @@ def test_presidio_redact_no_pii():
     assert text == redacted
 
 
-def test_presidio_redact_bytes_json():
+def test_presidio_redact_bytes_json() -> None:
     """Test redaction of JSON content."""
     content = b'{"email": "user@example.com", "name": "John Doe"}'
     redacted = presidio_redact_bytes(content, "application/json")
@@ -76,7 +76,7 @@ def test_presidio_redact_bytes_json():
     assert b"John Doe" not in redacted
 
 
-def test_presidio_redact_bytes_binary():
+def test_presidio_redact_bytes_binary() -> None:
     """Test that binary content returns unchanged (not yet implemented)."""
     content = b"\x89PNG\r\n\x1a\n"  # PNG file header
     redacted = presidio_redact_bytes(content, "image/png")
@@ -85,7 +85,7 @@ def test_presidio_redact_bytes_binary():
     assert redacted == content
 
 
-def test_presidio_redact_strict_mode_failure():
+def test_presidio_redact_strict_mode_failure() -> None:
     """Test that strict mode raises exception on failure."""
     from src.services.presidio_config import PresidioConfig
     
@@ -101,7 +101,7 @@ def test_presidio_redact_strict_mode_failure():
                 presidio_redact("test@example.com")
 
 
-def test_presidio_redact_permissive_mode_failure():
+def test_presidio_redact_permissive_mode_failure() -> None:
     """Test that permissive mode returns original text on failure."""
     from src.services.presidio_config import PresidioConfig
     
@@ -118,7 +118,7 @@ def test_presidio_redact_permissive_mode_failure():
             assert result == "test@example.com"
 
 
-def test_presidio_redact_multiple_entities():
+def test_presidio_redact_multiple_entities() -> None:
     """Test redaction of multiple PII entities in one text."""
     text = "Contact John Doe at john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789"
     redacted = presidio_redact(text)
@@ -129,7 +129,7 @@ def test_presidio_redact_multiple_entities():
     assert "John Doe" not in redacted
 
 
-def test_presidio_redact_bytes_unicode_decode_error():
+def test_presidio_redact_bytes_unicode_decode_error() -> None:
     """Test handling of unicode decode errors."""
     # Invalid UTF-8 sequence
     content = b"\xff\xfe\x00\x00"  # Invalid UTF-8

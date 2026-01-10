@@ -14,7 +14,7 @@ from src.rag.pipeline import RAGPipeline
 
 # ========== Citation Tests ==========
 
-def test_extract_citations_valid():
+def test_extract_citations_valid() -> None:
     """Test extraction of valid citations from answer."""
     doc_id = str(uuid4())
     answer = f"The rent is $5000 [DOC:{doc_id}:PAGE:3] and deposit is $1000 [DOC:{doc_id}:PAGE:4]."
@@ -26,7 +26,7 @@ def test_extract_citations_valid():
     assert (doc_id, 4) in citations
 
 
-def test_extract_citations_no_citations():
+def test_extract_citations_no_citations() -> None:
     """Test extraction when no citations present."""
     answer = "I don't have enough information to answer this."
 
@@ -35,7 +35,7 @@ def test_extract_citations_no_citations():
     assert citations == []
 
 
-def test_validate_citations_valid():
+def test_validate_citations_valid() -> None:
     """Test validation with valid citations."""
     doc_id = uuid4()
     answer = f"The rent is $5000 [DOC:{doc_id}:PAGE:3]."
@@ -53,7 +53,7 @@ def test_validate_citations_valid():
     assert validate_citations(answer, chunks) is True
 
 
-def test_validate_citations_invalid_doc():
+def test_validate_citations_invalid_doc() -> None:
     """Test validation fails when citation references unknown document."""
     doc_id1 = uuid4()
     doc_id2 = uuid4()
@@ -72,7 +72,7 @@ def test_validate_citations_invalid_doc():
     assert validate_citations(answer, chunks) is False
 
 
-def test_validate_citations_no_info_response():
+def test_validate_citations_no_info_response() -> None:
     """Test validation passes for 'no information' responses."""
     answer = "I don't have enough information to answer this based on the available documents."
     chunks = []
@@ -80,7 +80,7 @@ def test_validate_citations_no_info_response():
     assert validate_citations(answer, chunks) is True
 
 
-def test_build_citations():
+def test_build_citations() -> None:
     """Test building citation objects from answer and chunks."""
     doc_id = uuid4()
     answer = f"The rent is $5000 [DOC:{doc_id}:PAGE:3]."
@@ -106,7 +106,7 @@ def test_build_citations():
     assert "Monthly rent" in citations[0].snippet
 
 
-def test_build_citations_deduplicates():
+def test_build_citations_deduplicates() -> None:
     """Test that duplicate citations are removed."""
     doc_id = uuid4()
     answer = f"Rent is $5000 [DOC:{doc_id}:PAGE:3]. The amount is $5000 [DOC:{doc_id}:PAGE:3]."
@@ -130,7 +130,7 @@ def test_build_citations_deduplicates():
 
 # ========== Context Builder Tests ==========
 
-def test_count_tokens():
+def test_count_tokens() -> None:
     """Test token counting."""
     text = "This is a test sentence."
     tokens = count_tokens(text)
@@ -140,7 +140,7 @@ def test_count_tokens():
     assert tokens < 100  # Short sentence should have few tokens
 
 
-def test_build_context_single_chunk():
+def test_build_context_single_chunk() -> None:
     """Test context building with single chunk."""
     doc_id = uuid4()
     chunks = [
@@ -159,7 +159,7 @@ def test_build_context_single_chunk():
     assert "This is chunk content." in context
 
 
-def test_build_context_respects_token_limit():
+def test_build_context_respects_token_limit() -> None:
     """Test that context builder respects token limit."""
     chunks = [
         ChunkMatch(
@@ -179,7 +179,7 @@ def test_build_context_respects_token_limit():
     assert tokens <= 100
 
 
-def test_build_context_multiple_chunks():
+def test_build_context_multiple_chunks() -> None:
     """Test context building with multiple chunks."""
     chunks = [
         ChunkMatch(
@@ -203,7 +203,7 @@ def test_build_context_multiple_chunks():
 
 # ========== Prompt Tests ==========
 
-def test_format_system_prompt():
+def test_format_system_prompt() -> None:
     """Test system prompt formatting."""
     context = "Test context"
     prompt = format_system_prompt(context)
@@ -214,7 +214,7 @@ def test_format_system_prompt():
     assert "[DOC:uuid:PAGE:n]" in prompt
 
 
-def test_format_user_prompt():
+def test_format_user_prompt() -> None:
     """Test user prompt formatting."""
     question = "What is the base rent?"
     prompt = format_user_prompt(question)

@@ -101,6 +101,7 @@ class RAGPipeline:
             citations=citations,
             confidence=confidence,
             chunks_used=len(chunks),
+            suggestion=None,  # No suggestion needed for successful answers
         )
 
         logger.info(

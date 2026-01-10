@@ -53,3 +53,7 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+mypy_current.txt
+mypy_after_fixes.txt
+mypy_final.txt
+mypy_src_only.txt
