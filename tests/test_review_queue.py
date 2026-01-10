@@ -34,14 +34,17 @@ class TestReviewQueueService:
         mock_supabase.rpc.return_value.execute.return_value.data = 0
 
         # Mock queue query to return empty
-        mock_chain = Mock()
-        mock_chain.select.return_value = mock_chain
-        mock_chain.eq.return_value = mock_chain
-        mock_chain.order.return_value = mock_chain
-        mock_chain.range.return_value = mock_chain
-        mock_chain.execute.return_value.data = []
+        def mock_table(table_name):
+            mock_chain = Mock()
+            mock_chain.select.return_value = mock_chain
+            mock_chain.eq.return_value = mock_chain
+            mock_chain.order.return_value = mock_chain
+            mock_chain.range.return_value = mock_chain
+            mock_chain.execute.return_value.data = []
+            mock_chain.execute.return_value.count = 0
+            return mock_chain
 
-        mock_supabase.table.return_value = mock_chain
+        mock_supabase.table.side_effect = mock_table
 
         result = await service.list_queue(limit=50, offset=0)
 
@@ -373,7 +376,8 @@ class TestReviewQueueService:
         assert isinstance(item, ReviewQueueItem)
         assert item.status == "claimed"
         assert item.claimed_by == user_id
-        assert item.claimed_at == "2024-01-01T12:00:00"
+        # claimed_at is parsed into datetime object by Pydantic
+        assert str(item.claimed_at) == "2024-01-01 12:00:00"
 
 
 class TestPriorityCalculation:
