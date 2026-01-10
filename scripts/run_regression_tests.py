@@ -15,7 +15,7 @@ def main() -> int:
     parser.add_argument(
         "pytest_args",
         nargs=argparse.REMAINDER,
-        help="Additional arguments passed to pytest after '--'.",
+        help="Additional arguments passed to pytest.",
     )
     args = parser.parse_args()
 
