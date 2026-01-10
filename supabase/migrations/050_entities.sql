@@ -59,13 +59,11 @@ ON public.entities
 FOR ALL
 USING (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 )
 WITH CHECK (
   auth.role() = 'service_role' OR
-  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role' OR
-  current_setting('request.jwt.claims', true) IS NULL
+  (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'
 );
 
 -- Grant direct permissions to service_role
