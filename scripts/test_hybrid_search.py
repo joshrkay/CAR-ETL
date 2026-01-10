@@ -24,7 +24,6 @@ except ImportError:
 
 import httpx
 import os
-from uuid import uuid4
 
 
 def get_test_token():
