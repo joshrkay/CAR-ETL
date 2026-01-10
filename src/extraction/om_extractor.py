@@ -9,13 +9,6 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-AsyncOpenAIClient: type[Any] | None
-try:
-    from openai import AsyncOpenAI as _AsyncOpenAIClient
-except ImportError:  # pragma: no cover - handled at runtime if dependency missing
-    AsyncOpenAIClient = None
-else:
-    AsyncOpenAIClient = _AsyncOpenAIClient
 from pydantic import BaseModel, Field
 
 from src.extraction.normalizers import normalize_field_value
@@ -28,6 +21,14 @@ from src.extraction.om_confidence import (
 from src.extraction.om_fields import OMFieldDefinition
 from src.extraction.om_prompts import build_om_extraction_prompt
 from src.services.redaction import presidio_redact
+
+AsyncOpenAIClient: type[Any] | None
+try:
+    from openai import AsyncOpenAI as _AsyncOpenAIClient
+except ImportError:  # pragma: no cover - handled at runtime if dependency missing
+    AsyncOpenAIClient = None
+else:
+    AsyncOpenAIClient = _AsyncOpenAIClient
 
 logger = logging.getLogger(__name__)
 

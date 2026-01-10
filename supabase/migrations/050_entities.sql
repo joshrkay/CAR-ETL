@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS public.entities (
   updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
 );
 
+-- Unique constraint for composite foreign key references (tenant isolation)
+ALTER TABLE public.entities ADD CONSTRAINT entities_id_tenant_unique UNIQUE (id, tenant_id);
+
 -- Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_entities_tenant_type ON public.entities(tenant_id, entity_type);
 CREATE INDEX IF NOT EXISTS idx_entities_canonical ON public.entities(tenant_id, canonical_name);
