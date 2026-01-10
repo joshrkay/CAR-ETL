@@ -6,7 +6,6 @@ CRITICAL: Must be called before any error logging or database storage.
 """
 
 import re
-from typing import Optional
 
 
 # PII patterns to redact from error messages
@@ -85,7 +84,7 @@ def sanitize_exception(exception: Exception) -> str:
     return sanitize_error_message(error_message)
 
 
-def get_safe_error_context(exception: Exception) -> dict:
+def get_safe_error_context(exception: Exception) -> dict[str, str | bool]:
     """
     Extract safe logging context from exception.
 
@@ -142,7 +141,7 @@ def get_loggable_error(
     exception: Exception,
     max_length: int = 500,
     include_context: bool = True,
-) -> dict:
+) -> dict[str, object]:
     """
     Get complete loggable error information.
 

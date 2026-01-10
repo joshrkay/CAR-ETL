@@ -6,7 +6,7 @@ This is the entry point for file ingestion into the CAR Platform.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, cast, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
@@ -317,8 +317,9 @@ async def fetch_tenant_max_file_size(
         )
         
         if result.data and result.data.get("settings"):
-            settings = result.data["settings"]
-            return settings.get("max_file_size_bytes", DEFAULT_MAX_FILE_SIZE_BYTES)
+            data = cast(dict[str, Any], result.data)
+            settings = cast(dict[str, Any], data.get("settings", {}))
+            return int(settings.get("max_file_size_bytes", DEFAULT_MAX_FILE_SIZE_BYTES))
         
         return DEFAULT_MAX_FILE_SIZE_BYTES
         

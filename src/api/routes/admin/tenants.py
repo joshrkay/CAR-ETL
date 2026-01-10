@@ -45,7 +45,7 @@ async def create_tenant(
     tenant_data: TenantCreate,
     supabase: Annotated[Client, Depends(get_service_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-):
+) -> TenantResponse:
     """
     Provision a new tenant with storage bucket and admin user.
     
