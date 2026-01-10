@@ -1,6 +1,5 @@
 """Tests for keyword search functionality."""
 
-import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import Mock
@@ -82,7 +81,7 @@ class TestKeywordSearchService:
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(ValueError, match="query_text must be a non-empty string"):
-            asyncio.run(service.search_chunks(query_text=" "))
+            service.search_chunks(query_text=" ")
 
     def test_search_chunks_requires_positive_match_count(self, mock_supabase_client):
         """Search should require match_count >= 1."""
@@ -105,3 +104,14 @@ class TestKeywordSearchService:
 
         assert isinstance(result.id, UUID)
         assert result.page_numbers == []
+
+    def test_search_chunks_handles_rpc_exception(self, mock_supabase_client):
+        """Search should log and re-raise exceptions from RPC call."""
+        mock_supabase_client.rpc.return_value.execute.side_effect = Exception(
+            "Database connection error"
+        )
+
+        service = KeywordSearchService(mock_supabase_client)
+
+        with pytest.raises(Exception, match="Database connection error"):
+            service.search_chunks(query_text="test query", match_count=5)
