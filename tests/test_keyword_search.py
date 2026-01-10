@@ -111,3 +111,28 @@ class TestKeywordSearchService:
 
         assert isinstance(result.id, UUID)
         assert result.page_numbers == []
+
+    def test_search_chunks_exception_handling(self, mock_supabase_client, caplog):
+        """Search should log error and re-raise exception on RPC failure."""
+        tenant_id = uuid4()
+        test_exception = Exception("RPC connection failed")
+        mock_supabase_client.rpc.return_value.execute.side_effect = test_exception
+
+        service = KeywordSearchService(mock_supabase_client)
+
+        with pytest.raises(Exception, match="RPC connection failed"):
+            asyncio.run(
+                service.search_chunks(
+                    query_text="test query",
+                    match_count=10,
+                    tenant_id=tenant_id,
+                )
+            )
+
+        # Verify the error was logged
+        assert len(caplog.records) == 1
+        assert caplog.records[0].levelname == "ERROR"
+        assert caplog.records[0].message == "Keyword search failed"
+        assert caplog.records[0].tenant_id == str(tenant_id)
+        assert caplog.records[0].match_count == 10
+        assert "RPC connection failed" in caplog.records[0].error
