@@ -8,12 +8,15 @@ Handles document type detection, field extraction, and normalization.
 import json
 import logging
 import os
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
+AsyncOpenAIClient: type[Any] | None
 try:
-    from openai import AsyncOpenAI
+    from openai import AsyncOpenAI as _AsyncOpenAIClient
 except ImportError:  # pragma: no cover - handled in runtime environments without openai
-    AsyncOpenAI = None
+    AsyncOpenAIClient = None
+else:
+    AsyncOpenAIClient = _AsyncOpenAIClient
 from pydantic import BaseModel, Field
 
 from src.extraction.cre_fields import get_field_config, get_field_definitions_for_prompt
@@ -62,13 +65,13 @@ class FieldExtractor:
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
             model: LLM model to use (default: gpt-4o-mini)
         """
-        if AsyncOpenAI is None:
+        if AsyncOpenAIClient is None:
             raise ImportError("openai package is required for extraction. Please install openai>=1.0.0.")
         api_key = api_key or OPENAI_API_KEY
         if not api_key:
             raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY environment variable.")
         
-        self.client = AsyncOpenAI(api_key=api_key)
+        self.client = AsyncOpenAIClient(api_key=api_key)
         self.model = model
     
     async def detect_document_type(
@@ -105,7 +108,10 @@ class FieldExtractor:
                 temperature=0.1
             )
             
-            result = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            if content is None:
+                raise ValueError("LLM response was missing content")
+            result = json.loads(content)
             return {
                 "document_type": result.get("document_type", "other"),
                 "confidence": min(result.get("confidence", 0.5), 0.99),  # Never 1.0
@@ -167,7 +173,10 @@ class FieldExtractor:
                 temperature=0.1
             )
             
-            llm_result = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            if content is None:
+                raise ValueError("LLM response was missing content")
+            llm_result = json.loads(content)
             raw_fields = llm_result.get("fields", {})
             
             # Normalize and process fields

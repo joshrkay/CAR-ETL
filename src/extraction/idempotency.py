@@ -6,7 +6,7 @@ Required by .cursorrules: "All ingestion and workflow steps must be idempotent."
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 from uuid import UUID
 from datetime import datetime, timedelta
 
@@ -63,7 +63,7 @@ async def check_processing_lock(
         )
 
         if response.data and len(response.data) > 0:
-            active_extraction = response.data[0]
+            active_extraction = cast(Dict[str, Any], response.data[0])
             logger.warning(
                 "Found active extraction in progress",
                 extra={

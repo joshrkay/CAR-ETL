@@ -97,7 +97,7 @@ class UnstructuredParser(BaseParser):
             raise ParserError("unstructured", "Unstructured API URL and key must be configured")
         
         url = f"{self.api_url}/general/v0/general"
-        headers = {
+        request_headers = {
             "Authorization": f"Bearer {self.api_key}",
         }
         
@@ -107,7 +107,7 @@ class UnstructuredParser(BaseParser):
         
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_NORMAL) as client:
-                response = await client.post(url, headers=headers, files=files)
+                response = await client.post(url, headers=request_headers, files=files)
                 response.raise_for_status()
                 elements = response.json()
         except httpx.HTTPStatusError as e:

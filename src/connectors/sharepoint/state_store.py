@@ -79,13 +79,13 @@ class OAuthStateStore:
                 .execute()
             )
             
-            if not result.data:  # type: ignore[union-attr]
+            if not result.data:
                 logger.debug(f"No OAuth state found for state_preview={state_preview}...")
                 return None
             
             # Type narrowing: result.data is not None after the check above
-            assert result.data is not None  # type: ignore[union-attr]
-            data = cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+            assert result.data is not None
+            data = cast(Dict[str, Any], result.data)
             
             # Safely access expires_at - if missing, treat as corrupted and clean up
             try:
@@ -131,7 +131,7 @@ class OAuthStateStore:
                 
                 return None
             
-            tenant_id = result.data["tenant_id"]
+            tenant_id = str(data.get("tenant_id", ""))
             logger.debug(
                 f"Successfully retrieved OAuth state: state_preview={state_preview}..., "
                 f"tenant_id={tenant_id}"
@@ -149,6 +149,4 @@ class OAuthStateStore:
                 f"(state_preview={state_preview}...)",
                 exc_info=True
             )
-        except Exception:
-            logger.error("Failed to retrieve OAuth state", exc_info=True)
             return None
