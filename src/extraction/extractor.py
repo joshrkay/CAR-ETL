@@ -24,6 +24,14 @@ from src.extraction.prompts import build_extraction_prompt, build_document_type_
 from src.extraction.normalizers import normalize_field_value
 from src.services.redaction import presidio_redact
 
+AsyncOpenAIClient: type[Any] | None
+try:
+    from openai import AsyncOpenAI as _AsyncOpenAIClient
+except ImportError:  # pragma: no cover - handled in runtime environments without openai
+    AsyncOpenAIClient = None
+else:
+    AsyncOpenAIClient = _AsyncOpenAIClient
+
 logger = logging.getLogger(__name__)
 
 # OpenAI API key from environment

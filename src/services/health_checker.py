@@ -3,7 +3,7 @@ import time
 import logging
 import asyncio
 import httpx
-from typing import Any, Dict, Literal, Optional, Union
+from typing import Any, Dict, Literal, Optional
 from supabase import Client
 
 from src.auth.config import get_auth_config
