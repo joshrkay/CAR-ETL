@@ -40,7 +40,7 @@ router = APIRouter(
     RAG Pipeline:
     1. Embeds your question
     2. Retrieves top-20 relevant chunks
-    3. Re-ranks to top-5 most relevant
+    3. Re-ranks to top-max_chunks most relevant (default 5, range 1-20)
     4. Builds context for LLM
     5. Generates answer with citations
     6. Validates all citations
