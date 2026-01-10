@@ -5,7 +5,6 @@ Tests the complete flow from HTTP request to answer generation with citations.
 """
 
 import pytest
-import json
 from uuid import uuid4
 from unittest.mock import Mock, AsyncMock, patch
 from fastapi.testclient import TestClient
