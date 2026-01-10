@@ -7,7 +7,6 @@ Tests RRF algorithm, search modes, highlighting, and API endpoint.
 import pytest
 from unittest.mock import Mock, AsyncMock
 from uuid import uuid4, UUID
-from typing import List
 
 from src.search.hybrid import HybridSearchService, SearchResult
 from src.search.highlighter import SearchHighlighter
