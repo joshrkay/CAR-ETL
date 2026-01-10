@@ -40,7 +40,14 @@ CREATE TRIGGER trg_update_chunk_tsv
 
 -- Backfill existing chunks (if any)
 UPDATE public.document_chunks
-SET content_tsv = setweight(to_tsvector('english', COALESCE(content, '')), 'A')
+SET content_tsv =
+  setweight(to_tsvector('english', COALESCE(content, '')), 'A') ||
+  CASE
+    WHEN section_header IS NOT NULL THEN
+      setweight(to_tsvector('english', section_header), 'B')
+    ELSE
+      to_tsvector('english', '')
+  END
 WHERE content_tsv IS NULL;
 
 -- Keyword search function
