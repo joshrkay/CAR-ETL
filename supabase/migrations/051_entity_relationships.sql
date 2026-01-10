@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.entity_relationships (
   from_entity_id UUID NOT NULL,
   to_entity_id UUID NOT NULL,
   relationship_type TEXT NOT NULL,
-  attributes JSONB DEFAULT '{}',
+  attributes JSONB NOT NULL DEFAULT '{}',
   start_date DATE,
   end_date DATE,
   source_document_id UUID REFERENCES public.documents(id) ON DELETE SET NULL,
@@ -64,6 +64,7 @@ WITH CHECK (tenant_id = public.tenant_id());
 CREATE POLICY "Service role manages relationships" 
 ON public.entity_relationships 
 FOR ALL
+TO service_role
 USING (
   auth.role() = 'service_role' OR
   (current_setting('request.jwt.claims', true)::jsonb ->> 'role') = 'service_role'

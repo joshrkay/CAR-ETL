@@ -1,12 +1,6 @@
 """Tests for entity canonicalization."""
 
-import sys
-from pathlib import Path
-
 import pytest
-
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
 
 from src.entities.canonicalize import canonicalize
 
