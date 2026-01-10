@@ -1,34 +1,33 @@
 """Admin endpoints for feature flag management."""
 import logging
-from typing import Annotated, Any, cast
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated, Any, Dict, List, cast
+from uuid import UUID
+from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_feature_flags, get_supabase_client, require_role
+from src.dependencies import require_role, get_supabase_client, get_feature_flags
 from src.features.models import (
     FeatureFlag,
     FeatureFlagCreate,
-    FeatureFlagResponse,
     TenantFeatureFlagUpdate,
+    FeatureFlagResponse,
 )
 from src.features.service import FeatureFlagService
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/admin/flags", tags=["admin", "feature-flags"])
 
 
-@router.get("", response_model=list[FeatureFlag])
+@router.get("", response_model=List[FeatureFlag])
 async def list_all_flags(
     supabase: Annotated[Client, Depends(get_supabase_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-) -> list[FeatureFlag]:
+) -> List[FeatureFlag]:
     """
     List all feature flags (admin only).
-
+    
     Requires Admin role.
     """
     try:
@@ -38,11 +37,11 @@ async def list_all_flags(
             .order("name")
             .execute()
         )
-
-        flags_list: list[FeatureFlag] = []
+        
+        flags_list: List[FeatureFlag] = []
         if result.data:
             for flag in result.data:
-                flag_dict = cast(dict[str, Any], flag)
+                flag_dict = cast(Dict[str, Any], flag)
                 flags_list.append(FeatureFlag(**flag_dict))
         return flags_list
     except Exception as e:
@@ -63,7 +62,7 @@ async def create_flag(
 ) -> FeatureFlag:
     """
     Create a new feature flag (admin only).
-
+    
     Requires Admin role. Non-admins cannot modify flags.
     """
     try:
@@ -75,7 +74,7 @@ async def create_flag(
             .limit(1)
             .execute()
         )
-
+        
         if existing.data:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -84,7 +83,7 @@ async def create_flag(
                     "message": f"Feature flag '{flag_data.name}' already exists",
                 },
             )
-
+        
         # Create the flag
         result = (
             supabase.table("feature_flags")
@@ -95,7 +94,7 @@ async def create_flag(
             })
             .execute()
         )
-
+        
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -104,10 +103,10 @@ async def create_flag(
                     "message": "Failed to create feature flag",
                 },
             )
-
-        flag_dict = cast(dict[str, Any], result.data[0])
+        
+        flag_dict = cast(Dict[str, Any], result.data[0])
         return FeatureFlag(**flag_dict)
-
+        
     except HTTPException:
         raise
     except Exception as e:
@@ -127,10 +126,10 @@ async def set_tenant_override(
     override_data: TenantFeatureFlagUpdate,
     supabase: Annotated[Client, Depends(get_supabase_client)],
     auth: Annotated[AuthContext, Depends(require_role("Admin"))],
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """
     Set tenant-specific feature flag override (admin only).
-
+    
     Requires Admin role. Non-admins cannot modify flags.
     Enforces tenant isolation - admins can only modify flags for their own tenant.
     """
@@ -155,11 +154,11 @@ async def set_tenant_override(
                 "message": "Tenant isolation is absolute. Admins can only modify feature flags for their own tenant.",
             },
         )
-
+    
     # After validation, use auth.tenant_id (not URL parameter) for all operations
     # This ensures we never accidentally use an unvalidated tenant_id
     validated_tenant_id = auth.tenant_id
-
+    
     try:
         # Get the flag ID
         flag_result = (
@@ -169,7 +168,7 @@ async def set_tenant_override(
             .limit(1)
             .execute()
         )
-
+        
         if not flag_result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -178,10 +177,10 @@ async def set_tenant_override(
                     "message": f"Feature flag '{flag_name}' not found",
                 },
             )
-
-        flag_dict = cast(dict[str, Any], flag_result.data[0])
+        
+        flag_dict = cast(Dict[str, Any], flag_result.data[0])
         flag_id = str(flag_dict.get("id", ""))
-
+        
         # Check if override already exists
         existing = (
             supabase.table("tenant_feature_flags")
@@ -191,10 +190,10 @@ async def set_tenant_override(
             .limit(1)
             .execute()
         )
-
+        
         if existing.data:
             # Update existing override
-            existing_dict = cast(dict[str, Any], existing.data[0])
+            existing_dict = cast(Dict[str, Any], existing.data[0])
             existing_id = str(existing_dict.get("id", ""))
             (
                 supabase.table("tenant_feature_flags")
@@ -213,18 +212,18 @@ async def set_tenant_override(
                 })
                 .execute()
             )
-
+        
         # Invalidate shared cache for this tenant and flag
         flag_service = FeatureFlagService(supabase, validated_tenant_id)
         flag_service.invalidate_cache(flag_name)
-
+        
         return {
             "flag_name": flag_name,
             "tenant_id": str(validated_tenant_id),
             "enabled": override_data.enabled,
             "message": "Tenant override updated successfully",
         }
-
+        
     except HTTPException:
         raise
     except Exception as e:
@@ -246,7 +245,7 @@ async def delete_tenant_override(
 ) -> None:
     """
     Delete tenant-specific feature flag override (admin only).
-
+    
     This will cause the tenant to fall back to the default flag value.
     Requires Admin role. Non-admins cannot modify flags.
     Enforces tenant isolation - admins can only delete flags for their own tenant.
@@ -272,11 +271,11 @@ async def delete_tenant_override(
                 "message": "Tenant isolation is absolute. Admins can only modify feature flags for their own tenant.",
             },
         )
-
+    
     # After validation, use auth.tenant_id (not URL parameter) for all operations
     # This ensures we never accidentally use an unvalidated tenant_id
     validated_tenant_id = auth.tenant_id
-
+    
     try:
         # Get the flag ID
         flag_result = (
@@ -286,7 +285,7 @@ async def delete_tenant_override(
             .limit(1)
             .execute()
         )
-
+        
         if not flag_result.data:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -295,10 +294,10 @@ async def delete_tenant_override(
                     "message": f"Feature flag '{flag_name}' not found",
                 },
             )
-
-        flag_dict = cast(dict[str, Any], flag_result.data[0])
+        
+        flag_dict = cast(Dict[str, Any], flag_result.data[0])
         flag_id = str(flag_dict.get("id", ""))
-
+        
         # Delete the override
         (
             supabase.table("tenant_feature_flags")
@@ -307,13 +306,13 @@ async def delete_tenant_override(
             .eq("flag_id", str(flag_id))
             .execute()
         )
-
+        
         # Invalidate shared cache for this tenant and flag
         flag_service = FeatureFlagService(supabase, validated_tenant_id)
         flag_service.invalidate_cache(flag_name)
-
+        
         return None
-
+        
     except HTTPException:
         raise
     except Exception as e:
@@ -333,11 +332,11 @@ async def get_flag_details(
 ) -> FeatureFlagResponse:
     """
     Get details about a specific feature flag for the current tenant.
-
+    
     Available to all authenticated users.
     """
     flag_details = await flags.get_flag_details(flag_name)
-
+    
     if not flag_details:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -346,5 +345,5 @@ async def get_flag_details(
                 "message": f"Feature flag '{flag_name}' not found",
             },
         )
-
+    
     return flag_details

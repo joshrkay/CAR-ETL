@@ -1,15 +1,15 @@
 """RAG pipeline orchestration."""
 import logging
+from typing import List, Dict
 from uuid import UUID
-
-from src.search.embeddings import EmbeddingService
 from supabase import Client
 
-from .citations import build_citations, validate_citations
-from .context_builder import build_context
-from .generator import Generator
-from .models import AskRequest, AskResponse, ChunkMatch
+from src.search.embeddings import EmbeddingService
 from .retriever import Retriever
+from .generator import Generator
+from .context_builder import build_context
+from .citations import validate_citations, build_citations
+from .models import AskRequest, AskResponse, ChunkMatch
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class RAGPipeline:
 
         return response
 
-    async def _fetch_document_names(self, chunks: list[ChunkMatch]) -> dict[UUID, str]:
+    async def _fetch_document_names(self, chunks: List[ChunkMatch]) -> Dict[UUID, str]:
         """
         Fetch document filenames for citation building.
 
@@ -137,7 +137,7 @@ class RAGPipeline:
 
         return doc_names
 
-    def _calculate_confidence(self, chunks: list[ChunkMatch]) -> float:
+    def _calculate_confidence(self, chunks: List[ChunkMatch]) -> float:
         """
         Calculate confidence from chunk similarities.
 

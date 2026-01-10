@@ -1,8 +1,9 @@
 """Citation validation for RAG answers."""
 import re
+from typing import List, Tuple
 from uuid import UUID
-
 from .models import ChunkMatch, Citation
+
 
 CITATION_PATTERN = re.compile(r'\[DOC:([a-f0-9-]{36}):PAGE:(\d+)\]')
 NO_INFO_PHRASES = [
@@ -13,7 +14,7 @@ NO_INFO_PHRASES = [
 ]
 
 
-def extract_citations(answer: str) -> list[tuple[str, int]]:
+def extract_citations(answer: str) -> List[Tuple[str, int]]:
     """
     Extract all citations from answer text.
 
@@ -27,7 +28,7 @@ def extract_citations(answer: str) -> list[tuple[str, int]]:
     return [(doc_id, int(page)) for doc_id, page in matches]
 
 
-def validate_citations(answer: str, chunks: list[ChunkMatch]) -> bool:
+def validate_citations(answer: str, chunks: List[ChunkMatch]) -> bool:
     """
     Validate that all citations in answer reference provided chunks.
 
@@ -60,7 +61,7 @@ def validate_citations(answer: str, chunks: list[ChunkMatch]) -> bool:
     return True
 
 
-def build_citations(answer: str, chunks: list[ChunkMatch], document_names: dict[UUID, str]) -> list[Citation]:
+def build_citations(answer: str, chunks: List[ChunkMatch], document_names: dict[UUID, str]) -> List[Citation]:
     """
     Build citation objects from answer text and chunks.
 
@@ -75,7 +76,7 @@ def build_citations(answer: str, chunks: list[ChunkMatch], document_names: dict[
     citations = extract_citations(answer)
 
     # Build mapping from (document_id, page) to chunk content
-    chunk_map: dict[tuple[str, int], str] = {}
+    chunk_map: dict[Tuple[str, int], str] = {}
     for chunk in chunks:
         doc_id_str = str(chunk.document_id)
         for page in chunk.page_numbers:

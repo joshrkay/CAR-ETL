@@ -5,17 +5,16 @@ Handles question answering with mandatory citations.
 """
 
 import logging
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from supabase import Client
 
-from src.auth.decorators import require_permission
 from src.auth.models import AuthContext
+from src.auth.decorators import require_permission
 from src.dependencies import get_supabase_client
+from src.search.embeddings import EmbeddingService
+from src.rag.pipeline import RAGPipeline
 from src.rag.generator import Generator
 from src.rag.models import AskRequest, AskResponse
-from src.rag.pipeline import RAGPipeline
-from src.search.embeddings import EmbeddingService
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 

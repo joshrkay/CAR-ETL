@@ -5,6 +5,7 @@ LLM prompts for document field extraction.
 Prompts are industry and document-type specific.
 """
 
+from typing import Dict, List
 
 
 def build_extraction_prompt(
@@ -15,19 +16,19 @@ def build_extraction_prompt(
 ) -> str:
     """
     Build extraction prompt for LLM.
-
+    
     Args:
         field_definitions: Formatted string of field definitions
         document_text: Extracted document text
         industry: Industry identifier (e.g., 'cre')
         document_type: Document type (e.g., 'lease')
-
+        
     Returns:
         Complete prompt string for LLM
     """
     industry_name = _get_industry_display_name(industry)
     doc_type_name = _get_document_type_display_name(document_type)
-
+    
     prompt = f"""You are a {industry_name} document analyst. Extract the following fields from this {doc_type_name} document.
 
 For each field, provide:
@@ -56,17 +57,17 @@ Respond in JSON format:
 def build_document_type_detection_prompt(document_text: str, industry: str) -> str:
     """
     Build prompt for document type detection.
-
+    
     Args:
         document_text: First page of document text (truncated)
         industry: Industry identifier (e.g., 'cre')
-
+        
     Returns:
         Prompt string for document type detection
     """
     industry_name = _get_industry_display_name(industry)
     document_types = _get_document_types_for_industry(industry)
-
+    
     prompt = f"""You are a {industry_name} document classifier. Analyze this document and determine its type.
 
 Document types:
@@ -87,7 +88,7 @@ Respond in JSON format:
 
 def _get_industry_display_name(industry: str) -> str:
     """Get display name for industry."""
-    industry_map: dict[str, str] = {
+    industry_map: Dict[str, str] = {
         "cre": "Commercial Real Estate",
     }
     return industry_map.get(industry.lower(), industry.upper())
@@ -95,7 +96,7 @@ def _get_industry_display_name(industry: str) -> str:
 
 def _get_document_type_display_name(document_type: str) -> str:
     """Get display name for document type."""
-    doc_type_map: dict[str, str] = {
+    doc_type_map: Dict[str, str] = {
         "lease": "lease",
         "rent_roll": "rent roll",
         "financial_statement": "financial statement",
@@ -104,7 +105,7 @@ def _get_document_type_display_name(document_type: str) -> str:
     return doc_type_map.get(document_type.lower(), document_type)
 
 
-def _get_document_types_for_industry(industry: str) -> list[str]:
+def _get_document_types_for_industry(industry: str) -> List[str]:
     """Get supported document types for industry."""
     if industry.lower() == "cre":
         return ["lease", "rent_roll", "financial_statement", "operating_agreement", "other"]

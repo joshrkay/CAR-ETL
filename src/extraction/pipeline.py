@@ -14,24 +14,26 @@ Orchestrates the end-to-end document extraction workflow:
 """
 
 import logging
+from typing import cast
 from datetime import datetime
-from typing import Any, cast
+from typing import Dict, Any, Optional
 from uuid import UUID
 
+from supabase import Client
+
+from src.extraction.router import route_document
+from src.extraction.extractor import FieldExtractor, ExtractionResult
+from src.services.redaction import presidio_redact
 from src.db.models.extraction import (
-    ExtractionSource,
     ExtractionStatus,
+    ExtractionSource,
 )
 from src.exceptions import (
     NotFoundError,
-    ParserError,
     ValidationError,
+    ParserError,
 )
-from src.extraction.extractor import ExtractionResult, FieldExtractor
-from src.extraction.router import route_document
 from src.services.error_sanitizer import get_loggable_error
-from src.services.redaction import presidio_redact
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,7 @@ class ExtractionPipelineError(Exception):
     pass
 
 
-async def get_document(supabase: Client, document_id: UUID) -> dict[str, Any]:
+async def get_document(supabase: Client, document_id: UUID) -> Dict[str, Any]:
     """
     Get document from database.
 
@@ -72,7 +74,7 @@ async def get_document(supabase: Client, document_id: UUID) -> dict[str, Any]:
         if not response.data or len(response.data) == 0:
             raise DocumentNotFoundError(f"Document not found: {document_id}")
 
-        document = cast(dict[str, Any], response.data[0])
+        document = cast(Dict[str, Any], response.data[0])
         logger.info(
             "Document retrieved",
             extra={
@@ -155,7 +157,7 @@ async def download_document(supabase: Client, storage_path: str, tenant_id: UUID
         ) from e
 
 
-async def parse_document_content(content: bytes, mime_type: str) -> dict[str, Any]:
+async def parse_document_content(content: bytes, mime_type: str) -> Dict[str, Any]:
     """
     Parse document using router to select optimal parser.
 
@@ -243,7 +245,7 @@ async def redact_pii(text: str, enabled: bool = True) -> str:
 
 async def extract_cre_fields(
     document_text: str,
-    document_type: str | None = None,
+    document_type: Optional[str] = None,
 ) -> ExtractionResult:
     """
     Extract CRE fields from document using LLM.
@@ -411,7 +413,7 @@ async def save_extraction(
 async def _validate_and_prepare(
     supabase: Client,
     document_id: UUID,
-) -> tuple[dict[str, Any], UUID]:
+) -> tuple[Dict[str, Any], UUID]:
     """
     Validate document exists and prepare for processing.
 
@@ -435,7 +437,7 @@ async def _validate_and_prepare(
 
 async def _parse_and_redact(
     supabase: Client,
-    document: dict[str, Any],
+    document: Dict[str, Any],
     tenant_id: UUID,
 ) -> tuple[str, str]:
     """
@@ -512,7 +514,7 @@ async def _finalize_success(
     document_id: UUID,
     extraction_id: UUID,
     overall_confidence: float,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """
     Finalize successful processing.
 
@@ -551,7 +553,7 @@ async def _finalize_failure(
     supabase: Client,
     document_id: UUID,
     error: Exception,
-) -> dict[str, Any]:
+) -> Dict[str, Any]:
     """
     Finalize failed processing.
 
@@ -633,7 +635,7 @@ async def _finalize_failure(
     }
 
 
-async def process_document(document_id: UUID, supabase: Client) -> dict[str, Any]:
+async def process_document(document_id: UUID, supabase: Client) -> Dict[str, Any]:
     """
     Process a single document through the extraction pipeline.
 

@@ -5,7 +5,7 @@ Defines OM-specific fields, types, weights, and metadata for extraction.
 """
 
 from enum import Enum
-from typing import Any
+from typing import Dict, List, Optional, Any
 
 from pydantic import BaseModel, Field
 
@@ -29,15 +29,15 @@ class OMFieldDefinition(BaseModel):
     type: OMFieldType = Field(..., description="Field data type")
     required: bool = Field(default=False, description="Whether field is required")
     weight: float = Field(..., ge=0.0, description="Weight for confidence and document scoring")
-    values: list[str] | None = Field(default=None, description="Allowed enum values")
-    applies_to: list[str] | None = Field(default=None, description="Optional property type applicability")
+    values: Optional[List[str]] = Field(default=None, description="Allowed enum values")
+    applies_to: Optional[List[str]] = Field(default=None, description="Optional property type applicability")
     skepticism: float = Field(default=1.0, description="Marketing skepticism factor (<=1.0)")
-    description: str | None = Field(default=None, description="Human readable description")
-    validation: dict[str, Any] | None = Field(default=None, description="Optional validation constraints")
-    max_items: int | None = Field(default=None, description="Max items for list fields")
+    description: Optional[str] = Field(default=None, description="Human readable description")
+    validation: Optional[Dict[str, Any]] = Field(default=None, description="Optional validation constraints")
+    max_items: Optional[int] = Field(default=None, description="Max items for list fields")
 
 
-def get_om_fields() -> dict[str, OMFieldDefinition]:
+def get_om_fields() -> Dict[str, OMFieldDefinition]:
     """Return OM field configuration."""
 
     return {
@@ -242,11 +242,11 @@ def get_om_fields() -> dict[str, OMFieldDefinition]:
     }
 
 
-def format_om_field_definitions_for_prompt(field_defs: dict[str, OMFieldDefinition]) -> str:
+def format_om_field_definitions_for_prompt(field_defs: Dict[str, OMFieldDefinition]) -> str:
     """
     Format OM field definitions for prompt inclusion.
     """
-    lines: list[str] = []
+    lines: List[str] = []
     for name, definition in field_defs.items():
         line = f"- {name}: type={definition.type.value}, required={definition.required}, weight={definition.weight}"
         if definition.values:
@@ -260,4 +260,4 @@ def format_om_field_definitions_for_prompt(field_defs: dict[str, OMFieldDefiniti
 
 
 # Export singleton mapping for convenience
-OM_FIELDS: dict[str, OMFieldDefinition] = get_om_fields()
+OM_FIELDS: Dict[str, OMFieldDefinition] = get_om_fields()

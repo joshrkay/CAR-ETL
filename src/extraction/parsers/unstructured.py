@@ -5,13 +5,10 @@ Parser implementation for Unstructured.io service.
 Supports various document formats including Word and text files.
 """
 import logging
-from typing import Any
-
 import httpx
-
+from typing import Dict, Any, List
+from .base import BaseParser, ParseResult, PageContent, ExtractedTable
 from src.exceptions import ParserError
-
-from .base import BaseParser, ExtractedTable, PageContent, ParseResult
 
 logger = logging.getLogger(__name__)
 
@@ -21,25 +18,25 @@ TIMEOUT_HEALTH_CHECK = 5.0
 
 class UnstructuredParser(BaseParser):
     """Parser implementation using Unstructured.io service."""
-
+    
     def __init__(self, api_url: str, api_key: str):
         """
         Initialize Unstructured parser.
-
+        
         Args:
             api_url: Unstructured API endpoint URL
             api_key: API key for authentication
         """
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
-
-    def _parse_html_table(self, html_content: str) -> tuple[list[str], list[dict[str, Any]]]:
+    
+    def _parse_html_table(self, html_content: str) -> tuple[List[str], List[Dict[str, Any]]]:
         """
         Parse HTML table to extract headers and rows.
-
+        
         Args:
             html_content: HTML table content
-
+            
         Returns:
             Tuple of (headers, rows)
         """
@@ -47,20 +44,20 @@ class UnstructuredParser(BaseParser):
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(html_content, "html.parser")
             table = soup.find("table")
-
+            
             if not table:
                 return [], []
-
+            
             headers = []
             rows = []
-
+            
             # Extract headers from thead or first row
             thead = table.find("thead")
             if thead:
                 header_row = thead.find("tr")
                 if header_row:
                     headers = [th.get_text(strip=True) for th in header_row.find_all(["th", "td"])]
-
+            
             # Extract rows from tbody
             tbody = table.find("tbody")
             if tbody:
@@ -70,10 +67,10 @@ class UnstructuredParser(BaseParser):
                         if not headers:
                             headers = cells
                         else:
-                            row_dict = {headers[i] if i < len(headers) else f"col_{i}": cell
+                            row_dict = {headers[i] if i < len(headers) else f"col_{i}": cell 
                                       for i, cell in enumerate(cells)}
                             rows.append(row_dict)
-
+            
             return headers, rows
         except ImportError:
             logger.warning("BeautifulSoup not available, cannot parse HTML tables")
@@ -81,33 +78,33 @@ class UnstructuredParser(BaseParser):
         except Exception as e:
             logger.warning(f"Failed to parse HTML table: {str(e)}")
             return [], []
-
+    
     async def parse(self, content: bytes, mime_type: str) -> ParseResult:
         """
         Parse document using Unstructured.io.
-
+        
         Args:
             content: Raw document bytes
             mime_type: MIME type of the document
-
+            
         Returns:
             ParseResult with extracted content
-
+            
         Raises:
             ParserError: If parsing fails
         """
         if not self.api_url or not self.api_key:
             raise ParserError("unstructured", "Unstructured API URL and key must be configured")
-
+        
         url = f"{self.api_url}/general/v0/general"
         request_headers = {
             "Authorization": f"Bearer {self.api_key}",
         }
-
+        
         files = {
             "files": ("document", content, mime_type)
         }
-
+        
         try:
             async with httpx.AsyncClient(timeout=TIMEOUT_NORMAL) as client:
                 response = await client.post(url, headers=request_headers, files=files)
@@ -127,28 +124,28 @@ class UnstructuredParser(BaseParser):
         except Exception as e:
             logger.exception("Unexpected error in Unstructured parser")
             raise ParserError("unstructured", f"Unexpected error: {str(e)}")
-
+        
         # Process elements
-        text_parts: list[str] = []
-        pages_dict: dict[int, list[str]] = {}
-        tables: list[ExtractedTable] = []
-
+        text_parts: List[str] = []
+        pages_dict: Dict[int, List[str]] = {}
+        tables: List[ExtractedTable] = []
+        
         for element in elements:
             element_type = element.get("type", "")
             element_text = element.get("text", "")
             metadata = element.get("metadata", {})
             page_number = metadata.get("page_number", 1)
-
+            
             if element_type in ["NarrativeText", "Title", "ListItem"]:
                 text_parts.append(element_text)
                 if page_number not in pages_dict:
                     pages_dict[page_number] = []
                 pages_dict[page_number].append(element_text)
-
+            
             elif element_type == "Table":
                 table_html = metadata.get("text_as_html", "")
                 headers, rows = self._parse_html_table(table_html)
-
+                
                 if headers:
                     tables.append(ExtractedTable(
                         table_name=None,
@@ -157,7 +154,7 @@ class UnstructuredParser(BaseParser):
                         page_number=page_number,
                         confidence=None
                     ))
-
+        
         # Build pages
         pages = [
             PageContent(
@@ -167,7 +164,7 @@ class UnstructuredParser(BaseParser):
             )
             for page_num, page_texts in sorted(pages_dict.items())
         ]
-
+        
         # If no pages but has text, create single page
         if not pages and text_parts:
             pages.append(PageContent(
@@ -175,7 +172,7 @@ class UnstructuredParser(BaseParser):
                 text="\n\n".join(text_parts),
                 metadata={}
             ))
-
+        
         return ParseResult(
             text="\n\n".join(text_parts),
             pages=pages,
@@ -183,17 +180,17 @@ class UnstructuredParser(BaseParser):
             metadata={"elements_count": len(elements)},
             parser_confidence=None
         )
-
+    
     async def health_check(self) -> bool:
         """
         Check if Unstructured service is available.
-
+        
         Returns:
             True if service is healthy, False otherwise
         """
         if not self.api_url:
             return False
-
+        
         try:
             url = f"{self.api_url}/healthcheck"
             async with httpx.AsyncClient(timeout=TIMEOUT_HEALTH_CHECK) as client:

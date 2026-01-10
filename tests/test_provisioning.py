@@ -1,15 +1,14 @@
 """Unit tests for tenant provisioning."""
-from unittest.mock import Mock, patch
-from uuid import uuid4
-
 import pytest
-
-from src.services.storage_setup import StorageSetupError, StorageSetupService
-from src.services.tenant_provisioning import (
-    ProvisioningError,
-    TenantProvisioningService,
-)
+from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from uuid import uuid4
 from supabase import Client
+
+from src.services.tenant_provisioning import (
+    TenantProvisioningService,
+    ProvisioningError,
+)
+from src.services.storage_setup import StorageSetupService, StorageSetupError
 
 
 @pytest.fixture
@@ -45,14 +44,14 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client) ->
     """Test successful tenant provisioning."""
     tenant_id = uuid4()
     user_id = str(uuid4())
-
+    
     # Mock slug validation (no existing tenant)
     call_count = [0]  # Use list to allow modification in nested function
-
+    
     def execute_side_effect():
         call_count[0] += 1
         current_count = call_count[0]
-
+        
         if current_count == 1:
             # Slug check - no existing tenant
             return Mock(data=[])
@@ -73,34 +72,34 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client) ->
                 "roles": ["Admin"],
             }])
         return Mock(data=[])
-
+    
     # Reset the default return value and set side_effect
     mock_supabase_client.execute.return_value = None
     mock_supabase_client.execute.side_effect = execute_side_effect
-
+    
     # Mock storage service
     with patch.object(provisioning_service.storage_service, 'create_tenant_bucket') as mock_bucket:
         mock_bucket.return_value = f"documents-{tenant_id}"
-
+        
         # Mock auth admin create_user
         mock_user = Mock()
         mock_user.id = user_id
         mock_auth_response = Mock()
         mock_auth_response.user = mock_user
         mock_supabase_client.auth.admin.create_user = Mock(return_value=mock_auth_response)
-
+        
         # Mock storage list (bucket check)
         mock_supabase_client.storage.from_ = Mock(return_value=Mock(
             list=Mock(side_effect=Exception("Bucket doesn't exist"))
         ))
-
+        
         result = provisioning_service.provision_tenant(
             name="Test Tenant",
             slug="test-tenant",
             admin_email="admin@test.com",
             environment="prod",
         )
-
+        
         assert result["tenant_id"] == str(tenant_id)
         assert result["name"] == "Test Tenant"
         assert result["slug"] == "test-tenant"
@@ -113,14 +112,14 @@ def test_provision_tenant_duplicate_slug(provisioning_service, mock_supabase_cli
     """Test provisioning fails with duplicate slug."""
     # Mock slug validation (tenant exists)
     mock_supabase_client.execute.return_value = Mock(data=[{"id": str(uuid4())}])
-
+    
     with pytest.raises(ProvisioningError) as exc_info:
         provisioning_service.provision_tenant(
             name="Test Tenant",
             slug="existing-tenant",
             admin_email="admin@test.com",
         )
-
+    
     assert "already exists" in str(exc_info.value).lower()
 
 
@@ -130,14 +129,14 @@ def test_provision_tenant_rollback_on_bucket_failure(
 ) -> None:
     """Test that rollback occurs when bucket creation fails."""
     tenant_id = uuid4()
-
+    
     # Mock slug validation (no existing tenant)
     call_count = [0]
-
+    
     def execute_side_effect():
         call_count[0] += 1
         current_count = call_count[0]
-
+        
         if current_count == 1:
             # Slug check
             return Mock(data=[])
@@ -157,14 +156,14 @@ def test_provision_tenant_rollback_on_bucket_failure(
             # Rollback: delete tenant
             return Mock(data=[])
         return Mock(data=[])
-
+    
     mock_supabase_client.execute.return_value = None
     mock_supabase_client.execute.side_effect = execute_side_effect
-
+    
     # Mock storage service to fail
     with patch.object(provisioning_service.storage_service, 'create_tenant_bucket') as mock_bucket:
         mock_bucket.side_effect = StorageSetupError("Bucket creation failed")
-
+        
         # Mock rollback bucket deletion
         with patch.object(provisioning_service.storage_service, 'delete_tenant_bucket'):
             with pytest.raises(ProvisioningError):
@@ -173,7 +172,7 @@ def test_provision_tenant_rollback_on_bucket_failure(
                     slug="test-tenant",
                     admin_email="admin@test.com",
                 )
-
+            
             # Verify rollback was called (tenant should be deleted)
             delete_calls = [
                 call for call in mock_supabase_client.delete.call_args_list
@@ -188,12 +187,12 @@ def test_provision_tenant_rollback_on_user_failure(
 ) -> None:
     """Test that rollback occurs when user creation fails."""
     tenant_id = uuid4()
-
+    
     # Mock slug validation and tenant creation
     def execute_side_effect():
         call_count = getattr(execute_side_effect, "call_count", 0)
         execute_side_effect.call_count = call_count + 1
-
+        
         if call_count == 1:
             return Mock(data=[])  # Slug check
         elif call_count == 2:
@@ -207,20 +206,20 @@ def test_provision_tenant_rollback_on_user_failure(
         elif call_count == 3:
             return Mock(data=[])  # Rollback tenant deletion
         return Mock(data=[])
-
+    
     mock_supabase_client.execute.side_effect = execute_side_effect
-
+    
     # Mock storage to succeed
     with patch.object(provisioning_service.storage_service, 'create_tenant_bucket') as mock_bucket:
         mock_bucket.return_value = f"documents-{tenant_id}"
-
+        
         # Mock storage deletion for rollback
         with patch.object(provisioning_service.storage_service, 'delete_tenant_bucket'):
             # Mock auth to fail
             mock_supabase_client.auth.admin.create_user = Mock(
                 side_effect=Exception("Auth API error")
             )
-
+            
             with pytest.raises(ProvisioningError):
                 provisioning_service.provision_tenant(
                     name="Test Tenant",
@@ -231,21 +230,22 @@ def test_provision_tenant_rollback_on_user_failure(
 
 def test_storage_setup_create_bucket(mock_supabase_client) -> None:
     """Test storage bucket creation."""
-
+    from src.services.storage_setup import StorageSetupService
+    
     tenant_id = uuid4()
     bucket_name = f"documents-{tenant_id}"
-
+    
     service = StorageSetupService(
         mock_supabase_client,
         "https://test.supabase.co",
         "test-key",
     )
-
+    
     # Mock bucket doesn't exist
     mock_supabase_client.storage.from_ = Mock(return_value=Mock(
         list=Mock(side_effect=Exception("Not found"))
     ))
-
+    
     # Mock HTTP request for bucket creation
     with patch('httpx.Client') as mock_httpx:
         mock_response = Mock()
@@ -253,23 +253,24 @@ def test_storage_setup_create_bucket(mock_supabase_client) -> None:
         mock_client_instance = Mock()
         mock_client_instance.post.return_value = mock_response
         mock_httpx.return_value.__enter__.return_value = mock_client_instance
-
+        
         result = service.create_tenant_bucket(tenant_id)
-
+        
         assert result == bucket_name
 
 
 def test_storage_setup_delete_bucket(mock_supabase_client) -> None:
     """Test storage bucket deletion."""
-
+    from src.services.storage_setup import StorageSetupService
+    
     tenant_id = uuid4()
-
+    
     service = StorageSetupService(
         mock_supabase_client,
         "https://test.supabase.co",
         "test-key",
     )
-
+    
     # Mock HTTP request for bucket deletion
     with patch('httpx.Client') as mock_httpx:
         mock_response = Mock()
@@ -277,6 +278,6 @@ def test_storage_setup_delete_bucket(mock_supabase_client) -> None:
         mock_client_instance = Mock()
         mock_client_instance.delete.return_value = mock_response
         mock_httpx.return_value.__enter__.return_value = mock_client_instance
-
+        
         # Should not raise
         service.delete_tenant_bucket(tenant_id)

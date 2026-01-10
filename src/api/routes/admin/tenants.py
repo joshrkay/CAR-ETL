@@ -1,22 +1,22 @@
 """Admin endpoints for tenant provisioning."""
-from datetime import datetime
-from typing import Annotated, Literal
-from uuid import UUID
-
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field
+from typing import Annotated
+from uuid import UUID
+from supabase import Client
 
 from src.auth.models import AuthContext
-from src.dependencies import get_service_client, require_role
-from src.services.tenant_provisioning import ProvisioningError, TenantProvisioningService
-from supabase import Client
+from src.dependencies import require_role, get_service_client
+from src.services.tenant_provisioning import TenantProvisioningService, ProvisioningError
+from pydantic import BaseModel, Field, EmailStr
+from typing import Literal
+from datetime import datetime
 
 router = APIRouter(prefix="/api/v1/admin/tenants", tags=["admin", "tenants"])
 
 
 class TenantCreate(BaseModel):
     """Request model for creating a tenant."""
-
+    
     name: str = Field(..., min_length=2, max_length=100)
     slug: str = Field(
         ...,
@@ -30,7 +30,7 @@ class TenantCreate(BaseModel):
 
 class TenantResponse(BaseModel):
     """Response model for tenant creation."""
-
+    
     tenant_id: UUID
     name: str
     slug: str
@@ -48,9 +48,9 @@ async def create_tenant(
 ) -> TenantResponse:
     """
     Provision a new tenant with storage bucket and admin user.
-
+    
     Requires Admin role. Uses service_role to create tenant.
-
+    
     Steps:
     1. Validate slug uniqueness
     2. Create tenant row
@@ -59,21 +59,21 @@ async def create_tenant(
     5. Invite admin user
     6. Link admin to tenant
     7. Return tenant details
-
+    
     On failure, automatically rolls back all created resources.
     """
     try:
         provisioning_service = TenantProvisioningService(supabase)
-
+        
         result = provisioning_service.provision_tenant(
             name=tenant_data.name,
             slug=tenant_data.slug,
             admin_email=tenant_data.admin_email,
             environment=tenant_data.environment,
         )
-
+        
         return TenantResponse(**result)
-
+        
     except ProvisioningError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

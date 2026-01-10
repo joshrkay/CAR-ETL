@@ -7,6 +7,7 @@ CRITICAL: Must be called before any error logging or database storage.
 
 import re
 
+
 # PII patterns to redact from error messages
 PII_PATTERNS = [
     # Email addresses
