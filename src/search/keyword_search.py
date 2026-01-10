@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, cast
+from typing import List, cast
 from uuid import UUID
 
 from supabase import Client
@@ -41,18 +41,23 @@ class KeywordSearchService:
         self,
         query_text: str,
         match_count: int = 20,
-        tenant_id: Optional[UUID] = None,
     ) -> List[KeywordSearchResult]:
         """
         Search document chunks using PostgreSQL full-text search.
 
         Args:
-            query_text: Query string for full-text search
-            match_count: Maximum number of matches to return
-            tenant_id: Optional tenant ID for service_role usage
+            query_text: Query string for full-text search.
+            match_count: Maximum number of matches to return.
 
         Returns:
-            List of keyword search results
+            List of keyword search results.
+
+        Security:
+            Tenant isolation is enforced by the database function
+            ``search_chunks_keyword``, which extracts the tenant_id from the
+            JWT token in the Supabase client. This ensures that users can only
+            search within their own tenant's documents, and prevents cross-tenant
+            access even when using service_role credentials.
 
         Raises:
             ValueError: If query_text is empty or match_count < 1
@@ -69,9 +74,6 @@ class KeywordSearchService:
             "match_count": match_count,
         }
 
-        if tenant_id is not None:
-            params["filter_tenant_id"] = str(tenant_id)
-
         try:
             result = self.client.rpc("search_chunks_keyword", params).execute()
             rows = result.data or []
@@ -79,7 +81,6 @@ class KeywordSearchService:
             logger.error(
                 "Keyword search failed",
                 extra={
-                    "tenant_id": str(tenant_id) if tenant_id else None,
                     "match_count": match_count,
                     "error": str(exc),
                 },
