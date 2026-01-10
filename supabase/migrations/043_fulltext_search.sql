@@ -1,10 +1,14 @@
 ALTER TABLE document_chunks
-  ADD COLUMN fts tsvector
+  ADD COLUMN IF NOT EXISTS fts tsvector
     GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
 
-CREATE INDEX IF NOT EXISTS idx_chunks_fts ON document_chunks USING GIN (fts);
+CREATE INDEX IF NOT EXISTS idx_chunks_fts ON document_chunks USING GIN(fts);
 
-CREATE OR REPLACE FUNCTION search_chunks_keyword(
+-- Understanding plane: Full-text search function
+-- Searches document chunks using PostgreSQL full-text search
+-- Enforces tenant isolation by always using JWT tenant_id
+
+CREATE OR REPLACE FUNCTION public.search_chunks_keyword(
   query_text TEXT,
   match_count INT DEFAULT 20
 )
@@ -46,8 +50,8 @@ END;
 $$;
 
 -- Grant execute to authenticated users
-GRANT EXECUTE ON FUNCTION search_chunks_keyword(TEXT, INT) TO authenticated;
-GRANT EXECUTE ON FUNCTION search_chunks_keyword(TEXT, INT) TO anon;
+GRANT EXECUTE ON FUNCTION public.search_chunks_keyword(TEXT, INT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.search_chunks_keyword(TEXT, INT) TO anon;
 
 -- Note:
 -- - SECURITY DEFINER allows function to bypass RLS for internal queries

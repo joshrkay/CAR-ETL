@@ -60,8 +60,8 @@ class KeywordSearchService:
             access even when using service_role credentials.
 
         Raises:
-            ValueError: If query_text is empty or match_count < 1.
-            Exception: If search fails.
+            ValueError: If query_text is empty or match_count < 1
+            Exception: If search fails
         """
         if not query_text or not query_text.strip():
             raise ValueError("query_text must be a non-empty string")
