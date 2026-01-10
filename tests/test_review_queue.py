@@ -302,7 +302,7 @@ class TestReviewQueueService:
             "claimed_by": None,
             "claimed_at": None,
             "completed_at": None,
-            "created_at": "2024-01-01T00:00:00",
+            "created_at": datetime.now().isoformat(),
             "documents": {"original_filename": "test.pdf"},
             "extractions": {"overall_confidence": 0.75, "document_type": "lease"},
         }
