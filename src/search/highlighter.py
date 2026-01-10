@@ -6,7 +6,7 @@ Wraps matching terms in <mark> tags for UI rendering.
 """
 
 import re
-from typing import List
+from typing import List, Tuple
 
 
 class SearchHighlighter:
@@ -89,7 +89,7 @@ class SearchHighlighter:
 
         return [term for term in terms if term not in stop_words and len(term) >= 2]
 
-    def _find_matches(self, content: str, query_terms: List[str]) -> List[tuple]:
+    def _find_matches(self, content: str, query_terms: List[str]) -> List[Tuple[int, int, str]]:
         """
         Find all matches of query terms in content.
 
@@ -120,7 +120,7 @@ class SearchHighlighter:
     def _generate_snippets(
         self,
         content: str,
-        matches: List[tuple],
+        matches: List[Tuple[int, int, str]],
     ) -> List[str]:
         """
         Generate snippets centered around matches.
@@ -208,7 +208,7 @@ class SearchHighlighter:
     def _highlight_terms(
         self,
         snippet: str,
-        matches: List[tuple],
+        matches: List[Tuple[int, int, str]],
         snippet_start: int,
     ) -> str:
         """

@@ -100,6 +100,7 @@ def decrypt_value(encrypted_value: str) -> str:
         fernet = Fernet(key)
         encrypted_bytes = base64.urlsafe_b64decode(encrypted_value.encode())
         decrypted = fernet.decrypt(encrypted_bytes)
-        return decrypted.decode()
+        result: str = decrypted.decode()
+        return result
     except Exception as e:
         raise ValueError(f"Failed to decrypt value: {str(e)}")
