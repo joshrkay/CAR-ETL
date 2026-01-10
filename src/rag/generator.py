@@ -70,7 +70,25 @@ class Generator:
                 temperature=0.0,  # Deterministic for consistency
             )
 
+            # Validate that the response contains at least one choice with non-empty content
+            if not getattr(response, "choices", None):
+                logger.error(
+                    "LLM response contained no choices",
+                    extra={
+                        "model": self.model,
+                    },
+                )
+                raise RuntimeError("LLM response contained no choices.")
+
             answer = response.choices[0].message.content
+            if answer is None:
+                logger.error(
+                    "LLM response choice had no content",
+                    extra={
+                        "model": self.model,
+                    },
+                )
+                raise RuntimeError("LLM response choice had no content.")
 
             logger.info(
                 "Generated answer",
