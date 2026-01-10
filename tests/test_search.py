@@ -5,7 +5,7 @@ Tests RRF algorithm, search modes, highlighting, and API endpoint.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from uuid import uuid4, UUID
 from typing import List
 
