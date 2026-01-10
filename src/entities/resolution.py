@@ -250,10 +250,7 @@ def record_duplicate_resolution(
         "reviewed_by": str(reviewed_by),
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
     }
-    redacted_payload = redact_json_value(payload)
-    if not isinstance(redacted_payload, dict):
-        raise RuntimeError("Failed to redact duplicate resolution payload")
-    result = supabase.table("entity_duplicates").insert(redacted_payload).execute()
+    result = supabase.table("entity_duplicates").insert(payload).execute()
     if result.data is None:
         raise RuntimeError("Failed to record duplicate resolution")
 
