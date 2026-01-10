@@ -1,0 +1,25 @@
+"""Tests for entity canonicalization."""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+
+from src.entities.canonicalize import canonicalize
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("Acme Corp LLC", "acme"),
+        ("  Downtown Properties, Inc.  ", "downtown properties"),
+        ("123 Main St. LP", "123 main st"),
+        ("Tenant-Landlord, Ltd", "tenantlandlord"),
+    ],
+)
+def test_canonicalize_normalizes_name(raw: str, expected: str) -> None:
+    """Canonicalize strips punctuation, casing, and suffixes."""
+    assert canonicalize(raw) == expected
