@@ -26,8 +26,8 @@ class TestKeywordSearchService:
         client.execute = Mock(return_value=Mock(data=[]))
         return client
 
-    def test_search_chunks_returns_results(self, mock_supabase_client):
-        """Search should return results for matching query."""
+    def test_search_chunks_basic(self, mock_supabase_client):
+        """Search should call RPC with correct parameters."""
         document_id = uuid4()
         mock_supabase_client.rpc.return_value.execute.return_value.data = [
             {
@@ -79,7 +79,7 @@ class TestKeywordSearchService:
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(ValueError, match="query_text must be a non-empty string"):
-            service.search_chunks(query_text=" ")
+            asyncio.run(service.search_chunks(query_text=" "))
 
     def test_search_chunks_requires_positive_match_count(self, mock_supabase_client):
         """Search should require match_count >= 1."""
@@ -112,4 +112,4 @@ class TestKeywordSearchService:
         service = KeywordSearchService(mock_supabase_client)
 
         with pytest.raises(Exception, match="Database connection error"):
-            service.search_chunks(query_text="test query", match_count=5)
+            asyncio.run(service.search_chunks(query_text="test query", match_count=5))

@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, cast
+from typing import List, cast
 from uuid import UUID
 
 from supabase import Client
@@ -53,13 +53,14 @@ class KeywordSearchService:
             List of keyword search results.
 
         Security:
-            Tenant isolation is enforced by the database function, which extracts
-            the tenant_id from the JWT token. The function cannot be called with
-            an explicit tenant_id parameter, ensuring absolute tenant isolation.
+            - Tenant isolation is enforced by the database function, which extracts
+              the tenant_id from the JWT token using public.tenant_id().
+            - The tenant_id cannot be overridden by callers, ensuring absolute
+              tenant isolation as required by .cursorrules.
 
         Raises:
-            ValueError: If query_text is empty or match_count < 1.
-            Exception: If search fails.
+            ValueError: If query_text is empty or match_count < 1
+            Exception: If search fails
         """
         if not query_text or not query_text.strip():
             raise ValueError("query_text must be a non-empty string")
