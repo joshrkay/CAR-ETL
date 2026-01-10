@@ -1,8 +1,8 @@
 """Tests for review queue service and API."""
 import pytest
-from uuid import uuid4, UUID
-from unittest.mock import Mock, MagicMock, AsyncMock
-from datetime import datetime, timedelta
+from uuid import uuid4
+from unittest.mock import Mock
+from datetime import datetime
 
 from src.services.review_queue import ReviewQueueService
 from src.db.models.review_queue import (
