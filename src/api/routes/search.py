@@ -6,7 +6,6 @@ Combines vector and keyword search using Reciprocal Rank Fusion (RRF).
 """
 
 import logging
-from datetime import datetime
 from typing import Annotated, List, Optional, Literal
 from uuid import UUID
 
