@@ -175,12 +175,12 @@ class SharePointSync:
             .execute()
         )
         
-        if not result.data:  # type: ignore[union-attr]
+        if not result.data:
             raise SharePointSyncError("Connector not found")
         
         # Type narrowing: result.data is not None after the check above
-        assert result.data is not None  # type: ignore[union-attr]
-        return cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+        assert result.data is not None
+        return cast(Dict[str, Any], result.data)
     
     async def _find_existing_document(self, source_path: str) -> Optional[Dict[str, Any]]:
         """Find existing document by source_path."""
@@ -194,10 +194,10 @@ class SharePointSync:
             .execute()
         )
         
-        if result.data:  # type: ignore[union-attr]
+        if result.data:
             # Type narrowing: result.data is not None after the check above
-            assert result.data is not None  # type: ignore[union-attr]
-            return cast(Dict[str, Any], result.data)  # type: ignore[union-attr]
+            assert result.data is not None
+            return cast(Dict[str, Any], result.data)
         return None
     
     async def _sync_file_item(
@@ -243,10 +243,9 @@ class SharePointSync:
             # Note: Supabase storage.upload() accepts bytes directly
             from io import BytesIO
             file_obj = BytesIO(redacted_content)
-            # Supabase accepts BytesIO but mypy doesn't know - use type: ignore
             self.supabase.storage.from_(bucket_name).upload(
                 path=storage_path,
-                file=file_obj,  # type: ignore[arg-type]
+                file=file_obj,
                 file_options={"content-type": mime_type, "upsert": "true"},
             )
         except Exception as e:
