@@ -56,7 +56,7 @@ async def list_queue(
     status_filter: Optional[str] = Query(
         None,
         alias="status",
-        regex="^(pending|claimed|completed|skipped)$",
+        regex=r"^(pending|claimed|completed|skipped)$",
         description="Filter by status: pending, claimed, completed, skipped",
     ),
     limit: int = Query(50, ge=1, le=100, description="Maximum items to return"),
