@@ -58,13 +58,19 @@ def fetch_entity_record(
     if not isinstance(attributes, dict):
         attributes = {}
 
+    updated_at_raw = record.get("updated_at")
+    if isinstance(updated_at_raw, str):
+        updated_at = datetime.fromisoformat(updated_at_raw)
+    else:
+        updated_at = updated_at_raw
+
     return EntityRecord(
         id=UUID(record["id"]),
         tenant_id=UUID(record["tenant_id"]),
         canonical_name=record["canonical_name"],
         attributes=attributes,
         external_id=record.get("external_id"),
-        updated_at=record.get("updated_at"),
+        updated_at=updated_at,
     )
 
 
