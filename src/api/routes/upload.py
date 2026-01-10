@@ -321,6 +321,9 @@ async def upload_bulk_documents(
                     )
                     continue
                 
+                if processing_result.document_id is None or processing_result.mime_type is None:
+                    raise ValueError("Processed document metadata is incomplete")
+
                 await store_document_metadata(
                     supabase=supabase,
                     storage_service=storage_service,

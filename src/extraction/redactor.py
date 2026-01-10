@@ -45,7 +45,7 @@ class RedactedEntity:
         self.end = end
         self.mode = mode
     
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, int | str]:
         """Convert to dictionary for logging."""
         return {
             "entity_type": self.entity_type,
@@ -57,7 +57,7 @@ class RedactedEntity:
         }
 
 
-def _get_anonymizer_operators(mode: RedactionMode) -> dict:
+def _get_anonymizer_operators(mode: RedactionMode) -> dict[str, OperatorConfig]:
     """
     Get anonymizer operator configuration for redaction mode.
     

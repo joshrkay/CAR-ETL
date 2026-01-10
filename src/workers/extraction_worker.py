@@ -83,6 +83,12 @@ class ExtractionWorker:
             "dead_lettered": 0,
         }
 
+    def _get_supabase(self) -> Client:
+        """Return initialized Supabase client or raise if unavailable."""
+        if self.supabase is None:
+            raise RuntimeError("Supabase client not initialized")
+        return self.supabase
+
     async def start(self) -> None:
         """
         Start the extraction worker.
@@ -151,7 +157,7 @@ class ExtractionWorker:
 
     def _setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown."""
-        def signal_handler(sig, frame):
+        def signal_handler(sig: int, frame: Any) -> None:
             logger.info(f"Received signal {sig}, initiating shutdown")
             # Set flags directly - signal handlers cannot create tasks
             self.running = False
@@ -168,10 +174,11 @@ class ExtractionWorker:
         are considered stale and reset to 'pending' for retry.
         """
         try:
+            supabase = self._get_supabase()
             stale_cutoff = datetime.utcnow() - timedelta(seconds=self.stale_timeout)
 
             result = (
-                self.supabase.table("processing_queue")
+                supabase.table("processing_queue")
                 .update({
                     "status": "pending",
                     "started_at": None,
@@ -202,7 +209,8 @@ class ExtractionWorker:
         Ensures idempotency by marking abandoned extractions as failed.
         """
         try:
-            count = await cleanup_stale_locks(self.supabase)
+            supabase = self._get_supabase()
+            count = await cleanup_stale_locks(supabase)
 
             if count > 0:
                 logger.warning(
@@ -275,9 +283,10 @@ class ExtractionWorker:
             List of queue items
         """
         try:
+            supabase = self._get_supabase()
             # Fetch pending items
             pending_response = (
-                self.supabase.table("processing_queue")
+                supabase.table("processing_queue")
                 .select("*")
                 .eq("status", "pending")
                 .lt("attempts", self.max_attempts)
@@ -293,7 +302,7 @@ class ExtractionWorker:
             if len(items) < limit:
                 retry_cutoff = datetime.utcnow() - timedelta(seconds=self.retry_delay)
                 retry_response = (
-                    self.supabase.table("processing_queue")
+                    supabase.table("processing_queue")
                     .select("*")
                     .eq("status", "failed")
                     .lt("attempts", self.max_attempts)
@@ -337,6 +346,7 @@ class ExtractionWorker:
         self.processing_ids.add(item_id)
 
         try:
+            supabase = self._get_supabase()
             logger.info(
                 "Processing queue item",
                 extra={
@@ -349,7 +359,7 @@ class ExtractionWorker:
 
             # IDEMPOTENCY: Check if already processed or processing
             should_process, skip_reason = await ensure_idempotent_processing(
-                self.supabase,
+                supabase,
                 document_id,
             )
 
@@ -382,7 +392,7 @@ class ExtractionWorker:
             )
 
             # Process the document
-            result = await process_document(document_id, self.supabase)
+            result = await process_document(document_id, supabase)
 
             # Check result status
             if result["status"] == "ready":
@@ -438,7 +448,7 @@ class ExtractionWorker:
             # Unexpected error in processing
             # SECURITY: Sanitize error before logging/storing
             error_info = get_loggable_error(e)
-            sanitized_error = error_info["sanitized_message"]
+            sanitized_error = str(error_info["sanitized_message"])
 
             logger.error(
                 "Unexpected error processing queue item",
@@ -489,6 +499,7 @@ class ExtractionWorker:
             completed_at: Optional completion timestamp
         """
         try:
+            supabase = self._get_supabase()
             update_data = {"status": status}
 
             if increment_attempts:
@@ -498,7 +509,7 @@ class ExtractionWorker:
                 #   UPDATE processing_queue
                 #   SET attempts = attempts + 1
                 #   WHERE id = <item_id>;
-                self.supabase.rpc(
+                supabase.rpc(
                     "increment_processing_queue_attempts",
                     {"item_id": str(item_id)},
                 ).execute()
@@ -512,7 +523,7 @@ class ExtractionWorker:
             if completed_at is not None:
                 update_data["completed_at"] = completed_at.isoformat()
 
-            self.supabase.table("processing_queue").update(update_data).eq(
+            supabase.table("processing_queue").update(update_data).eq(
                 "id", item_id
             ).execute()
 
@@ -614,7 +625,7 @@ class ExtractionWorker:
         }
 
 
-async def main():
+async def main() -> None:
     """
     Main entry point for extraction worker.
 

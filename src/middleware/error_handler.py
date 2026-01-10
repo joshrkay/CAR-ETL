@@ -1,6 +1,6 @@
 """Error handler middleware for consistent error responses."""
 import logging
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional, cast
 from fastapi import Request, status, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
@@ -118,16 +118,17 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         # Preserve the original status code - never override client errors (4xx) with 500
         status_code = exc.status_code
         
+        details: list[Dict[str, str]] = []
+
         # If detail is already a dict with code/message, use it
         if isinstance(detail, dict):
             code = detail.get("code", "HTTP_ERROR")
             message = detail.get("message", str(detail))
-            details = detail.get("details", [])
+            details = cast(list[Dict[str, str]], detail.get("details", []))
         else:
             # Convert string detail to standard format
             code = "HTTP_ERROR"
             message = str(detail) if detail else "An error occurred"
-            details: list[Dict[str, str]] = []
         
         error_response = {
             "error": {

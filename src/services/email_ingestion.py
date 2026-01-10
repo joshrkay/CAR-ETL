@@ -379,5 +379,5 @@ class EmailIngestionService:
         if not result.data:
             raise Exception("Failed to create email ingestion record")
         
-        return result.data[0]["id"]
+        return str(result.data[0]["id"])
     
