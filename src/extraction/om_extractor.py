@@ -7,12 +7,8 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-try:
-    from openai import AsyncOpenAI
-except ImportError:  # pragma: no cover - handled at runtime if dependency missing
-    AsyncOpenAI = None
 from pydantic import BaseModel, Field
 
 from src.extraction.normalizers import normalize_field_value
@@ -25,6 +21,14 @@ from src.extraction.om_confidence import (
 from src.extraction.om_fields import OMFieldDefinition
 from src.extraction.om_prompts import build_om_extraction_prompt
 from src.services.redaction import presidio_redact
+
+AsyncOpenAIClient: type[Any] | None
+try:
+    from openai import AsyncOpenAI as _AsyncOpenAIClient
+except ImportError:  # pragma: no cover - handled at runtime if dependency missing
+    AsyncOpenAIClient = None
+else:
+    AsyncOpenAIClient = _AsyncOpenAIClient
 
 logger = logging.getLogger(__name__)
 
@@ -43,12 +47,12 @@ class OMExtractor:
     """Extracts structured OM fields using RAG + LLM."""
 
     def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_LLM_MODEL):
-        if AsyncOpenAI is None:
+        if AsyncOpenAIClient is None:
             raise ImportError("openai package is required for OM extraction. Please install openai>=1.0.0.")
         api_key = api_key or OPENAI_API_KEY
         if not api_key:
             raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY environment variable.")
-        self.client = AsyncOpenAI(api_key=api_key)
+        self.client = AsyncOpenAIClient(api_key=api_key)
         self.model = model
 
     async def extract_fields(self, document_text: str, rag_snippets: Optional[List[str]] = None) -> OMExtractionResult:
@@ -74,7 +78,10 @@ class OMExtractor:
             raise
 
         try:
-            payload = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            if content is None:
+                raise ValueError("LLM response was missing content")
+            payload = json.loads(content)
         except json.JSONDecodeError as exc:
             logger.error("LLM response not JSON", extra={"content": response.choices[0].message.content})
             raise ValueError("LLM response was not valid JSON") from exc

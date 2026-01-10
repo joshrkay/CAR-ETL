@@ -79,7 +79,7 @@ class RagFlowParser(BaseParser):
         text = data.get("text", "")
         
         # Extract pages
-        pages = []
+        pages: list[PageContent] = []
         for page_data in data.get("pages", []):
             pages.append(PageContent(
                 page_number=page_data.get("page_number", len(pages) + 1),
