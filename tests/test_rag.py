@@ -3,7 +3,7 @@ import pytest
 from uuid import uuid4
 from unittest.mock import Mock, AsyncMock, patch
 
-from src.rag.models import ChunkMatch, Citation, AskRequest, AskResponse
+from src.rag.models import ChunkMatch, AskRequest, AskResponse
 from src.rag.citations import extract_citations, validate_citations, build_citations
 from src.rag.context_builder import count_tokens, build_context
 from src.rag.prompts import format_system_prompt, format_user_prompt
