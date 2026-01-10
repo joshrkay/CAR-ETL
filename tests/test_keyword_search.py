@@ -132,7 +132,7 @@ class TestKeywordSearchService:
         # Verify the error was logged
         assert len(caplog.records) == 1
         assert caplog.records[0].levelname == "ERROR"
-        assert caplog.records[0].message == "Keyword search failed"
+        assert caplog.records[0].msg == "Keyword search failed"
         assert caplog.records[0].tenant_id == str(tenant_id)
         assert caplog.records[0].match_count == 10
         assert "RPC connection failed" in caplog.records[0].error
