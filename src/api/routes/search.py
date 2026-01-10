@@ -149,7 +149,8 @@ async def search_documents(
         SearchResponse with results, count, and metadata
 
     Raises:
-        HTTPException: If search fails or query is invalid
+        Exception: If search fails or query is invalid, including errors from
+            embedding, search, or database services.
     """
     logger.info(
         "Search request received",
