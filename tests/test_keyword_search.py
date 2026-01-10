@@ -27,7 +27,7 @@ class TestKeywordSearchService:
         return client
 
     def test_search_chunks_basic(self, mock_supabase_client):
-        """Search should call RPC with correct parameters."""
+        """Search should call RPC with query_text and match_count."""
         document_id = uuid4()
         mock_supabase_client.rpc.return_value.execute.return_value.data = [
             {
@@ -58,19 +58,20 @@ class TestKeywordSearchService:
             },
         )
 
-    def test_search_chunks_returns_empty_list(self, mock_supabase_client):
-        """Search should return empty list when no results found."""
+    def test_search_chunks_default_params(self, mock_supabase_client):
+        """Search should use default match_count when not specified."""
         mock_supabase_client.rpc.return_value.execute.return_value.data = []
 
         service = KeywordSearchService(mock_supabase_client)
-        results = asyncio.run(service.search_chunks(query_text="rent", match_count=3))
+        results = asyncio.run(service.search_chunks(query_text="rent"))
 
         assert results == []
+        # Default match_count is 20
         mock_supabase_client.rpc.assert_called_once_with(
             "search_chunks_keyword",
             {
                 "query_text": "rent",
-                "match_count": 3,
+                "match_count": 20,
             },
         )
 

@@ -53,10 +53,11 @@ class KeywordSearchService:
             List of keyword search results.
 
         Security:
-            - Tenant isolation is enforced by the database function, which extracts
-              the tenant_id from the JWT token using public.tenant_id().
-            - The tenant_id cannot be overridden by callers, ensuring absolute
-              tenant isolation as required by .cursorrules.
+            Tenant isolation is enforced by the database function
+            ``search_chunks_keyword``, which extracts the tenant_id from the
+            JWT token in the Supabase client. This ensures that users can only
+            search within their own tenant's documents, and prevents cross-tenant
+            access even when using service_role credentials.
 
         Raises:
             ValueError: If query_text is empty or match_count < 1
