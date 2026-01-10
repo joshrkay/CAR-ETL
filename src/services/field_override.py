@@ -26,7 +26,7 @@ class FieldOverrideResult:
     is_override: bool
     overridden_by: str
     overridden_at: str
-    field_name: str
+    field_name: Optional[str]
     document_type: Optional[str]
     extraction_source: Optional[str]
     original_confidence: Optional[float]
