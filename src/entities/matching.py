@@ -3,7 +3,8 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 from enum import Enum
-from typing import Optional
+from typing import Optional, Any
+from typing_extensions import TypeAlias
 from uuid import UUID
 from datetime import datetime
 import re
@@ -12,7 +13,7 @@ from pydantic import BaseModel, Field
 
 
 JsonPrimitive = str | int | float | bool | None
-JsonValue = JsonPrimitive | list["JsonValue"] | dict[str, "JsonValue"]
+JsonValue: TypeAlias = JsonPrimitive | list[Any] | dict[str, Any]
 
 
 class EntityRecord(BaseModel):
