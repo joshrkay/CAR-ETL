@@ -6,17 +6,17 @@ Enforces tenant isolation and implements claim mechanism with auto-release.
 """
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Any
 from uuid import UUID
-from supabase import Client
 
 from src.db.models.review_queue import (
-    ReviewQueueItem,
-    ReviewQueueListResponse,
     ClaimResponse,
     CompleteResponse,
+    ReviewQueueItem,
+    ReviewQueueListResponse,
     SkipResponse,
 )
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class ReviewQueueService:
 
     async def list_queue(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 50,
         offset: int = 0,
     ) -> ReviewQueueListResponse:
@@ -352,7 +352,7 @@ class ReviewQueueService:
             )
             return 0
 
-    async def _get_status_counts(self) -> Dict[str, int]:
+    async def _get_status_counts(self) -> dict[str, int]:
         """
         Get counts for different queue statuses.
 
@@ -390,7 +390,7 @@ class ReviewQueueService:
             )
             return {'total': 0, 'pending': 0, 'claimed': 0}
 
-    def _transform_queue_items(self, data: List[Dict[str, Any]]) -> List[ReviewQueueItem]:
+    def _transform_queue_items(self, data: list[dict[str, Any]]) -> list[ReviewQueueItem]:
         """
         Transform database rows into ReviewQueueItem models.
 
@@ -405,7 +405,7 @@ class ReviewQueueService:
             items.append(self._transform_queue_item(row))
         return items
 
-    def _transform_queue_item(self, row: Dict[str, Any]) -> ReviewQueueItem:
+    def _transform_queue_item(self, row: dict[str, Any]) -> ReviewQueueItem:
         """
         Transform a single database row into ReviewQueueItem model.
 

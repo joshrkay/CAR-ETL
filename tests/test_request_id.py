@@ -1,8 +1,9 @@
 """Tests for request ID middleware."""
+import uuid
+
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-import uuid
 
 from src.middleware.request_id import RequestIDMiddleware
 

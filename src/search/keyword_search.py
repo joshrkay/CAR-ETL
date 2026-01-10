@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import List, cast
+from typing import cast
 from uuid import UUID
 
 from supabase import Client
@@ -21,7 +21,7 @@ class KeywordSearchResult:
     id: UUID
     document_id: UUID
     content: str
-    page_numbers: List[int]
+    page_numbers: list[int]
     rank: float
 
 
@@ -41,7 +41,7 @@ class KeywordSearchService:
         self,
         query_text: str,
         match_count: int = 20,
-    ) -> List[KeywordSearchResult]:
+    ) -> list[KeywordSearchResult]:
         """
         Search document chunks using PostgreSQL full-text search.
 

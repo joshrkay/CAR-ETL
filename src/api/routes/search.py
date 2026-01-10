@@ -6,19 +6,19 @@ Combines vector and keyword search using Reciprocal Rank Fusion (RRF).
 """
 
 import logging
-from typing import Annotated, List, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel, Field
-from supabase import Client
 
 from src.auth.models import AuthContext
 from src.dependencies import get_current_user, get_supabase_client
-from src.search.hybrid import HybridSearchService, SearchMode
 from src.search.embeddings import EmbeddingService
 from src.search.highlighter import SearchHighlighter
+from src.search.hybrid import HybridSearchService, SearchMode
 from src.search.reranker import SearchReranker
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -31,15 +31,15 @@ router = APIRouter(
 class SearchFilters(BaseModel):
     """Search filter parameters."""
 
-    document_ids: Optional[List[UUID]] = Field(
+    document_ids: list[UUID] | None = Field(
         None,
         description="Filter by specific document IDs",
     )
-    document_types: Optional[List[str]] = Field(
+    document_types: list[str] | None = Field(
         None,
         description="Filter by document types (e.g., 'lease', 'rent_roll')",
     )
-    date_range: Optional[dict] = Field(
+    date_range: dict | None = Field(
         None,
         description="Filter by date range (e.g., {'start': '2024-01-01', 'end': '2024-12-31'})",
     )
@@ -58,7 +58,7 @@ class SearchRequest(BaseModel):
         "hybrid",
         description="Search mode: 'hybrid' (vector + keyword), 'semantic' (vector only), or 'keyword' (text only)",
     )
-    filters: Optional[SearchFilters] = Field(
+    filters: SearchFilters | None = Field(
         None,
         description="Optional filters for documents",
     )
@@ -81,15 +81,15 @@ class SearchResultItem(BaseModel):
     document_id: str
     document_name: str
     content: str
-    page_numbers: Optional[List[int]]
+    page_numbers: list[int] | None
     score: float
-    highlights: List[str]
+    highlights: list[str]
 
 
 class SearchResponse(BaseModel):
     """Search response with results and metadata."""
 
-    results: List[SearchResultItem]
+    results: list[SearchResultItem]
     total_count: int
     search_mode: str
 

@@ -1,16 +1,14 @@
 """Entity matching utilities for deduplication."""
 from __future__ import annotations
 
+import re
+from datetime import datetime
 from difflib import SequenceMatcher
 from enum import Enum
-from typing import Optional, Any
-from typing_extensions import TypeAlias
+from typing import Any, TypeAlias
 from uuid import UUID
-from datetime import datetime
-import re
 
 from pydantic import BaseModel, Field
-
 
 JsonPrimitive = str | int | float | bool | None
 JsonValue: TypeAlias = JsonPrimitive | list[Any] | dict[str, Any]
@@ -23,8 +21,8 @@ class EntityRecord(BaseModel):
     tenant_id: UUID = Field(..., description="Tenant UUID")
     canonical_name: str = Field(..., description="Canonical entity name")
     attributes: dict[str, JsonValue] = Field(default_factory=dict, description="Entity attributes")
-    external_id: Optional[str] = Field(None, description="External system identifier")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+    external_id: str | None = Field(None, description="External system identifier")
+    updated_at: datetime | None = Field(None, description="Last update timestamp")
 
 
 class MatchDecision(str, Enum):

@@ -1,13 +1,13 @@
 """Delta sync logic for SharePoint files."""
-import logging
 import hashlib
-from typing import Dict, Any, Optional, cast
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import UUID, uuid4
-from supabase import Client
 
 from src.connectors.sharepoint.client import SharePointClient, SharePointClientError
 from src.services.redaction import presidio_redact_bytes
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ class SharePointSyncError(Exception):
 
 class SharePointSync:
     """Handles delta sync of SharePoint files."""
-    
+
     def __init__(
         self,
         supabase: Client,
@@ -27,7 +27,7 @@ class SharePointSync:
     ):
         """
         Initialize SharePoint sync handler.
-        
+
         Args:
             supabase: Supabase client with user JWT
             tenant_id: Tenant identifier
@@ -36,45 +36,45 @@ class SharePointSync:
         self.supabase = supabase
         self.tenant_id = tenant_id
         self.connector_id = connector_id
-    
+
     async def sync_drive(
         self,
         client: SharePointClient,
         drive_id: str,
         folder_path: str = "/",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Perform delta sync of a SharePoint drive.
-        
+
         Args:
             client: SharePoint Graph API client
             drive_id: SharePoint drive ID
             folder_path: Folder path to sync (default: root)
-            
+
         Returns:
             Dictionary with sync statistics (files_synced, files_updated, errors)
         """
-        stats: Dict[str, Any] = {
+        stats: dict[str, Any] = {
             "files_synced": 0,
             "files_updated": 0,
             "files_skipped": 0,
             "errors": [],
         }
-        
+
         try:
             connector = await self._get_connector()
             config = connector.get("config", {})
             delta_token = config.get("delta_token")
-            
+
             result = await client.get_drive_items(
                 drive_id=drive_id,
                 folder_path=folder_path,
                 delta_token=delta_token,
             )
-            
+
             items = result.get("items", [])
             new_delta_token = result.get("delta_token")
-            
+
             for item in items:
                 try:
                     item_stats = await self._process_sync_item(
@@ -89,72 +89,72 @@ class SharePointSync:
                     error_msg = f"Failed to sync item {item.get('id', 'unknown')}: {str(e)}"
                     logger.error(error_msg, exc_info=True)
                     stats["errors"].append(error_msg)
-            
+
             if new_delta_token:
                 await self._update_delta_token(new_delta_token)
-            
+
             await self._update_last_sync_time()
-            
+
         except SharePointClientError as e:
             logger.error("SharePoint sync failed", exc_info=True)
             raise SharePointSyncError(f"Sync failed: {str(e)}")
         except Exception as e:
             logger.error("Unexpected error during sync", exc_info=True)
             raise SharePointSyncError(f"Sync failed: {str(e)}")
-        
+
         return stats
-    
+
     async def _process_sync_item(
         self,
         client: SharePointClient,
         drive_id: str,
-        item: Dict[str, Any],
-    ) -> Dict[str, int]:
+        item: dict[str, Any],
+    ) -> dict[str, int]:
         """
         Process a single sync item (reduces complexity of sync_drive).
-        
+
         Returns:
             Dictionary with synced, updated, skipped counts
         """
         if item.get("deleted"):
             await self._handle_deleted_item(item)
             return {"synced": 0, "updated": 0, "skipped": 0}
-        
+
         if "file" not in item:
             return {"synced": 0, "updated": 0, "skipped": 0}
-        
+
         file_id = item.get("id")
         file_name = item.get("name")
         last_modified = item.get("lastModifiedDateTime")
-        
+
         if not file_id or not file_name:
             return {"synced": 0, "updated": 0, "skipped": 0}
-        
+
         source_path = f"sharepoint:{drive_id}:{file_id}"
         existing_doc = await self._find_existing_document(source_path)
-        
+
         if existing_doc and self._should_skip_item(existing_doc, last_modified):
             return {"synced": 0, "updated": 0, "skipped": 1}
-        
+
         await self._sync_file_item(
             client=client,
             drive_id=drive_id,
             item=item,
         )
-        
+
         if existing_doc:
             return {"synced": 0, "updated": 1, "skipped": 0}
         return {"synced": 1, "updated": 0, "skipped": 0}
-    
+
     def _should_skip_item(
         self,
-        existing_doc: Dict[str, Any],
-        last_modified: Optional[str],
+        existing_doc: dict[str, Any],
+        last_modified: str | None,
     ) -> bool:
         """Check if item should be skipped based on modification time."""
         if not last_modified or not existing_doc.get("updated_at"):
             return False
-        
+
         try:
             item_modified = datetime.fromisoformat(
                 last_modified.replace("Z", "+00:00")
@@ -163,8 +163,8 @@ class SharePointSync:
             return item_modified <= doc_modified
         except (ValueError, AttributeError):
             return False
-    
-    async def _get_connector(self) -> Dict[str, Any]:
+
+    async def _get_connector(self) -> dict[str, Any]:
         """Get connector record from database."""
         result = (
             self.supabase.table("connectors")
@@ -174,15 +174,15 @@ class SharePointSync:
             .maybe_single()
             .execute()
         )
-        
+
         if not result.data:
             raise SharePointSyncError("Connector not found")
-        
+
         # Type narrowing: result.data is not None after the check above
         assert result.data is not None
-        return cast(Dict[str, Any], result.data)
-    
-    async def _find_existing_document(self, source_path: str) -> Optional[Dict[str, Any]]:
+        return cast(dict[str, Any], result.data)
+
+    async def _find_existing_document(self, source_path: str) -> dict[str, Any] | None:
         """Find existing document by source_path."""
         result = (
             self.supabase.table("documents")
@@ -193,35 +193,35 @@ class SharePointSync:
             .maybe_single()
             .execute()
         )
-        
+
         if result.data:
             # Type narrowing: result.data is not None after the check above
             assert result.data is not None
-            return cast(Dict[str, Any], result.data)
+            return cast(dict[str, Any], result.data)
         return None
-    
+
     async def _sync_file_item(
         self,
         client: SharePointClient,
         drive_id: str,
-        item: Dict[str, Any],
+        item: dict[str, Any],
     ) -> None:
         """Download and store a file item from SharePoint."""
         file_id = item.get("id")
         file_name = item.get("name")
-        
+
         if not file_id or not file_name:
             return
-        
+
         file_content = await client.download_file(drive_id, file_id)
-        
+
         mime_type = self._infer_mime_type(file_name)
-        
+
         # SECURITY: Explicit redaction before persisting (defense in depth)
         redacted_content = presidio_redact_bytes(file_content, mime_type)
-        
+
         file_hash = hashlib.sha256(redacted_content).hexdigest()
-        
+
         source_path = f"sharepoint:{drive_id}:{file_id}"
 
         existing_doc = await self._find_existing_document(source_path)
@@ -233,11 +233,11 @@ class SharePointSync:
         # Link to previous version via parent_id to preserve history
         document_id = str(uuid4())
         parent_id = existing_doc["id"] if existing_doc else None
-        
+
         # Upload redacted content to Supabase Storage
         bucket_name = f"documents-{self.tenant_id}"
         storage_path = f"sharepoint/{drive_id}/{file_id}/{file_name}"
-        
+
         try:
             # Upload to Supabase Storage bucket
             # Note: Supabase storage.upload() accepts bytes directly
@@ -261,7 +261,7 @@ class SharePointSync:
             )
             # Continue with metadata storage even if upload fails
             # The document will be marked as pending and can be retried
-        
+
         document_data = {
             "id": document_id,
             "tenant_id": str(self.tenant_id),
@@ -278,8 +278,8 @@ class SharePointSync:
         # IMMUTABILITY: Always INSERT, never UPDATE
         # Documents table is append-only per architectural invariant
         self.supabase.table("documents").insert(document_data).execute()
-    
-    async def _handle_deleted_item(self, item: Dict[str, Any]) -> None:
+
+    async def _handle_deleted_item(self, item: dict[str, Any]) -> None:
         """
         Handle deleted file item from SharePoint.
 
@@ -330,27 +330,27 @@ class SharePointSync:
                     },
                     exc_info=True,
                 )
-    
+
     async def _update_delta_token(self, delta_token: str) -> None:
         """Update delta token in connector config."""
         connector = await self._get_connector()
         config = connector.get("config", {})
         config["delta_token"] = delta_token
-        
+
         self.supabase.table("connectors").update({
             "config": config,
         }).eq("id", str(self.connector_id)).execute()
-    
+
     async def _update_last_sync_time(self) -> None:
         """Update last_sync_at timestamp."""
         self.supabase.table("connectors").update({
-            "last_sync_at": datetime.now(timezone.utc).isoformat(),
+            "last_sync_at": datetime.now(UTC).isoformat(),
         }).eq("id", str(self.connector_id)).execute()
-    
+
     def _infer_mime_type(self, filename: str) -> str:
         """Infer MIME type from filename extension."""
         ext = filename.lower().split(".")[-1] if "." in filename else ""
-        
+
         mime_types = {
             "pdf": "application/pdf",
             "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -361,5 +361,5 @@ class SharePointSync:
             "txt": "text/plain",
             "csv": "text/csv",
         }
-        
+
         return mime_types.get(ext, "application/octet-stream")

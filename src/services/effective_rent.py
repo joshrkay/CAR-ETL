@@ -7,23 +7,23 @@ Provides portfolio-level analytics on tenant rent obligations.
 
 import logging
 import re
-from typing import List, Optional, Dict, Any
+from typing import Any
 from uuid import UUID
-from supabase import Client
 
 from src.db.models.effective_rent import (
-    TenantEffectiveRent,
-    RentComponents,
     EffectiveRentListResponse,
     EffectiveRentSummary,
+    PortfolioMetrics,
     PropertyRentSummary,
     RentByPropertyResponse,
-    TenantConcentration,
+    RentComponents,
     RentConcentrationResponse,
     RentPerSFAnalysis,
     RentPerSFResponse,
-    PortfolioMetrics,
+    TenantConcentration,
+    TenantEffectiveRent,
 )
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class EffectiveRentService:
         """
         self.client = supabase_client
 
-    def _extract_numeric(self, value_str: Optional[str]) -> float:
+    def _extract_numeric(self, value_str: str | None) -> float:
         """
         Extract numeric value from currency string.
 
@@ -66,7 +66,7 @@ class EffectiveRentService:
         except ValueError:
             return 0.0
 
-    def _get_field_value(self, fields: List[Dict[str, Any]], field_name: str) -> float:
+    def _get_field_value(self, fields: list[dict[str, Any]], field_name: str) -> float:
         """
         Get numeric value for a specific field from extraction fields.
 
@@ -83,7 +83,7 @@ class EffectiveRentService:
                 return self._extract_numeric(value_str)
         return 0.0
 
-    def _get_field_confidence(self, fields: List[Dict[str, Any]], field_name: str) -> Optional[float]:
+    def _get_field_confidence(self, fields: list[dict[str, Any]], field_name: str) -> float | None:
         """Get confidence score for a specific field."""
         for field in fields:
             if field.get('field_name') == field_name:
@@ -92,7 +92,7 @@ class EffectiveRentService:
 
     async def calculate_all_effective_rents(
         self,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         sort_desc: bool = True,
     ) -> EffectiveRentListResponse:
         """
@@ -121,7 +121,7 @@ class EffectiveRentService:
                 total_effective_annual_rent=0.0,
             )
 
-        tenant_rents: List[TenantEffectiveRent] = []
+        tenant_rents: list[TenantEffectiveRent] = []
 
         for extraction in extractions_result.data:
             extraction_id = extraction['id']
@@ -241,7 +241,7 @@ class EffectiveRentService:
             total_effective_annual_rent=total_annual,
         )
 
-    async def get_highest_effective_rent(self) -> Optional[TenantEffectiveRent]:
+    async def get_highest_effective_rent(self) -> TenantEffectiveRent | None:
         """
         Get tenant with highest effective rent.
 
@@ -308,8 +308,8 @@ class EffectiveRentService:
             )
 
         # Group tenants by property
-        properties_map: Dict[str, List[TenantEffectiveRent]] = {}
-        property_addresses: Dict[str, Optional[str]] = {}
+        properties_map: dict[str, list[TenantEffectiveRent]] = {}
+        property_addresses: dict[str, str | None] = {}
 
         for tenant in all_rents.tenants:
             # Get property name from extraction fields
@@ -334,7 +334,7 @@ class EffectiveRentService:
             properties_map[property_name].append(tenant)
 
         # Build property summaries
-        property_summaries: List[PropertyRentSummary] = []
+        property_summaries: list[PropertyRentSummary] = []
 
         for prop_name, tenants in properties_map.items():
             total_monthly = sum(t.effective_monthly_rent for t in tenants)
@@ -393,7 +393,7 @@ class EffectiveRentService:
         total_portfolio = all_rents.total_effective_monthly_rent
 
         # Calculate concentration for each tenant
-        concentrations: List[TenantConcentration] = []
+        concentrations: list[TenantConcentration] = []
         cumulative_pct = 0.0
 
         for tenant in all_rents.tenants[:top_n]:
@@ -448,7 +448,7 @@ class EffectiveRentService:
             )
 
         # Build rent per SF analysis for tenants with SF data
-        analyses: List[RentPerSFAnalysis] = []
+        analyses: list[RentPerSFAnalysis] = []
         total_sf = 0.0
         total_monthly_rent = 0.0
 
@@ -543,7 +543,7 @@ class EffectiveRentService:
         # Get property count (unique properties)
         properties_set = set()
         total_sf = 0.0
-        confidences: List[float] = []
+        confidences: list[float] = []
 
         for tenant in all_rents.tenants:
             # Get property name and SF

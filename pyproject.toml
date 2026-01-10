@@ -55,6 +55,9 @@ ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
+    "E402",  # module level import not at top of file (test fixtures)
+    "B904",  # raise from (can be fixed gradually)
+    "B007",  # loop variable not used (intentional in tests)
 ]
 
 [tool.ruff.lint.per-file-ignores]

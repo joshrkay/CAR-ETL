@@ -10,7 +10,6 @@ If not installed, the service will gracefully degrade to no reranking.
 """
 
 import logging
-from typing import List, Optional
 
 try:
     from sentence_transformers import CrossEncoder
@@ -48,7 +47,7 @@ class SearchReranker:
         """
         self.model_name = model_name
         self.top_k = top_k
-        self.model: Optional[CrossEncoder] = None
+        self.model: CrossEncoder | None = None
 
         if not CROSS_ENCODER_AVAILABLE:
             logger.warning(
@@ -76,8 +75,8 @@ class SearchReranker:
     def rerank(
         self,
         query: str,
-        results: List[SearchResult],
-    ) -> List[SearchResult]:
+        results: list[SearchResult],
+    ) -> list[SearchResult]:
         """
         Rerank search results using cross-encoder.
 
@@ -112,7 +111,7 @@ class SearchReranker:
 
             # Update result scores and sort
             reranked = []
-            for result, score in zip(top_results, scores):
+            for result, score in zip(top_results, scores, strict=False):
                 reranked.append(
                     SearchResult(
                         chunk_id=result.chunk_id,

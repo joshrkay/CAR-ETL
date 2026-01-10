@@ -1,12 +1,12 @@
 """Feature flags module."""
-from src.features.service import FeatureFlagService
 from src.features.models import (
     FeatureFlag,
-    TenantFeatureFlag,
     FeatureFlagCreate,
-    TenantFeatureFlagUpdate,
     FeatureFlagResponse,
+    TenantFeatureFlag,
+    TenantFeatureFlagUpdate,
 )
+from src.features.service import FeatureFlagService
 
 __all__ = [
     "FeatureFlagService",

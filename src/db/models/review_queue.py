@@ -1,8 +1,8 @@
 """Pydantic models for review queue."""
-from pydantic import BaseModel, Field
-from typing import Optional, List
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class ReviewQueueItem(BaseModel):
@@ -13,20 +13,20 @@ class ReviewQueueItem(BaseModel):
     extraction_id: UUID = Field(..., description="Extraction UUID")
     priority: int = Field(..., ge=0, description="Priority score (higher = more urgent)")
     status: str = Field(..., description="Status: pending, claimed, completed, skipped")
-    claimed_by: Optional[UUID] = Field(None, description="User who claimed this item")
-    claimed_at: Optional[datetime] = Field(None, description="When item was claimed")
-    completed_at: Optional[datetime] = Field(None, description="When item was completed")
+    claimed_by: UUID | None = Field(None, description="User who claimed this item")
+    claimed_at: datetime | None = Field(None, description="When item was claimed")
+    completed_at: datetime | None = Field(None, description="When item was completed")
     created_at: datetime = Field(..., description="When item was added to queue")
 
     # Enriched data (joined from other tables)
-    document_name: Optional[str] = Field(None, description="Original document filename")
-    overall_confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Extraction confidence")
-    document_type: Optional[str] = Field(None, description="Document type")
+    document_name: str | None = Field(None, description="Original document filename")
+    overall_confidence: float | None = Field(None, ge=0.0, le=1.0, description="Extraction confidence")
+    document_type: str | None = Field(None, description="Document type")
 
 
 class ReviewQueueListResponse(BaseModel):
     """Response for listing review queue items."""
-    items: List[ReviewQueueItem] = Field(
+    items: list[ReviewQueueItem] = Field(
         default_factory=list, description="Queue items sorted by priority"
     )
     total_count: int = Field(..., ge=0, description="Total number of items in queue")
@@ -42,7 +42,7 @@ class ClaimRequest(BaseModel):
 class ClaimResponse(BaseModel):
     """Response after claiming a queue item."""
     success: bool = Field(..., description="Whether claim was successful")
-    item: Optional[ReviewQueueItem] = Field(None, description="Claimed queue item")
+    item: ReviewQueueItem | None = Field(None, description="Claimed queue item")
     message: str = Field(..., description="Status message")
 
 

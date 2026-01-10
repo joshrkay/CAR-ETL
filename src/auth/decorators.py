@@ -1,12 +1,12 @@
 """FastAPI dependencies for RBAC permission enforcement."""
 import logging
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
+
 from fastapi import Depends, HTTPException, Request, status
 
 from src.auth.models import AuthContext
 from src.auth.rbac import has_permission
 from src.dependencies import get_current_user
-
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def _log_permission_denial(
 ) -> None:
     """
     Log permission denial for audit purposes.
-    
+
     Args:
         user_id: User UUID
         tenant_id: Tenant UUID
@@ -46,7 +46,7 @@ def require_permission(
 ) -> Callable[[Request], Awaitable[AuthContext]]:
     """
     Dependency factory to require a specific permission.
-    
+
     Usage:
         @router.delete("/documents/{id}")
         async def delete_document(
@@ -55,10 +55,10 @@ def require_permission(
             auth: AuthContext = Depends(require_permission("documents:delete"))
         ):
             ...
-    
+
     Args:
         permission: Permission string to require (e.g., "documents:delete")
-        
+
     Returns:
         FastAPI dependency that checks permission and returns AuthContext
     """
@@ -74,7 +74,7 @@ def require_permission(
                 endpoint=request.url.path,
                 roles=auth.roles,
             )
-            
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
@@ -83,9 +83,9 @@ def require_permission(
                     "your_roles": auth.roles,
                 },
             )
-        
+
         return auth
-    
+
     return checker
 
 

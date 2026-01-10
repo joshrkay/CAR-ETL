@@ -1,17 +1,18 @@
 """Tests for review queue service and API."""
-import pytest
-from uuid import uuid4
-from unittest.mock import Mock
 from datetime import datetime
+from unittest.mock import Mock
+from uuid import uuid4
 
-from src.services.review_queue import ReviewQueueService
+import pytest
+
 from src.db.models.review_queue import (
-    ReviewQueueItem,
-    ReviewQueueListResponse,
     ClaimResponse,
     CompleteResponse,
+    ReviewQueueItem,
+    ReviewQueueListResponse,
     SkipResponse,
 )
+from src.services.review_queue import ReviewQueueService
 
 
 class TestReviewQueueService:

@@ -5,23 +5,22 @@ Handles OAuth authentication and sync configuration for external data sources.
 Enforces tenant isolation and encrypts sensitive credentials.
 """
 import logging
-from typing import Annotated, Any, Dict, List, Optional, cast
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Any, cast
 from uuid import UUID, uuid4
-from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
-from supabase import Client
 
-from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
-from src.dependencies import get_supabase_client
-from src.connectors.sharepoint.oauth import SharePointOAuth, SharePointOAuthError
+from src.auth.models import AuthContext
 from src.connectors.sharepoint.client import SharePointClient, SharePointClientError
-from src.connectors.sharepoint.sync import SharePointSync, SharePointSyncError
+from src.connectors.sharepoint.oauth import SharePointOAuth, SharePointOAuthError
 from src.connectors.sharepoint.state_store import OAuthStateStore
-from src.utils.encryption import encrypt_value, decrypt_value
-from src.dependencies import get_service_client
+from src.connectors.sharepoint.sync import SharePointSync, SharePointSyncError
+from src.dependencies import get_service_client, get_supabase_client
+from src.utils.encryption import decrypt_value, encrypt_value
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +41,7 @@ class OAuthStartResponse(BaseModel):
 class OAuthCallbackRequest(BaseModel):
     """Request model for OAuth callback."""
     code: str = Field(..., description="Authorization code from OAuth provider")
-    state: Optional[str] = Field(None, description="State parameter for CSRF protection")
+    state: str | None = Field(None, description="State parameter for CSRF protection")
 
 
 class OAuthCallbackResponse(BaseModel):
@@ -57,8 +56,8 @@ class SiteInfo(BaseModel):
     id: str
     name: str
     web_url: str
-    display_name: Optional[str] = None
-    description: Optional[str] = None
+    display_name: str | None = None
+    description: str | None = None
 
 
 class DriveInfo(BaseModel):
@@ -66,18 +65,18 @@ class DriveInfo(BaseModel):
     id: str
     name: str
     web_url: str
-    description: Optional[str] = None
-    drive_type: Optional[str] = None
+    description: str | None = None
+    drive_type: str | None = None
 
 
 class SitesResponse(BaseModel):
     """Response model for list of SharePoint sites."""
-    sites: List[SiteInfo]
+    sites: list[SiteInfo]
 
 
 class DrivesResponse(BaseModel):
     """Response model for list of SharePoint drives."""
-    drives: List[DriveInfo]
+    drives: list[DriveInfo]
 
 
 class ConfigureRequest(BaseModel):
@@ -102,51 +101,51 @@ class SyncResponse(BaseModel):
     files_synced: int
     files_updated: int
     files_skipped: int
-    errors: List[str]
-    last_sync_at: Optional[str] = None
+    errors: list[str]
+    last_sync_at: str | None = None
 
 
 # Helper Functions
 
-def _encrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def _encrypt_connector_config(config: dict[str, Any]) -> dict[str, Any]:
     """
     Encrypt sensitive fields in connector config.
-    
+
     Args:
         config: Connector configuration dictionary
-        
+
     Returns:
         Configuration with encrypted sensitive fields
     """
     encrypted = config.copy()
-    
+
     if "access_token" in encrypted:
         encrypted["access_token"] = encrypt_value(encrypted["access_token"])
-    
+
     if "refresh_token" in encrypted:
         encrypted["refresh_token"] = encrypt_value(encrypted["refresh_token"])
-    
+
     return encrypted
 
 
-def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
+def _decrypt_connector_config(config: dict[str, Any]) -> dict[str, Any]:
     """
     Decrypt sensitive fields in connector config.
-    
+
     CRITICAL: This function does NOT retry decryption on failure. If decryption fails,
     it immediately raises HTTPException. Do NOT add retry logic in exception handlers.
-    
+
     Args:
         config: Connector configuration dictionary with encrypted fields
-        
+
     Returns:
         Configuration with decrypted sensitive fields
-        
+
     Raises:
         HTTPException: If decryption fails or encryption key cannot be loaded
     """
     decrypted = config.copy()
-    
+
     # Validate key-loading step
     try:
         from src.utils.encryption import get_encryption_key
@@ -158,7 +157,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "KEY_LOAD_ERROR", "message": "Failed to load encryption key"},
         )
-    
+
     if "access_token" in decrypted:
         encrypted_token = decrypted["access_token"]
         # Log token format (redacted) for debugging
@@ -167,7 +166,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             logger.debug(f"Token format pre-decryption (access_token): {token_preview}... (length: {len(encrypted_token)})")
         else:
             logger.debug(f"Token format pre-decryption (access_token): None or non-string (type: {type(encrypted_token).__name__})")
-        
+
         try:
             decrypted["access_token"] = decrypt_value(encrypted_token)
             logger.debug("Successfully decrypted access_token")
@@ -180,7 +179,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             )
         # Store original encrypted token - DO NOT use decrypted["access_token"] in except block
         encrypted_token = decrypted["access_token"]
-        
+
         # Log token format (redacted) for debugging - handle None safely
         try:
             if encrypted_token is not None and isinstance(encrypted_token, str):
@@ -192,7 +191,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
         except (TypeError, AttributeError) as log_error:
             # Safely handle any edge cases in logging
             logger.debug(f"Token format pre-decryption (access_token): Unable to log format (error: {str(log_error)})")
-        
+
         # SINGLE decryption attempt - no retry logic allowed
         try:
             decrypted["access_token"] = decrypt_value(encrypted_token)
@@ -201,7 +200,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             # SECURITY: Do NOT retry decryption here. Using the same encrypted_token
             # will fail again. Do NOT call decrypt_value() in this except block.
             # Do NOT use decrypted["access_token"] - it may be partially set or None.
-            
+
             # Safely handle None or non-string tokens in error logging
             try:
                 if encrypted_token and isinstance(encrypted_token, str) and len(encrypted_token) >= 8:
@@ -213,7 +212,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             except (TypeError, AttributeError):
                 token_preview = "None"
                 token_length = 0
-            
+
             logger.error(
                 f"Failed to decrypt access_token: {str(e)} "
                 f"(token format preview: {token_preview}..., length: {token_length})",
@@ -225,11 +224,11 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
             )
-    
+
     if "refresh_token" in decrypted:
         # Store original encrypted token - DO NOT use decrypted["refresh_token"] in except block
         encrypted_token = decrypted["refresh_token"]
-        
+
         # Log token format (redacted) for debugging - handle None safely
         try:
             if encrypted_token is not None and isinstance(encrypted_token, str):
@@ -241,7 +240,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
         except (TypeError, AttributeError) as log_error:
             # Safely handle any edge cases in logging
             logger.debug(f"Token format pre-decryption (refresh_token): Unable to log format (error: {str(log_error)})")
-        
+
         # SINGLE decryption attempt - no retry logic allowed
         try:
             decrypted["refresh_token"] = decrypt_value(encrypted_token)
@@ -250,7 +249,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             # SECURITY: Do NOT retry decryption here. Using the same encrypted_token
             # will fail again. Do NOT call decrypt_value() in this except block.
             # Do NOT use decrypted["refresh_token"] - it may be partially set or None.
-            
+
             # Safely handle None or non-string tokens in error logging
             try:
                 if encrypted_token and isinstance(encrypted_token, str) and len(encrypted_token) >= 8:
@@ -262,7 +261,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
             except (TypeError, AttributeError):
                 token_preview = "None"
                 token_length = 0
-            
+
             logger.error(
                 f"Failed to decrypt refresh_token: {str(e)} "
                 f"(token format preview: {token_preview}..., length: {token_length})",
@@ -274,7 +273,7 @@ def _decrypt_connector_config(config: Dict[str, Any]) -> Dict[str, Any]:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DECRYPTION_ERROR", "message": "Failed to decrypt connector credentials"},
             )
-    
+
     return decrypted
 
 
@@ -282,15 +281,15 @@ async def _get_or_create_connector(
     supabase: Client,
     tenant_id: UUID,
     connector_type: str,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get existing connector or create new one for tenant.
-    
+
     Args:
         supabase: Supabase client with user JWT
         tenant_id: Tenant identifier
         connector_type: Connector type ('sharepoint', 'google_drive')
-        
+
     Returns:
         Connector record dictionary
     """
@@ -302,28 +301,28 @@ async def _get_or_create_connector(
         .maybe_single()
         .execute()
     )
-    
+
     if result and result.data:
-        return cast(Dict[str, Any], result.data)
-    
+        return cast(dict[str, Any], result.data)
+
     connector_id = str(uuid4())
-    connector_data: Dict[str, Any] = {
+    connector_data: dict[str, Any] = {
         "id": connector_id,
         "tenant_id": str(tenant_id),
         "type": connector_type,
         "config": {},
         "status": "active",
     }
-    
+
     insert_result = supabase.table("connectors").insert(connector_data).execute()
-    
+
     if not insert_result.data:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "DATABASE_ERROR", "message": "Failed to create connector"},
         )
-    
-    return cast(Dict[str, Any], insert_result.data[0])
+
+    return cast(dict[str, Any], insert_result.data[0])
 
 
 # API Endpoints
@@ -342,12 +341,12 @@ async def start_oauth(
 ) -> OAuthStartResponse:
     """
     Start OAuth2 flow for SharePoint authentication.
-    
+
     Returns authorization URL that user should redirect to.
     """
     request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
-    
+
     logger.info(
         "OAuth flow initiated",
         extra={
@@ -356,16 +355,16 @@ async def start_oauth(
             "user_id": str(auth.user_id),
         },
     )
-    
+
     try:
         oauth = SharePointOAuth.from_env()
         state = str(uuid4())
         authorization_url = oauth.get_authorization_url(state=state)
-        
+
         service_client = get_service_client()
         state_store = OAuthStateStore(service_client)
         await state_store.store_state(state=state, tenant_id=tenant_id)
-        
+
         return OAuthStartResponse(
             authorization_url=authorization_url,
             state=state,
@@ -400,7 +399,7 @@ async def oauth_callback(
     auth: Annotated[AuthContext, Depends(require_permission("connectors:write"))],
     supabase: Annotated[Client, Depends(get_supabase_client)],
     code: str = Query(..., description="Authorization code"),
-    state: Optional[str] = Query(None, description="State parameter"),
+    state: str | None = Query(None, description="State parameter"),
 ) -> OAuthCallbackResponse:
     """
     Handle OAuth callback and store encrypted tokens (authenticated version).
@@ -412,13 +411,13 @@ async def oauth_callback(
 async def _handle_oauth_callback(
     request: Request,
     code: str,
-    state: Optional[str],
+    state: str | None,
     tenant_id: str,
     supabase: Client,
 ) -> OAuthCallbackResponse:
     """Internal handler for OAuth callback."""
     request_id = getattr(request.state, "request_id", "unknown")
-    
+
     logger.info(
         "OAuth callback received",
         extra={
@@ -426,45 +425,45 @@ async def _handle_oauth_callback(
             "tenant_id": tenant_id,
         },
     )
-    
+
     if not state:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_STATE", "message": "State parameter is required"},
         )
-    
+
     try:
         oauth = SharePointOAuth.from_env()
         token_data = await oauth.exchange_code_for_tokens(code=code, state=state)
-        
+
         connector = await _get_or_create_connector(
             supabase=supabase,
             tenant_id=UUID(tenant_id),
             connector_type="sharepoint",
         )
-        
+
         config = connector.get("config", {})
         config["access_token"] = token_data["access_token"]
         config["refresh_token"] = token_data.get("refresh_token", "")
         # Convert expires_in (seconds) to absolute timestamp
         expires_in = token_data.get("expires_in", 3600)
-        config["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
-        
+        config["expires_at"] = (datetime.now(UTC) + timedelta(seconds=expires_in)).isoformat()
+
         encrypted_config = _encrypt_connector_config(config)
-        
+
         result = (
             supabase.table("connectors")
             .update({"config": encrypted_config, "status": "active"})
             .eq("id", connector["id"])
             .execute()
         )
-        
+
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={"code": "DATABASE_ERROR", "message": "Failed to update connector"},
             )
-        
+
         logger.info(
             "OAuth tokens stored",
             extra={
@@ -473,13 +472,13 @@ async def _handle_oauth_callback(
                 "connector_id": connector["id"],
             },
         )
-        
+
         return OAuthCallbackResponse(
             connector_id=connector["id"],
             status="active",
             message="OAuth authentication successful",
         )
-        
+
     except SharePointOAuthError as e:
         logger.error(
             "OAuth token exchange failed",
@@ -504,25 +503,25 @@ async def _handle_oauth_callback(
 async def oauth_callback_public(
     request: Request,
     code: str = Query(..., description="Authorization code"),
-    state: Optional[str] = Query(None, description="State parameter"),
+    state: str | None = Query(None, description="State parameter"),
 ) -> OAuthCallbackResponse:
     """
     Handle OAuth callback from Microsoft (public endpoint).
-    
+
     Validates state parameter to retrieve tenant_id, then processes callback.
     """
     request_id = getattr(request.state, "request_id", "unknown")
-    
+
     if not state:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_STATE", "message": "State parameter is required"},
         )
-    
+
     service_client = get_service_client()
     state_store = OAuthStateStore(service_client)
     tenant_id = await state_store.get_tenant_id(state)
-    
+
     if not tenant_id:
         logger.warning(
             "Invalid or expired OAuth state",
@@ -538,7 +537,7 @@ async def oauth_callback_public(
                 "message": "Invalid or expired state parameter",
             },
         )
-    
+
     return await _handle_oauth_callback(
         request=request,
         code=code,
@@ -565,13 +564,13 @@ async def list_sites(
     """
     request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
-    
+
     connector = await _get_or_create_connector(
         supabase=supabase,
         tenant_id=auth.tenant_id,
         connector_type="sharepoint",
     )
-    
+
     config = connector.get("config", {})
     if not config.get("access_token"):
         raise HTTPException(
@@ -581,11 +580,11 @@ async def list_sites(
                 "message": "SharePoint connector not authenticated. Complete OAuth flow first.",
             },
         )
-    
+
     decrypted_config = _decrypt_connector_config(config)
     access_token = decrypted_config["access_token"]
     refresh_token = decrypted_config.get("refresh_token")
-    
+
     try:
         oauth = SharePointOAuth.from_env()
         client = SharePointClient(
@@ -593,7 +592,7 @@ async def list_sites(
             refresh_token=refresh_token,
             oauth_handler=oauth,
         )
-        
+
         sites_data = await client.list_sites()
         sites = [
             SiteInfo(
@@ -605,9 +604,9 @@ async def list_sites(
             )
             for site in sites_data
         ]
-        
+
         return SitesResponse(sites=sites)
-        
+
     except SharePointClientError as e:
         logger.error(
             "Failed to list SharePoint sites",
@@ -641,13 +640,13 @@ async def list_drives(
     """
     request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
-    
+
     connector = await _get_or_create_connector(
         supabase=supabase,
         tenant_id=auth.tenant_id,
         connector_type="sharepoint",
     )
-    
+
     config = connector.get("config", {})
     if not config.get("access_token"):
         raise HTTPException(
@@ -657,11 +656,11 @@ async def list_drives(
                 "message": "SharePoint connector not authenticated. Complete OAuth flow first.",
             },
         )
-    
+
     decrypted_config = _decrypt_connector_config(config)
     access_token = decrypted_config["access_token"]
     refresh_token = decrypted_config.get("refresh_token")
-    
+
     try:
         oauth = SharePointOAuth.from_env()
         client = SharePointClient(
@@ -669,7 +668,7 @@ async def list_drives(
             refresh_token=refresh_token,
             oauth_handler=oauth,
         )
-        
+
         drives_data = await client.list_drives(site_id=site_id)
         drives = [
             DriveInfo(
@@ -681,9 +680,9 @@ async def list_drives(
             )
             for drive in drives_data
         ]
-        
+
         return DrivesResponse(drives=drives)
-        
+
     except SharePointClientError as e:
         logger.error(
             "Failed to list SharePoint drives",
@@ -718,33 +717,33 @@ async def configure_connector(
     """
     request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
-    
+
     connector = await _get_or_create_connector(
         supabase=supabase,
         tenant_id=auth.tenant_id,
         connector_type="sharepoint",
     )
-    
+
     config = connector.get("config", {})
     config["site_id"] = config_data.site_id
     config["drive_id"] = config_data.drive_id
     config["folder_path"] = config_data.folder_path
-    
+
     encrypted_config = _encrypt_connector_config(config)
-    
+
     result = (
         supabase.table("connectors")
         .update({"config": encrypted_config})
         .eq("id", connector["id"])
         .execute()
     )
-    
+
     if not result.data:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"code": "DATABASE_ERROR", "message": "Failed to update connector"},
         )
-    
+
     logger.info(
         "Connector configured",
         extra={
@@ -755,7 +754,7 @@ async def configure_connector(
             "drive_id": config_data.drive_id,
         },
     )
-    
+
     return ConfigureResponse(
         connector_id=connector["id"],
         site_id=config_data.site_id,
@@ -782,13 +781,13 @@ async def trigger_sync(
     """
     request_id = getattr(request.state, "request_id", "unknown")
     tenant_id = str(auth.tenant_id)
-    
+
     connector = await _get_or_create_connector(
         supabase=supabase,
         tenant_id=auth.tenant_id,
         connector_type="sharepoint",
     )
-    
+
     config = connector.get("config", {})
     if not config.get("access_token") or not config.get("drive_id"):
         raise HTTPException(
@@ -798,13 +797,13 @@ async def trigger_sync(
                 "message": "Connector not configured. Complete OAuth and configure sync target first.",
             },
         )
-    
+
     decrypted_config = _decrypt_connector_config(config)
     access_token = decrypted_config["access_token"]
     refresh_token = decrypted_config.get("refresh_token")
     drive_id = config.get("drive_id")
     folder_path = config.get("folder_path", "/")
-    
+
     try:
         oauth = SharePointOAuth.from_env()
         client = SharePointClient(
@@ -812,19 +811,19 @@ async def trigger_sync(
             refresh_token=refresh_token,
             oauth_handler=oauth,
         )
-        
+
         sync_handler = SharePointSync(
             supabase=supabase,
             tenant_id=auth.tenant_id,
             connector_id=UUID(connector["id"]),
         )
-        
+
         stats = await sync_handler.sync_drive(
             client=client,
             drive_id=drive_id,
             folder_path=folder_path,
         )
-        
+
         result = (
             supabase.table("connectors")
             .select("last_sync_at")
@@ -832,13 +831,13 @@ async def trigger_sync(
             .maybe_single()
             .execute()
         )
-        
+
         if result and result.data:
-            result_dict = cast(Dict[str, Any], result.data)
+            result_dict = cast(dict[str, Any], result.data)
             last_sync_at = result_dict.get("last_sync_at")
         else:
             last_sync_at = None
-        
+
         logger.info(
             "Sync completed",
             extra={
@@ -849,7 +848,7 @@ async def trigger_sync(
                 "files_updated": stats["files_updated"],
             },
         )
-        
+
         return SyncResponse(
             connector_id=connector["id"],
             files_synced=stats["files_synced"],
@@ -858,7 +857,7 @@ async def trigger_sync(
             errors=stats["errors"],
             last_sync_at=last_sync_at,
         )
-        
+
     except (SharePointClientError, SharePointSyncError) as e:
         logger.error(
             "Sync failed",

@@ -7,11 +7,11 @@ Provides significantly better search results than either method alone.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any, Literal
+from typing import Any, Literal
 from uuid import UUID
-from supabase import Client
 
 from src.search.embeddings import EmbeddingService
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -25,9 +25,9 @@ class SearchResult:
     chunk_id: UUID
     document_id: UUID
     content: str
-    page_numbers: Optional[List[int]]
+    page_numbers: list[int] | None
     score: float
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 class HybridSearchService:
@@ -61,8 +61,8 @@ class HybridSearchService:
         query: str,
         mode: SearchMode = "hybrid",
         limit: int = 20,
-        filter_document_ids: Optional[List[UUID]] = None,
-    ) -> List[SearchResult]:
+        filter_document_ids: list[UUID] | None = None,
+    ) -> list[SearchResult]:
         """
         Search document chunks using specified mode.
 
@@ -99,8 +99,8 @@ class HybridSearchService:
         self,
         query: str,
         limit: int,
-        filter_document_ids: Optional[List[UUID]],
-    ) -> List[SearchResult]:
+        filter_document_ids: list[UUID] | None,
+    ) -> list[SearchResult]:
         """
         Perform semantic search using vector embeddings.
 
@@ -144,8 +144,8 @@ class HybridSearchService:
         self,
         query: str,
         limit: int,
-        filter_document_ids: Optional[List[UUID]],
-    ) -> List[SearchResult]:
+        filter_document_ids: list[UUID] | None,
+    ) -> list[SearchResult]:
         """
         Perform keyword search using PostgreSQL full-text search.
 
@@ -186,8 +186,8 @@ class HybridSearchService:
         self,
         query: str,
         limit: int,
-        filter_document_ids: Optional[List[UUID]],
-    ) -> List[SearchResult]:
+        filter_document_ids: list[UUID] | None,
+    ) -> list[SearchResult]:
         """
         Perform hybrid search using Reciprocal Rank Fusion.
 
@@ -222,10 +222,10 @@ class HybridSearchService:
 
     def _reciprocal_rank_fusion(
         self,
-        vector_results: List[SearchResult],
-        keyword_results: List[SearchResult],
+        vector_results: list[SearchResult],
+        keyword_results: list[SearchResult],
         k: int = 60,
-    ) -> List[SearchResult]:
+    ) -> list[SearchResult]:
         """
         Combine rankings using Reciprocal Rank Fusion.
 
@@ -240,8 +240,8 @@ class HybridSearchService:
         Returns:
             Combined results sorted by RRF score (descending)
         """
-        scores: Dict[UUID, float] = {}
-        result_map: Dict[UUID, SearchResult] = {}
+        scores: dict[UUID, float] = {}
+        result_map: dict[UUID, SearchResult] = {}
 
         # Add scores from vector results
         for rank, result in enumerate(vector_results):

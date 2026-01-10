@@ -6,21 +6,21 @@ requiring human review.
 """
 
 import logging
-from typing import Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, Path, status
-from supabase import Client
 
-from src.auth.models import AuthContext
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, status
+
 from src.auth.decorators import require_permission
-from src.dependencies import get_supabase_client
-from src.services.review_queue import ReviewQueueService
+from src.auth.models import AuthContext
 from src.db.models.review_queue import (
-    ReviewQueueListResponse,
     ClaimResponse,
     CompleteResponse,
+    ReviewQueueListResponse,
     SkipResponse,
 )
+from src.dependencies import get_supabase_client
+from src.services.review_queue import ReviewQueueService
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ router = APIRouter(
 )
 async def list_queue(
     request: Request,
-    status_filter: Optional[str] = Query(
+    status_filter: str | None = Query(
         None,
         alias="status",
         regex=r"^(pending|claimed|completed|skipped)$",

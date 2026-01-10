@@ -3,13 +3,13 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from src.extraction.om_fields import get_om_fields
 from src.extraction.om_confidence import (
-    calculate_om_field_confidence,
-    calculate_om_document_confidence,
     OMExtractedField,
+    calculate_om_document_confidence,
+    calculate_om_field_confidence,
 )
 from src.extraction.om_extractor import OMExtractor
+from src.extraction.om_fields import get_om_fields
 from src.extraction.om_prompts import build_om_extraction_prompt
 
 
