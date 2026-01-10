@@ -175,9 +175,9 @@ class EffectiveRentService:
             # Get document details
             doc_result = self.client.table('documents').select(
                 'original_filename'
-            ).eq('id', doc_id).single().execute()
+            ).eq('id', doc_id).limit(1).execute()
 
-            doc_name = doc_result.data['original_filename'] if doc_result.data else 'Unknown'
+            doc_name = doc_result.data[0]['original_filename'] if doc_result.data else 'Unknown'
 
             # Calculate average confidence
             confidences = [

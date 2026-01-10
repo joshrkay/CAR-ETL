@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
-from typing import Optional
+from typing import Optional, cast
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -154,7 +154,9 @@ def redact_entity_payload(
 ) -> tuple[str, dict[str, JsonValue]]:
     """Redact entity payload fields before persistence."""
     redacted_name = presidio_redact(canonical_name)
-    redacted_attributes = redact_json_value(attributes)
+    redacted_attributes_raw = redact_json_value(attributes)
+    # redact_json_value preserves dict structure, safe to cast
+    redacted_attributes = cast(dict[str, JsonValue], redacted_attributes_raw)
     return redacted_name, redacted_attributes
 
 

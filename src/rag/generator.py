@@ -98,7 +98,8 @@ class Generator:
                 },
             )
 
-            return answer
+            # Cast to str to satisfy mypy - we've already checked for None above
+            return str(answer)
 
         except Exception as e:
             logger.error(
