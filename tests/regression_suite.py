@@ -15,11 +15,13 @@ def get_regression_test_paths(test_root: Path | None = None) -> List[str]:
     return [str(path) for path in sorted(root.glob(TEST_FILE_GLOB))]
 
 
-def build_pytest_args(extra_args: Sequence[str] | None = None) -> List[str]:
+def build_pytest_args(
+    extra_args: Sequence[str] | None = None,
+    test_root: Path | None = None,
+) -> List[str]:
     """Build pytest arguments for the full regression suite."""
-    args: List[str] = get_regression_test_paths()
-    if extra_args:
-        args.extend(extra_args)
+    args: List[str] = list(extra_args) if extra_args else []
+    args.extend(get_regression_test_paths(test_root=test_root))
     return args
 
 
