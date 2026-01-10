@@ -6,8 +6,8 @@ CREATE INDEX IF NOT EXISTS idx_chunks_fts ON document_chunks USING GIN(fts);
 
 CREATE OR REPLACE FUNCTION search_chunks_keyword(
   query_text TEXT,
-  filter_tenant_id UUID DEFAULT auth.tenant_id(),
-  match_count INT DEFAULT 20
+  match_count INT DEFAULT 20,
+  filter_tenant_id UUID DEFAULT auth.tenant_id()
 )
 RETURNS TABLE (
   id UUID,
