@@ -17,11 +17,8 @@ from src.dependencies import get_supabase_client
 from src.services.review_queue import ReviewQueueService
 from src.db.models.review_queue import (
     ReviewQueueListResponse,
-    ClaimRequest,
     ClaimResponse,
-    CompleteRequest,
     CompleteResponse,
-    SkipRequest,
     SkipResponse,
 )
 

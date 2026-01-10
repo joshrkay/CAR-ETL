@@ -6,7 +6,7 @@ Enforces tenant isolation and implements claim mechanism with auto-release.
 """
 
 import logging
-from typing import Optional, List, Dict, Any, cast
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 from supabase import Client
 
