@@ -1,6 +1,6 @@
 """RAG pipeline orchestration."""
 import logging
-from typing import Optional, List, Dict
+from typing import List, Dict
 from uuid import UUID
 from supabase import Client
 
