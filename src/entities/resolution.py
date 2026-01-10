@@ -212,13 +212,11 @@ def update_entity_document_references(
     canonical_id: UUID,
 ) -> int:
     """Update document references to point at the canonical entity."""
-    redacted_canonical_id = presidio_redact(str(canonical_id))
-    redacted_duplicate_id = presidio_redact(str(duplicate_id))
     result = (
         supabase.table("entity_documents")
-        .update({"entity_id": redacted_canonical_id})
+        .update({"entity_id": str(canonical_id)})
         .eq("tenant_id", str(tenant_id))
-        .eq("entity_id", redacted_duplicate_id)
+        .eq("entity_id", str(duplicate_id))
         .execute()
     )
     return len(result.data or [])
@@ -242,10 +240,7 @@ def record_duplicate_resolution(
         "reviewed_by": str(reviewed_by),
         "reviewed_at": datetime.now(timezone.utc).isoformat(),
     }
-    redacted_payload = redact_json_value(payload)
-    if not isinstance(redacted_payload, dict):
-        raise RuntimeError("Failed to redact duplicate resolution payload")
-    result = supabase.table("entity_duplicates").insert(redacted_payload).execute()
+    result = supabase.table("entity_duplicates").insert(payload).execute()
     if result.data is None:
         raise RuntimeError("Failed to record duplicate resolution")
 
