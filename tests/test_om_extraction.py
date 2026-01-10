@@ -13,7 +13,7 @@ from src.extraction.om_fields import get_om_fields
 from src.extraction.om_prompts import build_om_extraction_prompt
 
 
-def test_field_definitions_have_critical_fields():
+def test_field_definitions_have_critical_fields() -> None:
     fields = get_om_fields()
     for required in ["property_name", "property_address", "property_type", "asking_price", "cap_rate_in_place"]:
         assert required in fields
@@ -21,7 +21,7 @@ def test_field_definitions_have_critical_fields():
     assert fields["investment_highlights"].type.value == "list[string]"
 
 
-def test_field_confidence_applies_skepticism_and_source():
+def test_field_confidence_applies_skepticism_and_source() -> None:
     fields = {"noi_in_place": 1_000_000.0}
     conf = calculate_om_field_confidence(
         field_name="noi_pro_forma",
@@ -34,7 +34,7 @@ def test_field_confidence_applies_skepticism_and_source():
     assert 0.4 < conf < 0.5
 
 
-def test_document_confidence_penalizes_missing_critical():
+def test_document_confidence_penalizes_missing_critical() -> None:
     extracted = [
         OMExtractedField(name="asking_price", value=10_000_000, confidence=0.9),
         OMExtractedField(name="total_sf", value=100_000, confidence=0.9),
@@ -81,7 +81,7 @@ async def test_om_extractor_mock_llm():
     assert result.warnings
 
 
-def test_prompt_includes_critical_sections():
+def test_prompt_includes_critical_sections() -> None:
     prompt = build_om_extraction_prompt("Document text")
     assert "IN-PLACE vs PRO FORMA" in prompt
     assert "value_type" in prompt
