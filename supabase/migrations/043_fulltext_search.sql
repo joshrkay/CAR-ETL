@@ -2,7 +2,7 @@ ALTER TABLE document_chunks
   ADD COLUMN fts tsvector
     GENERATED ALWAYS AS (to_tsvector('english', content)) STORED;
 
-CREATE INDEX idx_chunks_fts ON document_chunks USING GIN(fts);
+CREATE INDEX IF NOT EXISTS idx_chunks_fts ON document_chunks USING GIN (fts);
 
 CREATE OR REPLACE FUNCTION search_chunks_keyword(
   query_text TEXT,
