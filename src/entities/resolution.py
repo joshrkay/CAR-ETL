@@ -102,7 +102,20 @@ def merge_entity_attributes(
     canonical: EntityRecord,
     duplicate: EntityRecord,
 ) -> dict[str, JsonValue]:
-    """Merge entity attributes, preferring newer values on conflict."""
+    """
+    Merge entity attributes using a "newer-wins" conflict resolution strategy.
+
+    Attributes from the canonical entity are used as the base. For each key in the
+    duplicate entity:
+
+    * If the key is missing from the canonical attributes or the canonical value is
+      ``None``, the duplicate value is copied over.
+    * If both entities define the key with the same value, this is not treated as a
+      conflict and the value is left unchanged.
+    * If both entities define the key with different values, the value from the
+      entity whose ``updated_at`` timestamp is more recent is preserved (i.e.,
+      the newer record "wins" for that key).
+    """
     merged: dict[str, JsonValue] = dict(canonical.attributes)
     canonical_newer = _is_newer_record(canonical.updated_at, duplicate.updated_at)
 
