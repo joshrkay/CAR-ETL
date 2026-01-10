@@ -3,7 +3,6 @@ Calibration utilities for OM extraction vs actual closing data.
 """
 
 import logging
-from numbers import Real
 from typing import Awaitable, Callable, Dict, Any, Optional
 from uuid import UUID
 
@@ -20,8 +19,8 @@ class CalibrationRecord(BaseModel):
 
 def _safe_relative_variance(
     field_name: str,
-    actual: Real,
-    baseline: Optional[Real],
+    actual: float,
+    baseline: Optional[float],
     extraction_id: UUID,
 ) -> Optional[float]:
     """
@@ -33,7 +32,7 @@ def _safe_relative_variance(
             extra={"field": field_name, "extraction_id": str(extraction_id)},
         )
         return None
-    if not isinstance(baseline, Real):
+    if not isinstance(baseline, (int, float)):
         logger.warning(
             "Calibration baseline not numeric",
             extra={"field": field_name, "extraction_id": str(extraction_id)},
@@ -50,14 +49,14 @@ def _safe_relative_variance(
 
 def _safe_difference(
     field_name: str,
-    actual: Real,
-    baseline: Optional[Real],
+    actual: float,
+    baseline: Optional[float],
     extraction_id: UUID,
 ) -> Optional[float]:
     """
     Compute difference while guarding against missing baselines.
     """
-    if baseline is None or not isinstance(baseline, Real):
+    if baseline is None or not isinstance(baseline, (int, float)):
         logger.warning(
             "Calibration baseline missing or not numeric",
             extra={"field": field_name, "extraction_id": str(extraction_id)},
@@ -74,8 +73,6 @@ class OMCalibrationTracker:
         get_extraction_fn: Callable[[UUID], Awaitable[Any]],
         store_calibration_fn: Callable[[CalibrationRecord], Awaitable[None]],
     ):
-        if not get_extraction_fn or not store_calibration_fn:
-            raise ValueError("Calibration tracker requires both retrieval and storage functions.")
         self.get_extraction_fn = get_extraction_fn
         self.store_calibration_fn = store_calibration_fn
 
