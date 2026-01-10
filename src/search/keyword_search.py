@@ -105,11 +105,10 @@ class KeywordSearchService:
     def _parse_result(self, row: dict[str, object]) -> KeywordSearchResult:
         """Parse a search result row into a KeywordSearchResult."""
         page_numbers = cast(list[int], row.get("page_numbers") or [])
-        rank_value = cast(float | int | str, row["rank"])
         return KeywordSearchResult(
             id=UUID(str(row["id"])),
             document_id=UUID(str(row["document_id"])),
             content=str(row["content"]),
-            page_numbers=list(row.get("page_numbers") or []),
-            rank=float(row["rank"]),
+            page_numbers=page_numbers,
+            rank=float(cast(float | int | str, row["rank"])),
         )
