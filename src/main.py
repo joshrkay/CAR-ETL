@@ -18,6 +18,7 @@ from src.api.routes import upload as upload_routes
 from src.api.routes import connectors as connector_routes
 from src.api.routes import ask as ask_routes
 from src.api.routes import effective_rent as effective_rent_routes
+from src.api.routes import extractions as extractions_routes
 from src.api.routes.webhooks import email as webhook_email_routes
 from src.api.routes.connectors import oauth_callback_public
 from src.middleware.audit import AuditMiddleware
@@ -254,6 +255,7 @@ app.include_router(upload_routes.router)
 app.include_router(connector_routes.router)
 app.include_router(ask_routes.router)
 app.include_router(effective_rent_routes.router)
+app.include_router(extractions_routes.router)
 app.include_router(webhook_email_routes.router)
 
 # Public OAuth callback route (outside router prefix)
