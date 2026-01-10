@@ -257,21 +257,14 @@ def create_mock_supabase_client() -> Mock:
 
 def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
     """Configure mock responses for tenant operations."""
-    # Tenant creation
-    tenant_data = {
-        "id": str(tenant_id),
-        "name": "Test Tenant",
-        "slug": "test-tenant",
-        "status": "active",
-        "environment": "test",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
+    # Track state across multiple table() calls
+    execute_call_count = {"tenants": 0}
+    tenant_insert_data = {}
 
     # Configure table chain for tenant operations
     def table_side_effect(table_name):
         mock_table = Mock()
         mock_table.select.return_value = mock_table
-        mock_table.insert.return_value = mock_table
         mock_table.update.return_value = mock_table
         mock_table.delete.return_value = mock_table
         mock_table.eq.return_value = mock_table
@@ -279,18 +272,50 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
         mock_table.maybe_single.return_value = mock_table
 
         if table_name == "tenants":
-            # First call (slug check) returns empty, second (insert) returns tenant
-            mock_table.execute.side_effect = [
-                Mock(data=[]),  # Slug uniqueness check
-                Mock(data=[tenant_data]),  # Tenant creation
-            ]
+            # Capture insert data
+            def insert_side_effect(data):
+                tenant_insert_data.update(data)
+                return mock_table
+
+            mock_table.insert = Mock(side_effect=insert_side_effect)
+
+            # Track execute calls across multiple table("tenants") invocations
+            def execute_side_effect():
+                count = execute_call_count["tenants"]
+                execute_call_count["tenants"] += 1
+                if count == 0:
+                    return Mock(data=[])  # Slug uniqueness check
+                else:
+                    # Return tenant data with inserted values
+                    tenant_data = {
+                        "id": str(tenant_id),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        **tenant_insert_data
+                    }
+                    return Mock(data=[tenant_data])  # Tenant creation
+
+            mock_table.execute = Mock(side_effect=execute_side_effect)
         elif table_name == "tenant_users":
+            mock_table.insert.return_value = mock_table
             mock_table.execute.return_value = Mock(data=[{
                 "tenant_id": str(tenant_id),
                 "user_id": "user-123",
                 "roles": ["Admin"],
             }])
+        elif table_name == "extractions":
+            # Mock extraction creation with default that can be overridden
+            mock_table.insert.return_value = mock_table
+            mock_table.execute.return_value = Mock(data=[{
+                "id": str(uuid4()),
+                "document_id": str(uuid4()),
+                "status": "completed",
+            }])
+        elif table_name == "extraction_fields":
+            # Mock extraction field creation with default
+            mock_table.insert.return_value = mock_table
+            mock_table.execute.return_value = Mock(data=[{"id": str(uuid4())}])
         else:
+            mock_table.insert.return_value = mock_table
             mock_table.execute.return_value = Mock(data=[])
 
         return mock_table
