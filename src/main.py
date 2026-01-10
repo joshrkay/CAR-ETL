@@ -73,7 +73,6 @@ async def startup_event() -> None:
     application initialization rather than on first use.
     """
     import logging
-    import sys
     from src.auth.config import get_auth_config
     from src.services.redaction import _get_analyzer, _get_anonymizer
     
@@ -309,5 +308,4 @@ async def experimental_feature(
         "data": "experimental results",
         "message": "You have access to the experimental feature!",
     }
-
 

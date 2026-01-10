@@ -173,11 +173,11 @@ class HealthChecker:
             
             # Verify Presidio is initialized
             analyzer = _get_analyzer()
-            anonymizer = _get_anonymizer()
+            _get_anonymizer()
             
             # Perform a simple test redaction to verify functionality
             test_text = "Test email: test@example.com"
-            results = analyzer.analyze(text=test_text, language="en")
+            analyzer.analyze(text=test_text, language="en")
             
             latency_ms = int((time.time() - start_time) * 1000)
             return HealthCheckResult(status="up", latency_ms=latency_ms)

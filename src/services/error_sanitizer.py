@@ -6,7 +6,6 @@ CRITICAL: Must be called before any error logging or database storage.
 """
 
 import re
-from typing import Optional
 
 
 # PII patterns to redact from error messages
