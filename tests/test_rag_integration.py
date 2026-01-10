@@ -195,42 +195,44 @@ class TestRAGIntegration:
                     ]
 
                     # Mock OpenAI
-                    mock_embedding_response = Mock()
-                    mock_embedding_response.data = [Mock(embedding=[0.1] * 1536)]
+                    with patch("src.search.embeddings.AsyncOpenAI") as mock_embeddings_openai:
+                        mock_embedding_response = Mock()
+                        mock_embedding_response.data = [Mock(embedding=[0.1] * 1536)]
 
-                    mock_chat_response = Mock()
-                    mock_chat_response.choices = [Mock()]
-                    mock_chat_response.choices[0].message.content = (
-                        f"Filtered answer [DOC:{doc_id1}:PAGE:1]"
-                    )
-                    mock_chat_response.usage.total_tokens = 100
+                        mock_chat_response = Mock()
+                        mock_chat_response.choices = [Mock()]
+                        mock_chat_response.choices[0].message.content = (
+                            f"Filtered answer [DOC:{doc_id1}:PAGE:1]"
+                        )
+                        mock_chat_response.usage.total_tokens = 100
 
-                    mock_client = AsyncMock()
-                    mock_client.embeddings.create = AsyncMock(
-                        return_value=mock_embedding_response
-                    )
-                    mock_client.chat.completions.create = AsyncMock(
-                        return_value=mock_chat_response
-                    )
-                    mock_openai.return_value = mock_client
+                        mock_client = AsyncMock()
+                        mock_client.embeddings.create = AsyncMock(
+                            return_value=mock_embedding_response
+                        )
+                        mock_client.chat.completions.create = AsyncMock(
+                            return_value=mock_chat_response
+                        )
+                        mock_openai.return_value = mock_client
+                        mock_embeddings_openai.return_value = mock_client
 
-                    # Make request with document filter
-                    response = client.post(
-                        "/api/v1/ask",
-                        json={
-                            "question": "Test question",
-                            "document_ids": [str(doc_id1)],
-                            "max_chunks": 5,
-                        },
-                    )
+                        # Make request with document filter
+                        response = client.post(
+                            "/api/v1/ask",
+                            json={
+                                "question": "Test question",
+                                "document_ids": [str(doc_id1)],
+                                "max_chunks": 5,
+                            },
+                        )
 
-                    # Verify response
-                    assert response.status_code == 200
-                    data = response.json()
+                        # Verify response
+                        assert response.status_code == 200
+                        data = response.json()
 
-                    assert "answer" in data
-                    assert len(data["citations"]) == 1
-                    assert data["citations"][0]["document_id"] == str(doc_id1)
+                        assert "answer" in data
+                        assert len(data["citations"]) == 1
+                        assert data["citations"][0]["document_id"] == str(doc_id1)
 
     def test_ask_endpoint_validation_error(self, client):
         """Test endpoint with invalid request."""
