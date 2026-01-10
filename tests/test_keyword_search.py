@@ -1,5 +1,6 @@
 """Tests for keyword search functionality."""
 
+import asyncio
 import sys
 from pathlib import Path
 from unittest.mock import Mock
@@ -25,9 +26,8 @@ class TestKeywordSearchService:
         client.execute = Mock(return_value=Mock(data=[]))
         return client
 
-    def test_search_chunks_with_tenant_id(self, mock_supabase_client):
-        """Search should include tenant filter when provided."""
-        tenant_id = uuid4()
+    def test_search_chunks_returns_results(self, mock_supabase_client):
+        """Search should return results for matching query."""
         document_id = uuid4()
         mock_supabase_client.rpc.return_value.execute.return_value.data = [
             {
@@ -44,7 +44,6 @@ class TestKeywordSearchService:
             service.search_chunks(
                 query_text="lease terms",
                 match_count=5,
-                tenant_id=tenant_id,
             )
         )
 
@@ -56,12 +55,11 @@ class TestKeywordSearchService:
             {
                 "query_text": "lease terms",
                 "match_count": 5,
-                "filter_tenant_id": str(tenant_id),
             },
         )
 
-    def test_search_chunks_without_tenant_id(self, mock_supabase_client):
-        """Search should omit tenant filter when not provided."""
+    def test_search_chunks_returns_empty_list(self, mock_supabase_client):
+        """Search should return empty list when no results found."""
         mock_supabase_client.rpc.return_value.execute.return_value.data = []
 
         service = KeywordSearchService(mock_supabase_client)
