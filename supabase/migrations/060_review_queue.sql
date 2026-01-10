@@ -266,8 +266,7 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.release_stale_claims() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.release_stale_claims() TO anon;
+-- Restricted to service_role to avoid cross-tenant RLS bypass by untrusted roles
 GRANT EXECUTE ON FUNCTION public.release_stale_claims() TO service_role;
 
 -- Comment on table and functions
