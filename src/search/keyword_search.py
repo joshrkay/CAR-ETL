@@ -6,7 +6,7 @@ Provides PostgreSQL full-text search over document chunks.
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional, cast
+from typing import List, cast
 from uuid import UUID
 
 from supabase import Client
@@ -41,7 +41,6 @@ class KeywordSearchService:
         self,
         query_text: str,
         match_count: int = 20,
-        tenant_id: Optional[UUID] = None,
     ) -> List[KeywordSearchResult]:
         """
         Search document chunks using PostgreSQL full-text search.
@@ -49,24 +48,15 @@ class KeywordSearchService:
         Args:
             query_text: Query string for full-text search.
             match_count: Maximum number of matches to return.
-            tenant_id: Optional tenant ID used to scope results when this service
-                is called with a trusted service_role Supabase client.
 
         Returns:
             List of keyword search results.
 
         Security:
-            - When using a client authenticated with a user JWT, callers MUST pass
-              ``tenant_id=None``. In that case, tenant scoping must be enforced by
-              the database layer based on claims in the JWT, and any
-              ``filter_tenant_id`` parameter sent to the database should be
-              ignored or validated against the JWT.
-            - The ``tenant_id`` parameter MUST NOT be taken from untrusted
-              end-user input or used to "switch tenants" on behalf of a user.
-              It is intended only for backend-internal use with service_role
-              credentials, after the application has performed appropriate
-              authorization checks to ensure the caller is allowed to access
-              the specified tenant.
+            - Tenant isolation is enforced by the database function, which extracts
+              the tenant_id from the JWT token using public.tenant_id().
+            - The tenant_id cannot be overridden by callers, ensuring absolute
+              tenant isolation as required by .cursorrules.
 
         Raises:
             ValueError: If query_text is empty or match_count < 1.
@@ -83,9 +73,6 @@ class KeywordSearchService:
             "match_count": match_count,
         }
 
-        if tenant_id is not None:
-            params["filter_tenant_id"] = str(tenant_id)
-
         try:
             result = self.client.rpc("search_chunks_keyword", params).execute()
             rows = result.data or []
@@ -93,7 +80,6 @@ class KeywordSearchService:
             logger.error(
                 "Keyword search failed",
                 extra={
-                    "tenant_id": str(tenant_id) if tenant_id else None,
                     "match_count": match_count,
                     "error": str(exc),
                 },
