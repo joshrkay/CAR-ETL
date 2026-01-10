@@ -159,7 +159,6 @@ class TestRAGIntegration:
     def test_ask_endpoint_with_document_filter(self, client, mock_auth):
         """Test endpoint with document_ids filter."""
         doc_id1 = uuid4()
-        doc_id2 = uuid4()
         chunk_id = uuid4()
 
         with patch("src.api.routes.ask.get_supabase_client") as mock_get_supabase:
