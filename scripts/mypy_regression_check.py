@@ -26,7 +26,16 @@ class MypyRegressionChecker:
         self.current_errors_file = Path("mypy_current.txt")
 
     def run_mypy(self) -> str:
-        """Run mypy and return the output."""
+        """Run mypy and return the output.
+
+        Note: Clears mypy cache before running to avoid stale cache issues.
+        """
+        # Clear mypy cache to avoid false positives from stale cache
+        cache_dir = Path(".mypy_cache")
+        if cache_dir.exists():
+            import shutil
+            shutil.rmtree(cache_dir, ignore_errors=True)
+
         result = subprocess.run(
             ["python", "-m", "mypy", "src", "tests"],
             capture_output=True,
