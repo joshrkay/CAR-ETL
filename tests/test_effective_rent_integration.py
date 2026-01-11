@@ -4,9 +4,10 @@ Integration tests for effective rent API endpoints.
 Tests the complete flow from HTTP request to effective rent calculation.
 """
 
-import pytest
-from uuid import uuid4
 from unittest.mock import Mock, patch
+from uuid import uuid4
+
+import pytest
 from fastapi.testclient import TestClient
 
 from src.main import app

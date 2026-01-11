@@ -6,11 +6,11 @@ Enforces max 100 emails per sender per hour.
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from supabase import Client
+from datetime import UTC, datetime, timedelta
 
 from src.exceptions import RateLimitError
 from src.utils.pii_protection import hash_email
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -21,29 +21,29 @@ RATE_LIMIT_WINDOW_HOURS = 1
 
 class EmailRateLimiter:
     """Rate limiter for email ingestion by sender address."""
-    
+
     def __init__(self, supabase_client: Client):
         """
         Initialize email rate limiter.
-        
+
         Args:
             supabase_client: Supabase client with service_role key
         """
         self.client = supabase_client
-    
+
     def check_rate_limit(self, from_address: str) -> None:
         """
         Check if sender has exceeded rate limit.
-        
+
         Args:
             from_address: Sender email address
-            
+
         Raises:
             RateLimitError: If rate limit is exceeded
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         window_start = now - timedelta(hours=RATE_LIMIT_WINDOW_HOURS)
-        
+
         try:
             # Count emails from this sender in the last hour
             result = (
@@ -53,9 +53,9 @@ class EmailRateLimiter:
                 .gte("received_at", window_start.isoformat())
                 .execute()
             )
-            
+
             email_count = result.count if result.count is not None else len(result.data or [])
-            
+
             if email_count >= MAX_EMAILS_PER_HOUR:
                 # Calculate retry after (seconds until window expires)
                 if result.data:
@@ -70,14 +70,14 @@ class EmailRateLimiter:
                         )
                         # Ensure both datetimes are timezone-aware for comparison
                         if oldest_time.tzinfo is None:
-                            oldest_time = oldest_time.replace(tzinfo=timezone.utc)
+                            oldest_time = oldest_time.replace(tzinfo=UTC)
                         elapsed = (now - oldest_time).total_seconds()
                         retry_after = max(1, int(3600 - elapsed))
                     else:
                         retry_after = 3600
                 else:
                     retry_after = 3600
-                
+
                 logger.warning(
                     "Email rate limit exceeded",
                     extra={
@@ -86,12 +86,12 @@ class EmailRateLimiter:
                         "limit": MAX_EMAILS_PER_HOUR,
                     },
                 )
-                
+
                 raise RateLimitError(
                     retry_after=retry_after,
                     message=f"Rate limit exceeded: max {MAX_EMAILS_PER_HOUR} emails per hour per sender",
                 )
-        
+
         except RateLimitError:
             # Re-raise rate limit errors
             raise

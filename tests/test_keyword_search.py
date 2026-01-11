@@ -7,6 +7,7 @@ from unittest.mock import Mock
 from uuid import UUID, uuid4
 
 import pytest
+
 from supabase import Client
 
 project_root = Path(__file__).resolve().parent.parent

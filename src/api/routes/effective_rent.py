@@ -5,23 +5,23 @@ Provides portfolio analytics for effective rent calculations.
 """
 
 import logging
-from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
-from supabase import Client
 
-from src.auth.models import AuthContext
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+
 from src.auth.decorators import require_permission
-from src.dependencies import get_supabase_client
-from src.services.effective_rent import EffectiveRentService
+from src.auth.models import AuthContext
 from src.db.models.effective_rent import (
     EffectiveRentListResponse,
     EffectiveRentSummary,
-    TenantEffectiveRent,
+    PortfolioMetrics,
     RentByPropertyResponse,
     RentConcentrationResponse,
     RentPerSFResponse,
-    PortfolioMetrics,
+    TenantEffectiveRent,
 )
+from src.dependencies import get_supabase_client
+from src.services.effective_rent import EffectiveRentService
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ router = APIRouter(
 )
 async def list_effective_rents(
     request: Request,
-    limit: Optional[int] = Query(None, ge=1, le=1000, description="Limit number of results"),
+    limit: int | None = Query(None, ge=1, le=1000, description="Limit number of results"),
     sort: str = Query("desc", regex="^(asc|desc)$", description="Sort order: 'asc' or 'desc'"),
     auth: AuthContext = Depends(require_permission("documents:read")),
     supabase: Client = Depends(get_supabase_client),

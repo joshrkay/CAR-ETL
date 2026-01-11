@@ -1,7 +1,7 @@
 """LLM generator for RAG pipeline with citation enforcement."""
 import logging
 import os
-from typing import Optional
+
 from openai import AsyncOpenAI
 
 from .prompts import format_system_prompt, format_user_prompt
@@ -19,7 +19,7 @@ class Generator:
     Enforces citation requirements via system prompt.
     """
 
-    def __init__(self, api_key: Optional[str] = None, model: str = DEFAULT_MODEL):
+    def __init__(self, api_key: str | None = None, model: str = DEFAULT_MODEL):
         """
         Initialize generator.
 
@@ -90,11 +90,12 @@ class Generator:
                 )
                 raise RuntimeError("LLM response choice had no content.")
 
+            tokens_used = response.usage.total_tokens if response.usage else None
             logger.info(
                 "Generated answer",
                 extra={
                     "answer_length": len(answer),
-                    "tokens_used": response.usage.total_tokens,
+                    "tokens_used": tokens_used,
                 },
             )
 

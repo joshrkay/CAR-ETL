@@ -5,24 +5,25 @@ Includes unit tests for all pipeline steps and integration tests
 for the full workflow.
 """
 
-import pytest
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import uuid4
 
-from src.extraction.pipeline import (
-    get_document,
-    download_document,
-    parse_document_content,
-    redact_pii,
-    extract_cre_fields,
-    save_extraction,
-    process_document,
-    DocumentNotFoundError,
-    DocumentAccessError,
-    ExtractionPipelineError,
-)
-from src.extraction.extractor import ExtractionResult, ExtractedField
+import pytest
+
 from src.exceptions import ParserError
+from src.extraction.extractor import ExtractedField, ExtractionResult
+from src.extraction.pipeline import (
+    DocumentAccessError,
+    DocumentNotFoundError,
+    ExtractionPipelineError,
+    download_document,
+    extract_cre_fields,
+    get_document,
+    parse_document_content,
+    process_document,
+    redact_pii,
+    save_extraction,
+)
 
 
 class TestGetDocument:

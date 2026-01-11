@@ -1,15 +1,16 @@
 """Unit tests for authentication middleware and dependencies."""
-import pytest
 from datetime import datetime, timedelta
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
+
+import jwt
+import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
-import jwt
 
 from src.auth.config import AuthConfig
 from src.auth.middleware import AuthMiddleware
-from src.auth.models import AuthContext, AuthError
-from src.dependencies import get_current_user, require_role, require_any_role
+from src.auth.models import AuthContext
+from src.dependencies import get_current_user, require_any_role, require_role
 
 
 @pytest.fixture
@@ -30,7 +31,7 @@ def valid_jwt_payload(mock_config):
     user_id = uuid4()
     tenant_id = uuid4()
     exp = datetime.utcnow() + timedelta(hours=1)
-    
+
     return {
         "sub": str(user_id),
         "email": "test@example.com",
@@ -61,16 +62,16 @@ def app_with_auth(mock_config):
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
     app.add_middleware(AuthMiddleware, config=mock_config)
-    
+
     @app.get("/protected")
     async def protected_endpoint(request: Request):
         auth: AuthContext = request.state.auth
         return {"user_id": str(auth.user_id), "tenant_id": str(auth.tenant_id)}
-    
+
     @app.get("/public")
     async def public_endpoint():
         return {"message": "public"}
-    
+
     return app
 
 
@@ -81,7 +82,7 @@ class TestAuthMiddleware:
         """Test request without Authorization header."""
         client = TestClient(app_with_auth)
         response = client.get("/protected")
-        
+
         assert response.status_code == 401
         data = response.json()
         assert data["code"] == "MISSING_TOKEN"
@@ -93,7 +94,7 @@ class TestAuthMiddleware:
             "/protected",
             headers={"Authorization": f"Bearer {valid_token}"},
         )
-        
+
         assert response.status_code == 200
         assert "user_id" in response.json()
         assert "tenant_id" in response.json()
@@ -105,7 +106,7 @@ class TestAuthMiddleware:
             "/protected",
             headers={"Authorization": f"Bearer {expired_token}"},
         )
-        
+
         assert response.status_code == 401
         data = response.json()
         assert data["code"] == "EXPIRED_TOKEN"
@@ -117,13 +118,13 @@ class TestAuthMiddleware:
             "wrong-secret",
             algorithm="HS256",
         )
-        
+
         client = TestClient(app_with_auth)
         response = client.get(
             "/protected",
             headers={"Authorization": f"Bearer {invalid_token}"},
         )
-        
+
         assert response.status_code == 401
         data = response.json()
         assert data["code"] == "INVALID_TOKEN"
@@ -137,13 +138,13 @@ class TestAuthMiddleware:
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
-        
+
         client = TestClient(app_with_auth)
         response = client.get(
             "/protected",
             headers={"Authorization": f"Bearer {token}"},
         )
-        
+
         assert response.status_code == 401
         data = response.json()
         assert data["code"] == "MISSING_CLAIMS"
@@ -153,7 +154,7 @@ class TestAuthMiddleware:
         """Test public endpoint doesn't require auth."""
         client = TestClient(app_with_auth)
         response = client.get("/public")
-        
+
         assert response.status_code == 200
         assert response.json()["message"] == "public"
 
@@ -166,7 +167,7 @@ class TestAuthContext:
         user_id = UUID(valid_jwt_payload["sub"])
         tenant_id = UUID(valid_jwt_payload["app_metadata"]["tenant_id"])
         exp = datetime.fromtimestamp(valid_jwt_payload["exp"])
-        
+
         auth = AuthContext(
             user_id=user_id,
             email=valid_jwt_payload["email"],
@@ -174,7 +175,7 @@ class TestAuthContext:
             roles=valid_jwt_payload["app_metadata"]["roles"],
             token_exp=exp,
         )
-        
+
         assert auth.has_role("Admin") is True
         assert auth.has_role("User") is True
         assert auth.has_role("Manager") is False
@@ -184,7 +185,7 @@ class TestAuthContext:
         user_id = UUID(valid_jwt_payload["sub"])
         tenant_id = UUID(valid_jwt_payload["app_metadata"]["tenant_id"])
         exp = datetime.fromtimestamp(valid_jwt_payload["exp"])
-        
+
         auth = AuthContext(
             user_id=user_id,
             email=valid_jwt_payload["email"],
@@ -192,7 +193,7 @@ class TestAuthContext:
             roles=valid_jwt_payload["app_metadata"]["roles"],
             token_exp=exp,
         )
-        
+
         assert auth.has_any_role(["Admin", "Manager"]) is True
         assert auth.has_any_role(["Manager", "Guest"]) is False
 
@@ -202,64 +203,68 @@ class TestDependencies:
 
     def test_get_current_user_success(self, app_with_auth, valid_token) -> None:
         """Test get_current_user dependency with valid auth."""
-        from fastapi import Depends
         from typing import Annotated
-        
+
+        from fastapi import Depends
+
         app = app_with_auth
-        
+
         @app.get("/user")
         async def get_user(user: Annotated[AuthContext, Depends(get_current_user)]):
             return {"user_id": str(user.user_id)}
-        
+
         client = TestClient(app)
         response = client.get(
             "/user",
             headers={"Authorization": f"Bearer {valid_token}"},
         )
-        
+
         assert response.status_code == 200
         assert "user_id" in response.json()
 
     def test_get_current_user_no_auth(self, app_with_auth) -> None:
         """Test get_current_user dependency without auth."""
-        from fastapi import Depends
         from typing import Annotated
-        
+
+        from fastapi import Depends
+
         app = app_with_auth
-        
+
         @app.get("/user")
         async def get_user(user: Annotated[AuthContext, Depends(get_current_user)]):
             return {"user_id": str(user.user_id)}
-        
+
         client = TestClient(app)
         response = client.get("/user")
-        
+
         assert response.status_code == 401
 
     def test_require_role_success(self, app_with_auth, valid_token) -> None:
         """Test require_role dependency with correct role."""
-        from fastapi import Depends
         from typing import Annotated
-        
+
+        from fastapi import Depends
+
         app = app_with_auth
-        
+
         @app.get("/admin")
         async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]):
             return {"message": "admin access"}
-        
+
         client = TestClient(app)
         response = client.get(
             "/admin",
             headers={"Authorization": f"Bearer {valid_token}"},
         )
-        
+
         assert response.status_code == 200
 
     def test_require_role_failure(self, app_with_auth, mock_config) -> None:
         """Test require_role dependency with incorrect role."""
-        from fastapi import Depends
         from typing import Annotated
-        
+
+        from fastapi import Depends
+
         payload = {
             "sub": str(uuid4()),
             "email": "test@example.com",
@@ -270,45 +275,47 @@ class TestDependencies:
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
-        
+
         app = app_with_auth
-        
+
         @app.get("/admin")
         async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]):
             return {"message": "admin access"}
-        
+
         client = TestClient(app)
         response = client.get(
             "/admin",
             headers={"Authorization": f"Bearer {token}"},
         )
-        
+
         assert response.status_code == 403
 
     def test_require_any_role_success(self, app_with_auth, valid_token) -> None:
         """Test require_any_role dependency with matching role."""
-        from fastapi import Depends
         from typing import Annotated
-        
+
+        from fastapi import Depends
+
         app = app_with_auth
-        
+
         @app.get("/manager")
         async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]):
             return {"message": "manager access"}
-        
+
         client = TestClient(app)
         response = client.get(
             "/manager",
             headers={"Authorization": f"Bearer {valid_token}"},
         )
-        
+
         assert response.status_code == 200
 
     def test_require_any_role_failure(self, app_with_auth, mock_config) -> None:
         """Test require_any_role dependency with no matching roles."""
-        from fastapi import Depends
         from typing import Annotated
-        
+
+        from fastapi import Depends
+
         payload = {
             "sub": str(uuid4()),
             "email": "test@example.com",
@@ -319,17 +326,17 @@ class TestDependencies:
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
-        
+
         app = app_with_auth
-        
+
         @app.get("/manager")
         async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]):
             return {"message": "manager access"}
-        
+
         client = TestClient(app)
         response = client.get(
             "/manager",
             headers={"Authorization": f"Bearer {token}"},
         )
-        
+
         assert response.status_code == 403

@@ -14,24 +14,18 @@ Comprehensive E2E test covering:
 Validates all architectural invariants and tenant isolation.
 """
 
-import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from datetime import UTC, datetime
+from typing import Any
+from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
-from datetime import datetime, timezone
-from typing import Dict, Any, List
-from io import BytesIO
 
-from hypothesis import given, strategies as st, settings
+import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
-from src.services.tenant_provisioning import TenantProvisioningService, ProvisioningError
-from src.services.email_ingestion import EmailIngestionService
-from src.services.email_parser import ParsedEmail, Attachment
-from src.connectors.sharepoint.sync import SharePointSync
-from src.connectors.google_drive.emitter import GoogleDriveEventEmitter
 from src.extraction.pipeline import process_document
-from src.workers.extraction_worker import ExtractionWorker
-
+from src.services.email_ingestion import EmailIngestionService
+from src.services.tenant_provisioning import TenantProvisioningService
 
 # =============================================================================
 # TEST FIXTURES - Realistic Document Data
@@ -113,7 +107,7 @@ def mock_offering_memo_content() -> bytes:
 
 
 @pytest.fixture
-def lease_documents() -> List[Dict[str, Any]]:
+def lease_documents() -> list[dict[str, Any]]:
     """Generate 10 different lease documents with varying properties."""
     leases = []
 
@@ -165,7 +159,7 @@ def lease_documents() -> List[Dict[str, Any]]:
 
 
 @pytest.fixture
-def offering_memo_documents() -> List[Dict[str, Any]]:
+def offering_memo_documents() -> list[dict[str, Any]]:
     """Generate 5 different offering memorandum documents."""
     memos = []
 
@@ -297,7 +291,7 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
                     # Return tenant data with inserted values
                     tenant_data = {
                         "id": str(tenant_id),
-                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "created_at": datetime.now(UTC).isoformat(),
                         **tenant_insert_data
                     }
                     return Mock(data=[tenant_data])  # Tenant creation
@@ -336,13 +330,13 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
 def setup_document_responses(
     mock_client: Mock,
     tenant_id: UUID,
-    documents: List[Dict[str, Any]]
-) -> List[UUID]:
+    documents: list[dict[str, Any]]
+) -> list[UUID]:
     """Configure mock responses for document ingestion."""
     document_ids = [uuid4() for _ in documents]
 
     document_records = []
-    for doc_id, doc in zip(document_ids, documents):
+    for doc_id, doc in zip(document_ids, documents, strict=False):
         document_records.append({
             "id": str(doc_id),
             "tenant_id": str(tenant_id),
@@ -352,7 +346,7 @@ def setup_document_responses(
             "mime_type": doc["mime_type"],
             "file_size_bytes": len(doc["content"]),
             "source_type": "email",
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         })
 
     return document_ids
@@ -360,14 +354,14 @@ def setup_document_responses(
 
 def setup_extraction_responses(
     mock_client: Mock,
-    document_ids: List[UUID],
-    document_types: List[str]
-) -> List[UUID]:
+    document_ids: list[UUID],
+    document_types: list[str]
+) -> list[UUID]:
     """Configure mock responses for extraction processing."""
     extraction_ids = [uuid4() for _ in document_ids]
 
     extraction_records = []
-    for ext_id, doc_id, doc_type in zip(extraction_ids, document_ids, document_types):
+    for ext_id, doc_id, doc_type in zip(extraction_ids, document_ids, document_types, strict=False):
         extraction_records.append({
             "id": str(ext_id),
             "document_id": str(doc_id),
@@ -375,7 +369,7 @@ def setup_extraction_responses(
             "document_type": doc_type,
             "overall_confidence": 0.85 + (hash(str(ext_id)) % 15) / 100,  # 0.85-0.99
             "is_current": True,
-            "extracted_at": datetime.now(timezone.utc).isoformat(),
+            "extracted_at": datetime.now(UTC).isoformat(),
         })
 
     return extraction_ids
@@ -459,7 +453,7 @@ class TestFullTenantWorkflow:
             {"email": "viewer@testcompany.com", "roles": ["Viewer"]},
         ]
 
-        for user_id, user_data in zip(user_ids, users_data):
+        for user_id, user_data in zip(user_ids, users_data, strict=False):
             # Mock user creation
             mock_client.auth.admin.create_user.return_value = Mock(
                 user=Mock(id=str(user_id), email=user_data["email"])
@@ -480,7 +474,7 @@ class TestFullTenantWorkflow:
         # STEP 3: Register Email Address for Ingestion
         # =====================================================================
 
-        email_address = f"documents@testcompany.com"
+        email_address = "documents@testcompany.com"
         email_ingestion_id = uuid4()
 
         # Mock email_ingestions table
@@ -548,9 +542,9 @@ class TestFullTenantWorkflow:
 
         with patch('src.services.email_ingestion.FileStorageService'):
             with patch('src.services.email_ingestion.presidio_redact_bytes', side_effect=lambda x, y: x):
-                ingestion_service = EmailIngestionService(mock_client)
+                EmailIngestionService(mock_client)
 
-                for idx, (doc, doc_id) in enumerate(zip(lease_documents, lease_doc_ids)):
+                for idx, (doc, doc_id) in enumerate(zip(lease_documents, lease_doc_ids, strict=False)):
                     # Mock document insertion
                     mock_client.table("documents").insert.return_value.execute.return_value = Mock(
                         data=[{
@@ -572,7 +566,7 @@ class TestFullTenantWorkflow:
 
         with patch('src.services.email_ingestion.FileStorageService'):
             with patch('src.services.email_ingestion.presidio_redact_bytes', side_effect=lambda x, y: x):
-                for idx, (doc, doc_id) in enumerate(zip(offering_memo_documents, memo_doc_ids)):
+                for idx, (doc, doc_id) in enumerate(zip(offering_memo_documents, memo_doc_ids, strict=False)):
                     # Mock document insertion
                     mock_client.table("documents").insert.return_value.execute.return_value = Mock(
                         data=[{
@@ -593,7 +587,7 @@ class TestFullTenantWorkflow:
         all_document_ids = lease_doc_ids + memo_doc_ids
         queue_item_ids = [uuid4() for _ in all_document_ids]
 
-        for doc_id, queue_id in zip(all_document_ids, queue_item_ids):
+        for doc_id, queue_id in zip(all_document_ids, queue_item_ids, strict=False):
             # Mock queue insertion
             mock_client.table("processing_queue").insert.return_value.execute.return_value = Mock(
                 data=[{
@@ -632,7 +626,7 @@ class TestFullTenantWorkflow:
                 all_document_ids,
                 extraction_ids,
                 document_types,
-                lease_documents + offering_memo_documents
+                lease_documents + offering_memo_documents, strict=False
             )):
                 # Mock pipeline functions
                 mock_get_doc.return_value = {
@@ -654,7 +648,7 @@ class TestFullTenantWorkflow:
                 mock_redact.return_value = doc["content"].decode('utf-8')
 
                 # Mock extraction result based on document type
-                from src.extraction.extractor import ExtractionResult, ExtractedField
+                from src.extraction.extractor import ExtractedField, ExtractionResult
 
                 if doc_type == "lease":
                     fields = {
@@ -731,33 +725,33 @@ class TestFullTenantWorkflow:
 
         # Verify all leases extracted correctly
         lease_extractions_found = 0
-        for doc_id, doc_type in zip(all_document_ids[:10], document_types[:10]):
+        for doc_id, doc_type in zip(all_document_ids[:10], document_types[:10], strict=False):
             assert doc_type == "lease"
             lease_extractions_found += 1
 
         assert lease_extractions_found == 10
-        print(f"✓ Verified 10 lease extractions")
+        print("✓ Verified 10 lease extractions")
 
         # Verify all offering memos extracted correctly
         memo_extractions_found = 0
-        for doc_id, doc_type in zip(all_document_ids[10:], document_types[10:]):
+        for doc_id, doc_type in zip(all_document_ids[10:], document_types[10:], strict=False):
             assert doc_type == "offering_memorandum"
             memo_extractions_found += 1
 
         assert memo_extractions_found == 5
-        print(f"✓ Verified 5 offering memo extractions")
+        print("✓ Verified 5 offering memo extractions")
 
         # =====================================================================
         # STEP 11: Verify Tenant Isolation
         # =====================================================================
 
         # Create a second tenant to verify isolation
-        tenant_2_id = uuid4()
+        uuid4()
 
         # Verify that tenant 2 cannot access tenant 1's documents
         # (This would be enforced by RLS policies in real database)
 
-        print(f"✓ Tenant isolation verified")
+        print("✓ Tenant isolation verified")
 
         # =====================================================================
         # FINAL VERIFICATION
@@ -768,12 +762,12 @@ class TestFullTenantWorkflow:
         print("="*70)
         print(f"Tenant ID: {tenant_id}")
         print(f"Users Created: {len(user_ids) + 1}")  # +1 for admin
-        print(f"Connectors Linked: 2 (Google Drive, SharePoint)")
+        print("Connectors Linked: 2 (Google Drive, SharePoint)")
         print(f"Documents Ingested: {len(all_document_ids)}")
         print(f"  - Leases: {len(lease_documents)}")
         print(f"  - Offering Memos: {len(offering_memo_documents)}")
         print(f"Extractions Completed: {len(extraction_ids)}")
-        print(f"Success Rate: 100%")
+        print("Success Rate: 100%")
         print("="*70)
 
         # Final assertions
@@ -815,7 +809,7 @@ class TestDocumentTypeFuzzing:
 
             # Each tenant processes documents
             for _ in range(doc_count_per_tenant):
-                doc_id = uuid4()
+                uuid4()
 
                 # Verify tenant_id is always preserved and isolated
                 # (In real system, RLS would enforce this)

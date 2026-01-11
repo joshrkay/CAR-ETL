@@ -5,10 +5,10 @@ Redacts PII with multiple modes: mask, hash, or none.
 Includes audit logging for compliance.
 """
 
-import logging
 import hashlib
-from typing import List, Tuple, Optional
+import logging
 from enum import Enum
+
 from presidio_analyzer import RecognizerResult
 from presidio_anonymizer import AnonymizerEngine
 from presidio_anonymizer.entities import OperatorConfig
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class RedactionMode(str, Enum):
     """Redaction mode options."""
-    
+
     MASK = "mask"  # Replace with [REDACTED]
     HASH = "hash"  # Replace with hash (reversible with key)
     NONE = "none"  # No redaction (internal use only)
@@ -28,7 +28,7 @@ class RedactionMode(str, Enum):
 
 class RedactedEntity:
     """Information about a redacted entity."""
-    
+
     def __init__(
         self,
         entity_type: str,
@@ -44,7 +44,7 @@ class RedactedEntity:
         self.start = start
         self.end = end
         self.mode = mode
-    
+
     def to_dict(self) -> dict[str, int | str]:
         """Convert to dictionary for logging."""
         return {
@@ -60,10 +60,10 @@ class RedactedEntity:
 def _get_anonymizer_operators(mode: RedactionMode) -> dict[str, OperatorConfig]:
     """
     Get anonymizer operator configuration for redaction mode.
-    
+
     Args:
         mode: Redaction mode
-        
+
     Returns:
         Dictionary of operator configurations
     """
@@ -83,14 +83,14 @@ def _get_anonymizer_operators(mode: RedactionMode) -> dict[str, OperatorConfig]:
         raise ValueError(f"Unknown redaction mode: {mode}")
 
 
-def _hash_text(text: str, salt: Optional[str] = None) -> str:
+def _hash_text(text: str, salt: str | None = None) -> str:
     """
     Hash text with optional salt.
-    
+
     Args:
         text: Text to hash
         salt: Optional salt (for reversibility with key)
-        
+
     Returns:
         Hashed text (first 16 chars of hex digest)
     """
@@ -98,7 +98,7 @@ def _hash_text(text: str, salt: Optional[str] = None) -> str:
         text_to_hash = f"{salt}:{text}"
     else:
         text_to_hash = text
-    
+
     hash_obj = hashlib.sha256(text_to_hash.encode("utf-8"))
     return hash_obj.hexdigest()[:16]
 
@@ -107,69 +107,69 @@ def redact_pii(
     text: str,
     mode: RedactionMode = RedactionMode.MASK,
     language: str = "en",
-    entities: Optional[List[str]] = None,
-) -> Tuple[str, List[RedactedEntity]]:
+    entities: list[str] | None = None,
+) -> tuple[str, list[RedactedEntity]]:
     """
     Detect and redact PII from text.
-    
+
     Args:
         text: Text to redact
         mode: Redaction mode (mask, hash, none)
         language: Language code (default: 'en')
         entities: Specific entity types to detect (None = all)
-        
+
     Returns:
         Tuple of (redacted_text, list of RedactedEntity objects)
-        
+
     Raises:
         ValueError: If mode is invalid
     """
     if not text or not text.strip():
         return text, []
-    
+
     if mode == RedactionMode.NONE:
         # No redaction - return original
         logger.debug("Redaction mode is 'none' - skipping redaction")
         return text, []
-    
+
     # Detect PII (with CRE exceptions)
     results = detect_pii(text, language=language, entities=entities)
-    
+
     if not results:
         return text, []
-    
+
     # Apply redaction based on mode
-    redacted_entities: List[RedactedEntity] = []
+    redacted_entities: list[RedactedEntity] = []
     redacted_text: str
-    
+
     if mode == RedactionMode.MASK:
         redacted_text = _apply_mask_redaction(text, results, redacted_entities, mode)
     elif mode == RedactionMode.HASH:
         redacted_text = _apply_hash_redaction(text, results, redacted_entities, mode)
     else:
         raise ValueError(f"Unsupported redaction mode: {mode}")
-    
+
     # Audit logging
     _log_redaction_audit(text, redacted_text, redacted_entities, mode)
-    
+
     return redacted_text, redacted_entities
 
 
 def _apply_mask_redaction(
     text: str,
-    results: List[RecognizerResult],
-    redacted_entities: List[RedactedEntity],
+    results: list[RecognizerResult],
+    redacted_entities: list[RedactedEntity],
     mode: RedactionMode,
 ) -> str:
     """
     Apply mask redaction to text.
-    
+
     Args:
         text: Original text
         results: PII detection results
         redacted_entities: List to populate with redacted entities
         mode: Redaction mode
-        
+
     Returns:
         Redacted text
     """
@@ -180,7 +180,7 @@ def _apply_mask_redaction(
         analyzer_results=results,
         operators=operators,
     )
-    
+
     # Build RedactedEntity list
     for result in results:
         entity_text = text[result.start : result.end]
@@ -194,25 +194,25 @@ def _apply_mask_redaction(
                 mode=mode,
             )
         )
-    
+
     return anonymized.text
 
 
 def _apply_hash_redaction(
     text: str,
-    results: List[RecognizerResult],
-    redacted_entities: List[RedactedEntity],
+    results: list[RecognizerResult],
+    redacted_entities: list[RedactedEntity],
     mode: RedactionMode,
 ) -> str:
     """
     Apply hash redaction to text.
-    
+
     Args:
         text: Original text
         results: PII detection results
         redacted_entities: List to populate with redacted entities
         mode: Redaction mode
-        
+
     Returns:
         Redacted text
     """
@@ -223,7 +223,7 @@ def _apply_hash_redaction(
         analyzer_results=results,
         operators=operators,
     )
-    
+
     # Build RedactedEntity list
     for result in results:
         entity_text = text[result.start : result.end]
@@ -238,19 +238,19 @@ def _apply_hash_redaction(
                 mode=mode,
             )
         )
-    
+
     return anonymized.text
 
 
 def _log_redaction_audit(
     original_text: str,
     redacted_text: str,
-    entities: List[RedactedEntity],
+    entities: list[RedactedEntity],
     mode: RedactionMode,
 ) -> None:
     """
     Log redaction activity for audit compliance.
-    
+
     Args:
         original_text: Original text
         redacted_text: Redacted text
@@ -259,14 +259,14 @@ def _log_redaction_audit(
     """
     if not entities:
         return
-    
+
     # Count entities by type
     entity_counts: dict[str, int] = {}
     for entity in entities:
         entity_counts[entity.entity_type] = (
             entity_counts.get(entity.entity_type, 0) + 1
         )
-    
+
     logger.info(
         "PII redaction performed",
         extra={

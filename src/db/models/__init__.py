@@ -1,14 +1,14 @@
 """Database models for extraction results."""
 from .extraction import (
+    BoundingBox,
+    DocumentType,
     Extraction,
     ExtractionField,
+    ExtractionSource,
+    ExtractionStatus,
     ExtractionTable,
     ExtractionWithFields,
-    ExtractionStatus,
-    ExtractionSource,
-    DocumentType,
     ParserType,
-    BoundingBox,
 )
 
 __all__ = [

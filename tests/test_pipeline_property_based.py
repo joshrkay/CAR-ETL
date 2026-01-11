@@ -5,15 +5,17 @@ Uses hypothesis for fuzzing critical security paths (redaction, versioning).
 Required by .cursorrules for all critical paths.
 """
 
-import pytest
-from hypothesis import given, strategies as st, settings, assume, HealthCheck
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import UUID, uuid4
 
+import pytest
+from hypothesis import HealthCheck, given, settings
+from hypothesis import strategies as st
+
 from src.extraction.pipeline import (
-    redact_pii,
-    process_document,
     _parse_and_redact,
+    process_document,
+    redact_pii,
 )
 
 

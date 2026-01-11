@@ -5,37 +5,37 @@ Normalizes extracted field values to standard formats.
 Handles dates, currency, enums, and other data types.
 """
 
-import re
 import logging
-from typing import Any, Optional, List
+import re
 from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def normalize_date(value: Any) -> Optional[str]:
+def normalize_date(value: Any) -> str | None:
     """
     Normalize date value to YYYY-MM-DD format.
-    
+
     Args:
         value: Date value (string, datetime, or None)
-        
+
     Returns:
         Normalized date string (YYYY-MM-DD) or None if invalid
     """
     if value is None:
         return None
-    
+
     if isinstance(value, datetime):
         return value.strftime("%Y-%m-%d")
-    
+
     if not isinstance(value, str):
         value = str(value)
-    
+
     value = value.strip()
     if not value or value.lower() in ["null", "none", "n/a", ""]:
         return None
-    
+
     # Try common date formats
     date_patterns = [
         (r"(\d{4})-(\d{2})-(\d{2})", "%Y-%m-%d"),  # YYYY-MM-DD
@@ -44,7 +44,7 @@ def normalize_date(value: Any) -> Optional[str]:
         (r"(\d{1,2})/(\d{1,2})/(\d{4})", "%m/%d/%Y"),  # M/D/YYYY
         (r"(\d{4})/(\d{2})/(\d{2})", "%Y/%m/%d"),  # YYYY/MM/DD
     ]
-    
+
     for pattern, fmt in date_patterns:
         match = re.match(pattern, value)
         if match:
@@ -63,12 +63,12 @@ def normalize_date(value: Any) -> Optional[str]:
                     date_str = f"{parts[0]}-{parts[1]}-{parts[2]}"
                 else:
                     continue
-                
+
                 parsed = datetime.strptime(date_str, "%Y-%m-%d")
                 return parsed.strftime("%Y-%m-%d")
             except (ValueError, IndexError):
                 continue
-    
+
     logger.warning(
         "Failed to normalize date",
         extra={"value": value[:50] if isinstance(value, str) else str(value)}
@@ -76,38 +76,38 @@ def normalize_date(value: Any) -> Optional[str]:
     return None
 
 
-def normalize_currency(value: Any) -> Optional[float]:
+def normalize_currency(value: Any) -> float | None:
     """
     Normalize currency value to float.
-    
+
     Removes $, commas, and other formatting.
-    
+
     Args:
         value: Currency value (string, number, or None)
-        
+
     Returns:
         Normalized float value or None if invalid
     """
     if value is None:
         return None
-    
+
     if isinstance(value, (int, float)):
         return float(value)
-    
+
     if not isinstance(value, str):
         value = str(value)
-    
+
     value = value.strip()
     if not value or value.lower() in ["null", "none", "n/a", ""]:
         return None
-    
+
     # Remove currency symbols, commas, spaces
     cleaned = re.sub(r"[$,\s]", "", value)
-    
+
     # Handle negative values in parentheses
     if cleaned.startswith("(") and cleaned.endswith(")"):
         cleaned = "-" + cleaned[1:-1]
-    
+
     try:
         return float(cleaned)
     except ValueError:
@@ -118,37 +118,37 @@ def normalize_currency(value: Any) -> Optional[float]:
         return None
 
 
-def normalize_integer(value: Any) -> Optional[int]:
+def normalize_integer(value: Any) -> int | None:
     """
     Normalize integer value.
-    
+
     Args:
         value: Integer value (string, number, or None)
-        
+
     Returns:
         Normalized integer or None if invalid
     """
     if value is None:
         return None
-    
+
     if isinstance(value, int):
         return value
-    
+
     if isinstance(value, float):
         if value.is_integer():
             return int(value)
         return None
-    
+
     if not isinstance(value, str):
         value = str(value)
-    
+
     value = value.strip()
     if not value or value.lower() in ["null", "none", "n/a", ""]:
         return None
-    
+
     # Remove commas and spaces
     cleaned = re.sub(r"[,\s]", "", value)
-    
+
     try:
         return int(float(cleaned))
     except ValueError:
@@ -159,7 +159,7 @@ def normalize_integer(value: Any) -> Optional[int]:
         return None
 
 
-def _parse_numeric_string(value: str) -> Optional[float]:
+def _parse_numeric_string(value: str) -> float | None:
     """
     Parse a numeric string that may contain percent signs or commas.
     """
@@ -174,7 +174,7 @@ def _parse_numeric_string(value: str) -> Optional[float]:
         return None
 
 
-def normalize_percent(value: Any) -> Optional[float]:
+def normalize_percent(value: Any) -> float | None:
     """
     Normalize percent to float in 0-1 range.
     Accepts values like "7%", "0.07", 7, 0.07.
@@ -209,7 +209,7 @@ def normalize_percent(value: Any) -> Optional[float]:
     return numeric
 
 
-def normalize_list_of_strings(value: Any) -> Optional[List[str]]:
+def normalize_list_of_strings(value: Any) -> list[str] | None:
     """
     Normalize list of strings from various formats (list, newline, comma-separated).
     """
@@ -226,37 +226,37 @@ def normalize_list_of_strings(value: Any) -> Optional[List[str]]:
     return [item for item in items if item]
 
 
-def normalize_enum(value: Any, allowed_values: List[str]) -> Optional[str]:
+def normalize_enum(value: Any, allowed_values: list[str]) -> str | None:
     """
     Normalize enum value to match allowed values.
-    
+
     Args:
         value: Enum value (string or None)
         allowed_values: List of allowed enum values
-        
+
     Returns:
         Normalized enum value or None if invalid
     """
     if value is None:
         return None
-    
+
     if not isinstance(value, str):
         value = str(value)
-    
+
     value = value.strip().lower()
     if not value:
         return None
-    
+
     # Exact match (case-insensitive)
     for allowed in allowed_values:
         if value == allowed.lower():
             return allowed
-    
+
     # Partial match (e.g., "monthly" matches "monthly")
     for allowed in allowed_values:
         if allowed.lower() in value or value in allowed.lower():
             return allowed
-    
+
     logger.warning(
         "Enum value not in allowed values",
         extra={
@@ -267,41 +267,41 @@ def normalize_enum(value: Any, allowed_values: List[str]) -> Optional[str]:
     return None
 
 
-def normalize_boolean(value: Any) -> Optional[bool]:
+def normalize_boolean(value: Any) -> bool | None:
     """
     Normalize boolean value.
-    
+
     Args:
         value: Boolean value (string, bool, or None)
-        
+
     Returns:
         Normalized boolean or None if invalid
     """
     if value is None:
         return None
-    
+
     if isinstance(value, bool):
         return value
-    
+
     if isinstance(value, (int, float)):
         return bool(value)
-    
+
     if not isinstance(value, str):
         value = str(value)
-    
+
     value = value.strip().lower()
     if not value:
         return None
-    
+
     # Common boolean representations
     true_values = ["true", "yes", "y", "1", "on", "enabled", "required"]
     false_values = ["false", "no", "n", "0", "off", "disabled", "not required"]
-    
+
     if value in true_values:
         return True
     elif value in false_values:
         return False
-    
+
     logger.warning(
         "Failed to normalize boolean",
         extra={"value": value[:50]}
@@ -312,22 +312,22 @@ def normalize_boolean(value: Any) -> Optional[bool]:
 def normalize_field_value(
     value: Any,
     field_type: str,
-    enum_values: Optional[List[str]] = None
+    enum_values: list[str] | None = None
 ) -> Any:
     """
     Normalize field value based on type.
-    
+
     Args:
         value: Raw field value
         field_type: Field type (string, date, currency, integer, enum, float, boolean)
         enum_values: Allowed values for enum type
-        
+
     Returns:
         Normalized value
     """
     if value is None:
         return None
-    
+
     if field_type == "date":
         return normalize_date(value)
     elif field_type == "currency":

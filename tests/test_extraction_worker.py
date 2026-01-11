@@ -11,20 +11,20 @@ Comprehensive test coverage for ExtractionWorker class including:
 - Error handling and sanitization
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock, call
-from uuid import uuid4
 from datetime import datetime, timedelta
-from typing import Dict, Any
+from unittest.mock import AsyncMock, Mock, patch
+from uuid import uuid4
+
+import pytest
 
 from src.workers.extraction_worker import (
-    ExtractionWorker,
     DEFAULT_CONCURRENCY,
-    DEFAULT_POLL_INTERVAL,
     DEFAULT_MAX_ATTEMPTS,
+    DEFAULT_POLL_INTERVAL,
     DEFAULT_RETRY_DELAY,
     DEFAULT_STALE_TIMEOUT,
+    ExtractionWorker,
 )
 
 
@@ -830,7 +830,7 @@ class TestErrorSanitization:
                 with patch("src.workers.extraction_worker.sanitize_exception") as mock_sanitize:
                     mock_sanitize.return_value = "Database connection failed"
 
-                    with patch.object(worker, "_update_queue_status", new_callable=AsyncMock) as mock_update:
+                    with patch.object(worker, "_update_queue_status", new_callable=AsyncMock):
                         await worker._process_queue_item(item)
 
                         # Should sanitize error
