@@ -23,8 +23,9 @@ except ImportError:
     # python-dotenv is optional; if it's not installed, rely on existing environment variables.
     pass
 
-import httpx
 import os
+
+import httpx
 
 
 def get_test_token():
@@ -245,8 +246,9 @@ async def test_search_components():
     # Test RRF algorithm
     print("\n4. Testing RRF Algorithm")
     try:
-        from src.search.hybrid import HybridSearchService, SearchResult
         from uuid import uuid4
+
+        from src.search.hybrid import HybridSearchService, SearchResult
 
         # Mock client for testing
         class MockClient:
@@ -282,7 +284,7 @@ async def test_search_components():
         ]
 
         fused = service._reciprocal_rank_fusion(vector_results, keyword_results, k=60)
-        print(f"   Input: 1 vector + 1 keyword result")
+        print("   Input: 1 vector + 1 keyword result")
         print(f"   Output: {len(fused)} fused results")
         print("   [PASS] RRF algorithm working")
     except Exception as e:
