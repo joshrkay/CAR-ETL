@@ -1,4 +1,5 @@
 """
+from typing import Any, Generator
 Integration Tests for Entity Merge Endpoint
 
 Tests cover:
@@ -26,7 +27,7 @@ from src.exceptions import NotFoundError
 
 
 @pytest.fixture
-def mock_auth_context():
+def mock_auth_context() -> AuthContext:
     """Create a mock authenticated user context."""
     auth = Mock(spec=AuthContext)
     auth.user_id = uuid4()
@@ -39,7 +40,7 @@ def mock_auth_context():
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock()
     
@@ -62,7 +63,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def mock_auth_config():
+def mock_auth_config() -> Any:
     """Create mock auth config for testing."""
     return AuthConfig(
         supabase_url="https://test.supabase.co",
@@ -74,7 +75,7 @@ def mock_auth_config():
 
 
 @pytest.fixture
-def valid_jwt_token(mock_auth_context, mock_auth_config):
+def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
     """Create a valid JWT token for testing."""
     exp = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
@@ -92,7 +93,7 @@ def valid_jwt_token(mock_auth_context, mock_auth_config):
 
 
 @pytest.fixture
-def mock_audit_logger():
+def mock_audit_logger() -> Generator:
     """Create a mock audit logger."""
     logger = Mock()
     logger.log_entity_merge = AsyncMock()
@@ -100,7 +101,7 @@ def mock_audit_logger():
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger):
+def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger) -> Generator:
     """Create test client with mocked auth and dependencies."""
     from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
     
@@ -154,7 +155,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
 class TestEntityMergeEndpoint:
     """Test entity merge endpoint."""
 
-    def test_successful_merge(self, client_with_auth):
+    def test_successful_merge(self, client_with_auth) -> None:
         """Test successful entity merge."""
         client, token, auth_context = client_with_auth
         
@@ -188,7 +189,7 @@ class TestEntityMergeEndpoint:
         assert call_kwargs["target_entity_id"] == merge_into_id
         assert call_kwargs["reviewed_by"] == auth_context.user_id
 
-    def test_merge_same_entity_returns_400(self, client_with_auth):
+    def test_merge_same_entity_returns_400(self, client_with_auth) -> None:
         """Test merging entity with itself returns validation error."""
         client, token, _ = client_with_auth
         
@@ -205,7 +206,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "INVALID_MERGE"
         assert "merge_into_id must be different from entity_id" in data["detail"]["message"]
 
-    def test_source_entity_not_found(self, client_with_auth):
+    def test_source_entity_not_found(self, client_with_auth) -> None:
         """Test merge with non-existent source entity returns 404."""
         client, token, _ = client_with_auth
         
@@ -230,7 +231,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "NOT_FOUND"
         assert str(entity_id) in data["detail"]["message"]
 
-    def test_target_entity_not_found(self, client_with_auth):
+    def test_target_entity_not_found(self, client_with_auth) -> None:
         """Test merge with non-existent target entity returns 404."""
         client, token, _ = client_with_auth
         
@@ -255,7 +256,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "NOT_FOUND"
         assert str(merge_into_id) in data["detail"]["message"]
 
-    def test_permission_required(self, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger):
+    def test_permission_required(self, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger) -> None:
         """Test that entities:merge permission is required."""
         from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
         
@@ -323,7 +324,7 @@ class TestEntityMergeEndpoint:
             config_patcher1.stop()
             rate_limiter_patcher.stop()
 
-    def test_general_exception_handling(self, client_with_auth):
+    def test_general_exception_handling(self, client_with_auth) -> None:
         """Test that general exceptions are handled and return 500."""
         client, token, _ = client_with_auth
         
@@ -345,7 +346,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "MERGE_FAILED"
         assert data["detail"]["message"] == "Failed to merge entities"
 
-    def test_missing_authorization_header(self, mock_supabase_client, mock_auth_config):
+    def test_missing_authorization_header(self, mock_supabase_client, mock_auth_config) -> None:
         """Test request without Authorization header returns 401."""
         from src.dependencies import get_supabase_client
         
@@ -383,7 +384,7 @@ class TestEntityMergeEndpoint:
             config_patcher1.stop()
             rate_limiter_patcher.stop()
 
-    def test_invalid_uuid_format(self, client_with_auth):
+    def test_invalid_uuid_format(self, client_with_auth) -> None:
         """Test that invalid UUID format in request returns 400 or 422."""
         client, token, _ = client_with_auth
         

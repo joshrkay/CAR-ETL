@@ -1,5 +1,6 @@
 """Unit tests for tenant provisioning."""
 import pytest
+from typing import Any, Generator
 from unittest.mock import Mock, patch
 from uuid import uuid4
 from supabase import Client
@@ -12,7 +13,7 @@ from src.services.storage_setup import StorageSetupService, StorageSetupError
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock(spec=Client)
     client.table = Mock(return_value=client)
@@ -29,7 +30,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def provisioning_service(mock_supabase_client):
+def provisioning_service(mock_supabase_client) -> Any:
     """Create a TenantProvisioningService instance."""
     with patch('src.services.tenant_provisioning.get_auth_config') as mock_config:
         mock_config.return_value = Mock(

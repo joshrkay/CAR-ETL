@@ -1,4 +1,5 @@
 """
+from typing import Any, Generator
 Integration Tests for Document Upload Endpoint
 
 Tests cover:
@@ -41,7 +42,7 @@ def create_valid_docx() -> bytes:
 
 
 @pytest.fixture
-def mock_auth_context():
+def mock_auth_context() -> AuthContext:
     """Create a mock authenticated user context."""
     auth = Mock(spec=AuthContext)
     auth.user_id = uuid4()
@@ -54,7 +55,7 @@ def mock_auth_context():
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock()
     
@@ -109,7 +110,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def mock_auth_config():
+def mock_auth_config() -> Any:
     """Create mock auth config for testing."""
     from src.auth.config import AuthConfig
     return AuthConfig(
@@ -122,7 +123,7 @@ def mock_auth_config():
 
 
 @pytest.fixture
-def valid_jwt_token(mock_auth_context, mock_auth_config):
+def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
     """Create a valid JWT token for testing."""
     exp = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
@@ -180,7 +181,7 @@ class AuthenticatedTestClient:
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config):
+def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config) -> Generator:
     """Create test client with mocked auth middleware."""
     def override_get_current_user():
         return mock_auth_context
@@ -239,7 +240,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
 class TestDocumentUpload:
     """Test suite for document upload endpoint."""
     
-    def test_upload_pdf_success(self, client_with_auth):
+    def test_upload_pdf_success(self, client_with_auth) -> None:
         """Test successful PDF upload."""
         files = {
             "file": ("test.pdf", io.BytesIO(PDF_VALID), "application/pdf")
@@ -255,7 +256,7 @@ class TestDocumentUpload:
         assert data["file_size"] == len(PDF_VALID)
         assert data["status"] == "pending"
     
-    def test_upload_png_success(self, client_with_auth):
+    def test_upload_png_success(self, client_with_auth) -> None:
         """Test successful PNG upload."""
         files = {
             "file": ("image.png", io.BytesIO(PNG_VALID), "image/png")
@@ -268,7 +269,7 @@ class TestDocumentUpload:
         assert data["filename"] == "image.png"
         assert data["mime_type"] == "image/png"
     
-    def test_upload_jpeg_success(self, client_with_auth):
+    def test_upload_jpeg_success(self, client_with_auth) -> None:
         """Test successful JPEG upload."""
         files = {
             "file": ("photo.jpg", io.BytesIO(JPEG_VALID), "image/jpeg")
@@ -281,7 +282,7 @@ class TestDocumentUpload:
         assert data["filename"] == "photo.jpg"
         assert data["mime_type"] == "image/jpeg"
     
-    def test_upload_text_success(self, client_with_auth):
+    def test_upload_text_success(self, client_with_auth) -> None:
         """Test successful plain text upload."""
         files = {
             "file": ("document.txt", io.BytesIO(TEXT_VALID), "text/plain")
@@ -294,7 +295,7 @@ class TestDocumentUpload:
         assert data["filename"] == "document.txt"
         assert data["mime_type"] == "text/plain"
     
-    def test_upload_docx_success(self, client_with_auth):
+    def test_upload_docx_success(self, client_with_auth) -> None:
         """Test successful DOCX upload with Office XML validation."""
         docx_content = create_valid_docx()
         files = {
@@ -311,7 +312,7 @@ class TestDocumentUpload:
         data = response.json()
         assert data["filename"] == "report.docx"
     
-    def test_upload_with_description(self, client_with_auth):
+    def test_upload_with_description(self, client_with_auth) -> None:
         """Test upload with optional description field."""
         files = {
             "file": ("test.pdf", io.BytesIO(PDF_VALID), "application/pdf")
@@ -332,7 +333,7 @@ class TestDocumentUpload:
 class TestFileValidation:
     """Test file validation integration in upload endpoint."""
     
-    def test_reject_wrong_magic_bytes(self, client_with_auth):
+    def test_reject_wrong_magic_bytes(self, client_with_auth) -> None:
         """Test rejection of file with mismatched magic bytes."""
         fake_pdf = b"This is not a PDF"
         files = {
@@ -347,7 +348,7 @@ class TestFileValidation:
         assert "validation_errors" in data["detail"]
         assert any("does not match claimed MIME type" in err for err in data["detail"]["validation_errors"])
     
-    def test_reject_executable_as_pdf(self, client_with_auth):
+    def test_reject_executable_as_pdf(self, client_with_auth) -> None:
         """Test rejection of executable disguised as PDF."""
         exe_file = b"MZ\x90\x00" + b"\x00" * 100  # Windows EXE magic bytes
         files = {
@@ -360,7 +361,7 @@ class TestFileValidation:
         data = response.json()
         assert data["detail"]["code"] == "VALIDATION_ERROR"
     
-    def test_reject_unsupported_mime_type(self, client_with_auth):
+    def test_reject_unsupported_mime_type(self, client_with_auth) -> None:
         """Test rejection of unsupported file type."""
         files = {
             "file": ("script.exe", io.BytesIO(b"content"), "application/x-msdownload")
@@ -372,7 +373,7 @@ class TestFileValidation:
         data = response.json()
         assert "Unsupported MIME type" in str(data["detail"]["validation_errors"])
     
-    def test_reject_oversized_file(self, client_with_auth, mock_supabase_client, mock_auth_context):
+    def test_reject_oversized_file(self, client_with_auth, mock_supabase_client, mock_auth_context) -> None:
         """Test rejection of file exceeding size limit."""
         # Set small limit
         mock_supabase_client.table("tenants").select("settings").eq("id", str(mock_auth_context.tenant_id)).maybe_single().execute.return_value.data = {
@@ -391,7 +392,7 @@ class TestFileValidation:
         assert data["detail"]["code"] == "VALIDATION_ERROR"
         assert any("exceeds maximum" in err for err in data["detail"]["validation_errors"])
     
-    def test_reject_invalid_docx_structure(self, client_with_auth):
+    def test_reject_invalid_docx_structure(self, client_with_auth) -> None:
         """Test rejection of DOCX with invalid Office XML structure."""
         # Create ZIP without [Content_Types].xml
         buffer = io.BytesIO()
@@ -417,7 +418,7 @@ class TestFileValidation:
 class TestAuthentication:
     """Test authentication and authorization for upload endpoint."""
     
-    def test_upload_requires_authentication(self):
+    def test_upload_requires_authentication(self) -> None:
         """Test that upload endpoint requires authentication."""
         client = TestClient(app)
         files = {
@@ -429,7 +430,7 @@ class TestAuthentication:
         # Should be rejected by auth middleware or dependency
         assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN]
     
-    def test_upload_requires_permission(self, mock_supabase_client):
+    def test_upload_requires_permission(self, mock_supabase_client) -> None:
         """Test that upload requires 'documents:create' permission."""
         # Create auth context without permission
         auth = Mock(spec=AuthContext)
@@ -467,7 +468,7 @@ class TestAuthentication:
 class TestTenantIsolation:
     """Test tenant isolation in document uploads."""
     
-    def test_tenant_specific_size_limit(self, client_with_auth, mock_supabase_client, mock_auth_context):
+    def test_tenant_specific_size_limit(self, client_with_auth, mock_supabase_client, mock_auth_context) -> None:
         """Test that tenant-specific size limits are enforced."""
         # Configure tenant with 50MB limit
         mock_supabase_client.table("tenants").select("settings").eq("id", str(mock_auth_context.tenant_id)).maybe_single().execute.return_value.data = {
@@ -483,7 +484,7 @@ class TestTenantIsolation:
         
         assert response.status_code == status.HTTP_201_CREATED
     
-    def test_document_associated_with_tenant(self, client_with_auth, mock_supabase_client):
+    def test_document_associated_with_tenant(self, client_with_auth, mock_supabase_client) -> None:
         """Test that uploaded document is associated with correct tenant."""
         files = {
             "file": ("test.pdf", io.BytesIO(PDF_VALID), "application/pdf")
@@ -504,7 +505,7 @@ class TestTenantIsolation:
 class TestErrorHandling:
     """Test error handling in upload endpoint."""
     
-    def test_database_error_handling(self, client_with_auth, mock_supabase_client):
+    def test_database_error_handling(self, client_with_auth, mock_supabase_client) -> None:
         """Test graceful handling of database errors."""
         # Make database insert fail
         mock_supabase_client.table("documents").insert.side_effect = Exception("Database connection failed")
@@ -519,7 +520,7 @@ class TestErrorHandling:
         data = response.json()
         assert data["detail"]["code"] == "DATABASE_ERROR"
     
-    def test_empty_file_handling(self, client_with_auth):
+    def test_empty_file_handling(self, client_with_auth) -> None:
         """Test handling of empty file upload."""
         files = {
             "file": ("empty.txt", io.BytesIO(b""), "text/plain")
@@ -532,7 +533,7 @@ class TestErrorHandling:
         data = response.json()
         assert data["file_size"] == 0
     
-    def test_missing_file_parameter(self, client_with_auth):
+    def test_missing_file_parameter(self, client_with_auth) -> None:
         """Test error when file parameter is missing."""
         response = client_with_auth.post("/api/v1/documents/upload")
         
@@ -542,7 +543,7 @@ class TestErrorHandling:
 class TestResponseFormat:
     """Test response format and structure."""
     
-    def test_success_response_structure(self, client_with_auth):
+    def test_success_response_structure(self, client_with_auth) -> None:
         """Test that success response has correct structure."""
         files = {
             "file": ("test.pdf", io.BytesIO(PDF_VALID), "application/pdf")
@@ -569,7 +570,7 @@ class TestResponseFormat:
         assert isinstance(data["status"], str)
         assert isinstance(data["message"], str)
     
-    def test_validation_error_response_structure(self, client_with_auth):
+    def test_validation_error_response_structure(self, client_with_auth) -> None:
         """Test that validation error response has correct structure."""
         fake_pdf = b"This is not a PDF"
         files = {

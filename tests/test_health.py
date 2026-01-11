@@ -8,8 +8,9 @@ from src.api.routes import health as health_routes
 from src.services.health_checker import HealthChecker, HealthCheckResult
 
 
+from typing import Any, Generator
 @pytest.fixture
-def app():
+def app() -> TestClient:
     """Create FastAPI app with health routes."""
     app = FastAPI()
     app.include_router(health_routes.router)
@@ -17,7 +18,7 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app) -> TestClient:
     """Create test client."""
     return TestClient(app)
 
@@ -25,7 +26,7 @@ def client(app):
 class TestHealthLiveness:
     """Test liveness endpoint."""
     
-    def test_health_liveness_returns_200(self, client):
+    def test_health_liveness_returns_200(self, client) -> None:
         """Test that /health returns 200 OK."""
         response = client.get("/health")
         
@@ -38,7 +39,7 @@ class TestHealthReadiness:
     """Test readiness endpoint."""
     
     @pytest.mark.asyncio
-    async def test_readiness_all_healthy(self, client):
+    async def test_readiness_all_healthy(self, client) -> None:
         """Test readiness check when all services are healthy."""
         with patch("src.api.routes.health.HealthChecker") as mock_checker_class:
             mock_checker = MagicMock()
@@ -64,7 +65,7 @@ class TestHealthReadiness:
             assert data["version"] == "1.0.0"
     
     @pytest.mark.asyncio
-    async def test_readiness_unhealthy_returns_503(self, client):
+    async def test_readiness_unhealthy_returns_503(self, client) -> None:
         """Test readiness check returns 503 when services are unhealthy."""
         with patch("src.api.routes.health.HealthChecker") as mock_checker_class:
             mock_checker = MagicMock()
@@ -87,7 +88,7 @@ class TestHealthReadiness:
             assert "error" in data["checks"]["database"]
     
     @pytest.mark.asyncio
-    async def test_readiness_includes_latency(self, client):
+    async def test_readiness_includes_latency(self, client) -> None:
         """Test that readiness check includes latency for each service."""
         with patch("src.api.routes.health.HealthChecker") as mock_checker_class:
             mock_checker = MagicMock()
@@ -113,14 +114,14 @@ class TestHealthChecker:
     """Test HealthChecker service."""
     
     @pytest.fixture
-    def health_checker(self):
+    def health_checker(self) -> Any:
         """Create HealthChecker instance."""
         with patch("src.services.health_checker.get_auth_config"):
             with patch("src.services.health_checker.create_service_client"):
                 return HealthChecker()
     
     @pytest.mark.asyncio
-    async def test_check_database_success(self, health_checker):
+    async def test_check_database_success(self, health_checker) -> None:
         """Test database check succeeds."""
         mock_client = MagicMock()
         mock_client.table.return_value.select.return_value.limit.return_value.execute.return_value = MagicMock()
@@ -133,7 +134,7 @@ class TestHealthChecker:
         assert result.error is None
     
     @pytest.mark.asyncio
-    async def test_check_database_failure(self, health_checker):
+    async def test_check_database_failure(self, health_checker) -> None:
         """Test database check fails on error."""
         mock_client = MagicMock()
         mock_client.table.return_value.select.return_value.limit.return_value.execute.side_effect = Exception("Connection failed")
@@ -146,7 +147,7 @@ class TestHealthChecker:
         assert "Connection failed" in result.error
     
     @pytest.mark.asyncio
-    async def test_check_storage_success(self, health_checker):
+    async def test_check_storage_success(self, health_checker) -> None:
         """Test storage check succeeds."""
         mock_client = MagicMock()
         mock_client.storage.list_buckets.return_value = []
@@ -159,7 +160,7 @@ class TestHealthChecker:
         assert result.error is None
     
     @pytest.mark.asyncio
-    async def test_check_storage_failure(self, health_checker):
+    async def test_check_storage_failure(self, health_checker) -> None:
         """Test storage check fails on error."""
         mock_client = MagicMock()
         mock_client.storage.list_buckets.side_effect = Exception("Storage unavailable")
@@ -172,7 +173,7 @@ class TestHealthChecker:
         assert "Storage unavailable" in result.error
     
     @pytest.mark.asyncio
-    async def test_check_auth_success(self, health_checker):
+    async def test_check_auth_success(self, health_checker) -> None:
         """Test auth check succeeds."""
         
         health_checker.config = MagicMock()
@@ -193,7 +194,7 @@ class TestHealthChecker:
             assert result.error is None
     
     @pytest.mark.asyncio
-    async def test_check_auth_timeout(self, health_checker):
+    async def test_check_auth_timeout(self, health_checker) -> None:
         """Test auth check handles timeout."""
         import httpx
         
@@ -211,7 +212,7 @@ class TestHealthChecker:
             assert result.error == "Timeout"
     
     @pytest.mark.asyncio
-    async def test_check_all_runs_all_checks(self, health_checker):
+    async def test_check_all_runs_all_checks(self, health_checker) -> None:
         """Test that check_all runs all component checks."""
         mock_client = MagicMock()
         mock_client.table.return_value.select.return_value.limit.return_value.execute.return_value = MagicMock()
@@ -236,7 +237,7 @@ class TestHealthChecker:
             assert "auth" in results
             assert len(results) == 3
     
-    def test_get_overall_status_healthy(self, health_checker):
+    def test_get_overall_status_healthy(self, health_checker) -> None:
         """Test overall status when all checks pass."""
         checks = {
             "database": HealthCheckResult(status="up", latency_ms=5),
@@ -247,7 +248,7 @@ class TestHealthChecker:
         status = health_checker.get_overall_status(checks)
         assert status == "healthy"
     
-    def test_get_overall_status_unhealthy(self, health_checker):
+    def test_get_overall_status_unhealthy(self, health_checker) -> None:
         """Test overall status when any check fails."""
         checks = {
             "database": HealthCheckResult(status="down", latency_ms=5000, error="Timeout"),
@@ -262,7 +263,7 @@ class TestHealthChecker:
 class TestHealthCheckResult:
     """Test HealthCheckResult model."""
     
-    def test_to_dict_without_error(self):
+    def test_to_dict_without_error(self) -> None:
         """Test converting result to dict without error."""
         result = HealthCheckResult(status="up", latency_ms=5)
         data = result.to_dict()
@@ -271,7 +272,7 @@ class TestHealthCheckResult:
         assert data["latency_ms"] == 5
         assert "error" not in data
     
-    def test_to_dict_with_error(self):
+    def test_to_dict_with_error(self) -> None:
         """Test converting result to dict with error."""
         result = HealthCheckResult(status="down", latency_ms=5000, error="Connection failed")
         data = result.to_dict()

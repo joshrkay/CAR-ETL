@@ -21,7 +21,7 @@ from src.services.file_validator import (
 class TestMagicByteValidation:
     """Test magic byte verification for various file types."""
 
-    def test_valid_pdf(self):
+    def test_valid_pdf(self) -> None:
         """Valid PDF with correct magic bytes."""
         content = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"
         validator = FileValidator()
@@ -32,7 +32,7 @@ class TestMagicByteValidation:
         assert result.file_size == len(content)
         assert len(result.errors) == 0
 
-    def test_valid_png(self):
+    def test_valid_png(self) -> None:
         """Valid PNG with correct magic bytes."""
         content = b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR"
         validator = FileValidator()
@@ -42,7 +42,7 @@ class TestMagicByteValidation:
         assert result.mime_type == "image/png"
         assert len(result.errors) == 0
 
-    def test_valid_jpeg(self):
+    def test_valid_jpeg(self) -> None:
         """Valid JPEG with correct magic bytes."""
         content = b"\xff\xd8\xff\xe0\x00\x10JFIF"
         validator = FileValidator()
@@ -52,7 +52,7 @@ class TestMagicByteValidation:
         assert result.mime_type == "image/jpeg"
         assert len(result.errors) == 0
 
-    def test_valid_text_plain(self):
+    def test_valid_text_plain(self) -> None:
         """Text files have no magic byte requirements."""
         content = b"This is plain text content"
         validator = FileValidator()
@@ -62,7 +62,7 @@ class TestMagicByteValidation:
         assert result.mime_type == "text/plain"
         assert len(result.errors) == 0
 
-    def test_valid_csv(self):
+    def test_valid_csv(self) -> None:
         """CSV files have no magic byte requirements."""
         content = b"col1,col2,col3\nval1,val2,val3"
         validator = FileValidator()
@@ -72,7 +72,7 @@ class TestMagicByteValidation:
         assert result.mime_type == "text/csv"
         assert len(result.errors) == 0
 
-    def test_invalid_magic_bytes_pdf_as_jpeg(self):
+    def test_invalid_magic_bytes_pdf_as_jpeg(self) -> None:
         """PDF disguised as JPEG should fail."""
         content = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n"
         validator = FileValidator()
@@ -81,7 +81,7 @@ class TestMagicByteValidation:
         assert result.valid is False
         assert "Magic bytes do not match" in result.errors[0]
 
-    def test_invalid_magic_bytes_text_as_pdf(self):
+    def test_invalid_magic_bytes_text_as_pdf(self) -> None:
         """Text file disguised as PDF should fail."""
         content = b"This is not a PDF"
         validator = FileValidator()
@@ -90,7 +90,7 @@ class TestMagicByteValidation:
         assert result.valid is False
         assert "Magic bytes do not match" in result.errors[0]
 
-    def test_empty_file(self):
+    def test_empty_file(self) -> None:
         """Empty files should fail validation."""
         content = b""
         validator = FileValidator()
@@ -139,7 +139,7 @@ class TestOfficeDocumentValidation:
         
         return buffer.getvalue()
 
-    def test_valid_docx(self):
+    def test_valid_docx(self) -> None:
         """Valid DOCX with correct structure."""
         content = self._create_valid_docx()
         validator = FileValidator()
@@ -151,7 +151,7 @@ class TestOfficeDocumentValidation:
         assert result.valid is True
         assert len(result.errors) == 0
 
-    def test_valid_xlsx(self):
+    def test_valid_xlsx(self) -> None:
         """Valid XLSX with correct structure."""
         content = self._create_valid_xlsx()
         validator = FileValidator()
@@ -163,7 +163,7 @@ class TestOfficeDocumentValidation:
         assert result.valid is True
         assert len(result.errors) == 0
 
-    def test_docx_missing_content_types(self):
+    def test_docx_missing_content_types(self) -> None:
         """DOCX without [Content_Types].xml should fail."""
         buffer = BytesIO()
         with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -179,7 +179,7 @@ class TestOfficeDocumentValidation:
         assert result.valid is False
         assert any("[Content_Types].xml" in error for error in result.errors)
 
-    def test_docx_wrong_content_type(self):
+    def test_docx_wrong_content_type(self) -> None:
         """DOCX with XLSX content type should fail."""
         buffer = BytesIO()
         with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -200,7 +200,7 @@ class TestOfficeDocumentValidation:
         assert result.valid is False
         assert any("Content types do not match" in error for error in result.errors)
 
-    def test_corrupted_zip_as_docx(self):
+    def test_corrupted_zip_as_docx(self) -> None:
         """Corrupted ZIP disguised as DOCX should fail."""
         content = b"PK\x03\x04CORRUPTED_DATA_NOT_VALID_ZIP"
         validator = FileValidator()
@@ -216,7 +216,7 @@ class TestOfficeDocumentValidation:
 class TestSizeLimitValidation:
     """Test file size limit enforcement."""
 
-    def test_file_within_default_limit(self):
+    def test_file_within_default_limit(self) -> None:
         """File within default 100MB limit."""
         content = b"A" * (50 * 1024 * 1024)  # 50MB
         validator = FileValidator()
@@ -225,7 +225,7 @@ class TestSizeLimitValidation:
         assert result.valid is True
         assert result.file_size == len(content)
 
-    def test_file_exceeds_default_limit(self):
+    def test_file_exceeds_default_limit(self) -> None:
         """File exceeding default 100MB limit."""
         content = b"A" * (101 * 1024 * 1024)  # 101MB
         validator = FileValidator()
@@ -234,7 +234,7 @@ class TestSizeLimitValidation:
         assert result.valid is False
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_file_within_custom_limit(self):
+    def test_file_within_custom_limit(self) -> None:
         """File within custom size limit."""
         content = b"A" * (5 * 1024 * 1024)  # 5MB
         validator = FileValidator(max_file_size=10 * 1024 * 1024)  # 10MB limit
@@ -242,7 +242,7 @@ class TestSizeLimitValidation:
         
         assert result.valid is True
 
-    def test_file_exceeds_custom_limit(self):
+    def test_file_exceeds_custom_limit(self) -> None:
         """File exceeding custom size limit."""
         content = b"A" * (15 * 1024 * 1024)  # 15MB
         validator = FileValidator(max_file_size=10 * 1024 * 1024)  # 10MB limit
@@ -251,7 +251,7 @@ class TestSizeLimitValidation:
         assert result.valid is False
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_tenant_config_size_limit(self):
+    def test_tenant_config_size_limit(self) -> None:
         """Test tenant-specific size limit."""
         content = b"A" * (15 * 1024 * 1024)  # 15MB
         result = validate_file_with_tenant_config(
@@ -263,7 +263,7 @@ class TestSizeLimitValidation:
         assert result.valid is False
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_tenant_config_default_size(self):
+    def test_tenant_config_default_size(self) -> None:
         """Test with no tenant-specific limit (uses default)."""
         content = b"A" * (50 * 1024 * 1024)  # 50MB
         result = validate_file_with_tenant_config(content, "text/plain")
@@ -274,7 +274,7 @@ class TestSizeLimitValidation:
 class TestMaliciousFileDetection:
     """Test detection of malicious file samples."""
 
-    def test_exe_disguised_as_pdf(self):
+    def test_exe_disguised_as_pdf(self) -> None:
         """Executable with .pdf extension should fail."""
         # Windows PE executable header
         content = b"MZ\x90\x00\x03\x00\x00\x00"
@@ -284,7 +284,7 @@ class TestMaliciousFileDetection:
         assert result.valid is False
         assert any("Magic bytes" in error for error in result.errors)
 
-    def test_html_disguised_as_docx(self):
+    def test_html_disguised_as_docx(self) -> None:
         """HTML file disguised as DOCX should fail."""
         content = b"<!DOCTYPE html><html><body>Malicious</body></html>"
         validator = FileValidator()
@@ -296,7 +296,7 @@ class TestMaliciousFileDetection:
         assert result.valid is False
         assert len(result.errors) > 0
 
-    def test_script_disguised_as_csv(self):
+    def test_script_disguised_as_csv(self) -> None:
         """Script disguised as CSV (CSV has no magic bytes, so this passes)."""
         content = b"#!/bin/bash\nrm -rf /"
         validator = FileValidator()
@@ -306,7 +306,7 @@ class TestMaliciousFileDetection:
         # Content filtering should be done at a different layer
         assert result.valid is True
 
-    def test_zip_bomb_detection_via_size(self):
+    def test_zip_bomb_detection_via_size(self) -> None:
         """Massive file should be rejected by size limit."""
         content = b"A" * (500 * 1024 * 1024)  # 500MB
         validator = FileValidator()
@@ -315,7 +315,7 @@ class TestMaliciousFileDetection:
         assert result.valid is False
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_null_bytes_in_pdf(self):
+    def test_null_bytes_in_pdf(self) -> None:
         """PDF with embedded null bytes."""
         content = b"%PDF-1.4\n\x00\x00\x00\x00malicious content"
         validator = FileValidator()
@@ -329,7 +329,7 @@ class TestMaliciousFileDetection:
 class TestUnsupportedMimeTypes:
     """Test handling of unsupported MIME types."""
 
-    def test_unsupported_mime_type(self):
+    def test_unsupported_mime_type(self) -> None:
         """Unsupported MIME type should be rejected."""
         content = b"Some content"
         validator = FileValidator()
@@ -338,7 +338,7 @@ class TestUnsupportedMimeTypes:
         assert result.valid is False
         assert any("Unsupported MIME type" in error for error in result.errors)
 
-    def test_empty_mime_type(self):
+    def test_empty_mime_type(self) -> None:
         """Empty MIME type should be rejected."""
         content = b"Some content"
         validator = FileValidator()
@@ -351,7 +351,7 @@ class TestUnsupportedMimeTypes:
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
-    def test_single_byte_file(self):
+    def test_single_byte_file(self) -> None:
         """Single byte file."""
         content = b"A"
         validator = FileValidator()
@@ -360,7 +360,7 @@ class TestEdgeCases:
         assert result.valid is True
         assert result.file_size == 1
 
-    def test_exactly_max_size(self):
+    def test_exactly_max_size(self) -> None:
         """File exactly at maximum size."""
         max_size = 1024
         content = b"A" * max_size
@@ -370,7 +370,7 @@ class TestEdgeCases:
         assert result.valid is True
         assert result.file_size == max_size
 
-    def test_one_byte_over_max(self):
+    def test_one_byte_over_max(self) -> None:
         """File one byte over maximum size."""
         max_size = 1024
         content = b"A" * (max_size + 1)
@@ -380,7 +380,7 @@ class TestEdgeCases:
         assert result.valid is False
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_partial_magic_bytes(self):
+    def test_partial_magic_bytes(self) -> None:
         """File with partial magic bytes should fail."""
         content = b"%PD"  # Incomplete PDF magic
         validator = FileValidator()
@@ -388,7 +388,7 @@ class TestEdgeCases:
         
         assert result.valid is False
 
-    def test_magic_bytes_at_wrong_position(self):
+    def test_magic_bytes_at_wrong_position(self) -> None:
         """Magic bytes not at start of file should fail."""
         content = b"GARBAGE%PDF-1.4"
         validator = FileValidator()
@@ -400,7 +400,7 @@ class TestEdgeCases:
 class TestPropertyBasedValidation:
     """Property-based tests for critical validation paths."""
 
-    def test_size_validation_property(self):
+    def test_size_validation_property(self) -> None:
         """Property: File size in result always matches actual content length."""
         test_cases = [
             (b"", "text/plain"),
@@ -415,7 +415,7 @@ class TestPropertyBasedValidation:
             result = validator.validate_file(content, mime_type)
             assert result.file_size == len(content)
 
-    def test_validation_idempotency(self):
+    def test_validation_idempotency(self) -> None:
         """Property: Validating same file multiple times gives same result."""
         content = b"%PDF-1.4\nTest content"
         validator = FileValidator()
@@ -428,7 +428,7 @@ class TestPropertyBasedValidation:
         assert result1.errors == result2.errors == result3.errors
         assert result1.file_size == result2.file_size == result3.file_size
 
-    def test_error_accumulation(self):
+    def test_error_accumulation(self) -> None:
         """Property: Multiple violations result in multiple errors."""
         # Too large AND wrong magic bytes
         content = b"NOTPDF" * (50 * 1024 * 1024)  # 300MB of garbage
@@ -438,7 +438,7 @@ class TestPropertyBasedValidation:
         assert result.valid is False
         assert len(result.errors) >= 2  # Should have both size and magic byte errors
 
-    def test_unicode_content_handling(self):
+    def test_unicode_content_handling(self) -> None:
         """Property: Validator handles unicode content in text files."""
         test_cases = [
             b"Hello \xe2\x9c\x93 World",  # UTF-8
@@ -458,7 +458,7 @@ class TestPropertyBasedValidation:
 class TestValidationResultModel:
     """Test ValidationResult model behavior."""
 
-    def test_validation_result_structure(self):
+    def test_validation_result_structure(self) -> None:
         """ValidationResult has correct structure."""
         result = ValidationResult(
             valid=True,
@@ -472,7 +472,7 @@ class TestValidationResultModel:
         assert result.file_size == 1024
         assert result.errors == []
 
-    def test_validation_result_with_errors(self):
+    def test_validation_result_with_errors(self) -> None:
         """ValidationResult can contain multiple errors."""
         result = ValidationResult(
             valid=False,

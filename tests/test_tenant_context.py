@@ -13,8 +13,9 @@ from src.auth.client import create_user_client, create_service_client
 from src.main import app
 
 
+from typing import Any, Generator
 @pytest.fixture
-def mock_config():
+def mock_config() -> Any:
     """Create a mock AuthConfig."""
     return AuthConfig(
         supabase_url="https://test.supabase.co",
@@ -26,7 +27,7 @@ def mock_config():
 
 
 @pytest.fixture
-def sample_token(mock_config):
+def sample_token(mock_config) -> Any:
     """Create a sample JWT token."""
     tenant_id = uuid4()
     user_id = uuid4()

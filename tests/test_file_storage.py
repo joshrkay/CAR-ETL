@@ -15,7 +15,7 @@ from src.services.file_storage import FileStorageService, StorageUploadError
 class TestFileStorageService:
     """Unit tests for FileStorageService."""
     
-    def test_calculate_file_hash(self):
+    def test_calculate_file_hash(self) -> None:
         """Test file hash calculation."""
         supabase_mock = Mock()
         service = FileStorageService(supabase_mock)
@@ -35,7 +35,7 @@ class TestFileStorageService:
         hash_value3 = service.calculate_file_hash(different_content)
         assert hash_value != hash_value3
     
-    def test_calculate_file_hash_empty(self):
+    def test_calculate_file_hash_empty(self) -> None:
         """Test hash calculation for empty file."""
         supabase_mock = Mock()
         service = FileStorageService(supabase_mock)
@@ -45,7 +45,7 @@ class TestFileStorageService:
         assert len(hash_value) == 64
         assert isinstance(hash_value, str)
     
-    def test_upload_file_success(self):
+    def test_upload_file_success(self) -> None:
         """Test successful file upload."""
         supabase_mock = Mock()
         Mock()
@@ -80,7 +80,7 @@ class TestFileStorageService:
         assert call_args.kwargs["file_options"]["upsert"] == "true"
         assert isinstance(call_args.kwargs["file"], BytesIO)
     
-    def test_upload_file_storage_error(self):
+    def test_upload_file_storage_error(self) -> None:
         """Test file upload with storage error."""
         supabase_mock = Mock()
         Mock()
@@ -107,7 +107,7 @@ class TestFileStorageService:
         assert "Failed to upload file to storage" in str(exc_info.value)
         assert "Storage error" in str(exc_info.value)
     
-    def test_upload_file_tenant_isolation(self):
+    def test_upload_file_tenant_isolation(self) -> None:
         """Test that files are uploaded to tenant-specific buckets."""
         supabase_mock = Mock()
         bucket_mock = Mock()
@@ -143,7 +143,7 @@ class TestFileStorageService:
         assert calls[0][0][0] == f"documents-{tenant_id_1}"
         assert calls[1][0][0] == f"documents-{tenant_id_2}"
     
-    def test_upload_file_large_content(self):
+    def test_upload_file_large_content(self) -> None:
         """Test uploading large file content."""
         supabase_mock = Mock()
         bucket_mock = Mock()
@@ -170,7 +170,7 @@ class TestFileStorageService:
         assert isinstance(call_args.kwargs["file"], BytesIO)
         assert call_args.kwargs["file"].getvalue() == large_content
     
-    def test_upload_file_mime_type_preserved(self):
+    def test_upload_file_mime_type_preserved(self) -> None:
         """Test that MIME type is correctly passed to storage."""
         supabase_mock = Mock()
         bucket_mock = Mock()

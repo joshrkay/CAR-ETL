@@ -6,8 +6,9 @@ from unittest.mock import Mock
 from src.features.service import FeatureFlagService, _shared_cache
 
 
+from typing import Any, Generator
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock()
     client.table = Mock(return_value=client)
@@ -23,13 +24,13 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def tenant_id():
+def tenant_id() -> Any:
     """Create a test tenant ID."""
     return uuid4()
 
 
 @pytest.fixture
-def flag_service(mock_supabase_client, tenant_id):
+def flag_service(mock_supabase_client, tenant_id) -> Any:
     """Create a FeatureFlagService instance."""
     # Clear the shared cache before each test
     _shared_cache.clear()
@@ -37,7 +38,7 @@ def flag_service(mock_supabase_client, tenant_id):
 
 
 @pytest.mark.asyncio
-async def test_is_enabled_flag_exists_with_default(flag_service, mock_supabase_client):
+async def test_is_enabled_flag_exists_with_default(flag_service, mock_supabase_client) -> None:
     """Test is_enabled when flag exists with default value."""
     flag_id = uuid4()
     
@@ -68,7 +69,7 @@ async def test_is_enabled_flag_exists_with_default(flag_service, mock_supabase_c
 
 
 @pytest.mark.asyncio
-async def test_is_enabled_flag_exists_with_override(flag_service, mock_supabase_client):
+async def test_is_enabled_flag_exists_with_override(flag_service, mock_supabase_client) -> None:
     """Test is_enabled when flag exists with tenant override."""
     flag_id = uuid4()
     
@@ -97,7 +98,7 @@ async def test_is_enabled_flag_exists_with_override(flag_service, mock_supabase_
 
 
 @pytest.mark.asyncio
-async def test_is_enabled_flag_not_exists(flag_service, mock_supabase_client):
+async def test_is_enabled_flag_not_exists(flag_service, mock_supabase_client) -> None:
     """Test is_enabled when flag doesn't exist."""
     mock_supabase_client.execute.return_value = Mock(data=[])
     
@@ -109,7 +110,7 @@ async def test_is_enabled_flag_not_exists(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_is_enabled_uses_cache(flag_service, mock_supabase_client):
+async def test_is_enabled_uses_cache(flag_service, mock_supabase_client) -> None:
     """Test that is_enabled uses cache when valid."""
     uuid4()
     
@@ -126,7 +127,7 @@ async def test_is_enabled_uses_cache(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_is_enabled_cache_expired(flag_service, mock_supabase_client):
+async def test_is_enabled_cache_expired(flag_service, mock_supabase_client) -> None:
     """Test that is_enabled refreshes cache when expired (TTL expired automatically)."""
     flag_id = uuid4()
     
@@ -158,7 +159,7 @@ async def test_is_enabled_cache_expired(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_get_all_flags(flag_service, mock_supabase_client):
+async def test_get_all_flags(flag_service, mock_supabase_client) -> None:
     """Test get_all_flags returns all flags with tenant overrides."""
     flag1_id = uuid4()
     flag2_id = uuid4()
@@ -198,7 +199,7 @@ async def test_get_all_flags(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_get_flag_details(flag_service, mock_supabase_client):
+async def test_get_flag_details(flag_service, mock_supabase_client) -> None:
     """Test get_flag_details returns detailed flag information."""
     flag_id = uuid4()
     
@@ -236,7 +237,7 @@ async def test_get_flag_details(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_get_flag_details_not_found(flag_service, mock_supabase_client):
+async def test_get_flag_details_not_found(flag_service, mock_supabase_client) -> None:
     """Test get_flag_details returns None for nonexistent flag."""
     mock_supabase_client.execute.return_value = Mock(data=[])
     
@@ -246,7 +247,7 @@ async def test_get_flag_details_not_found(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_invalidate_cache(flag_service):
+async def test_invalidate_cache(flag_service) -> None:
     """Test that invalidate_cache clears the cache."""
     cache_key = (flag_service.tenant_id, "test_flag")
     _shared_cache[cache_key] = True
@@ -259,7 +260,7 @@ async def test_invalidate_cache(flag_service):
 
 
 @pytest.mark.asyncio
-async def test_error_handling_returns_false(flag_service, mock_supabase_client):
+async def test_error_handling_returns_false(flag_service, mock_supabase_client) -> None:
     """Test that errors in is_enabled return False (fail closed)."""
     mock_supabase_client.execute.side_effect = Exception("Database error")
     
@@ -269,7 +270,7 @@ async def test_error_handling_returns_false(flag_service, mock_supabase_client):
 
 
 @pytest.mark.asyncio
-async def test_error_handling_returns_empty_dict(flag_service, mock_supabase_client):
+async def test_error_handling_returns_empty_dict(flag_service, mock_supabase_client) -> None:
     """Test that errors in get_all_flags return empty dict."""
     mock_supabase_client.execute.side_effect = Exception("Database error")
     

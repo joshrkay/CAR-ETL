@@ -1,6 +1,7 @@
 """Unit tests for authentication middleware and dependencies."""
 import pytest
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import uuid4, UUID
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -13,7 +14,7 @@ from src.dependencies import get_current_user, require_role, require_any_role
 
 
 @pytest.fixture
-def mock_config():
+def mock_config() -> Any:
     """Create mock auth config for testing."""
     return AuthConfig(
         supabase_url="https://test.supabase.co",
@@ -25,7 +26,7 @@ def mock_config():
 
 
 @pytest.fixture
-def valid_jwt_payload(mock_config):
+def valid_jwt_payload(mock_config) -> Any:
     """Create a valid JWT payload for testing."""
     user_id = uuid4()
     tenant_id = uuid4()
@@ -44,20 +45,20 @@ def valid_jwt_payload(mock_config):
 
 
 @pytest.fixture
-def valid_token(mock_config, valid_jwt_payload):
+def valid_token(mock_config, valid_jwt_payload) -> Any:
     """Create a valid JWT token for testing."""
     return jwt.encode(valid_jwt_payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
 @pytest.fixture
-def expired_token(mock_config, valid_jwt_payload):
+def expired_token(mock_config, valid_jwt_payload) -> Any:
     """Create an expired JWT token for testing."""
     valid_jwt_payload["exp"] = int((datetime.utcnow() - timedelta(hours=1)).timestamp())
     return jwt.encode(valid_jwt_payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
 @pytest.fixture
-def app_with_auth(mock_config):
+def app_with_auth(mock_config) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
     app.add_middleware(AuthMiddleware, config=mock_config)
@@ -77,7 +78,7 @@ def app_with_auth(mock_config):
 class TestAuthMiddleware:
     """Test authentication middleware."""
 
-    def test_missing_token(self, app_with_auth):
+    def test_missing_token(self, app_with_auth) -> None:
         """Test request without Authorization header."""
         client = TestClient(app_with_auth)
         response = client.get("/protected")
@@ -86,7 +87,7 @@ class TestAuthMiddleware:
         data = response.json()
         assert data["code"] == "MISSING_TOKEN"
 
-    def test_valid_token(self, app_with_auth, valid_token):
+    def test_valid_token(self, app_with_auth, valid_token) -> None:
         """Test request with valid token."""
         client = TestClient(app_with_auth)
         response = client.get(
@@ -98,7 +99,7 @@ class TestAuthMiddleware:
         assert "user_id" in response.json()
         assert "tenant_id" in response.json()
 
-    def test_expired_token(self, app_with_auth, expired_token):
+    def test_expired_token(self, app_with_auth, expired_token) -> None:
         """Test request with expired token."""
         client = TestClient(app_with_auth)
         response = client.get(
@@ -110,7 +111,7 @@ class TestAuthMiddleware:
         data = response.json()
         assert data["code"] == "EXPIRED_TOKEN"
 
-    def test_invalid_token_signature(self, app_with_auth):
+    def test_invalid_token_signature(self, app_with_auth) -> None:
         """Test request with invalid token signature."""
         invalid_token = jwt.encode(
             {"sub": "test"},
@@ -128,7 +129,7 @@ class TestAuthMiddleware:
         data = response.json()
         assert data["code"] == "INVALID_TOKEN"
 
-    def test_missing_tenant_id(self, app_with_auth, mock_config):
+    def test_missing_tenant_id(self, app_with_auth, mock_config) -> None:
         """Test token missing tenant_id claim."""
         payload = {
             "sub": str(uuid4()),
@@ -149,7 +150,7 @@ class TestAuthMiddleware:
         assert data["code"] == "MISSING_CLAIMS"
         assert "tenant_id" in data["message"]
 
-    def test_public_endpoint_no_auth(self, app_with_auth):
+    def test_public_endpoint_no_auth(self, app_with_auth) -> None:
         """Test public endpoint doesn't require auth."""
         client = TestClient(app_with_auth)
         response = client.get("/public")
@@ -161,7 +162,7 @@ class TestAuthMiddleware:
 class TestAuthContext:
     """Test AuthContext model."""
 
-    def test_has_role(self, valid_jwt_payload):
+    def test_has_role(self, valid_jwt_payload) -> None:
         """Test role checking."""
         user_id = UUID(valid_jwt_payload["sub"])
         tenant_id = UUID(valid_jwt_payload["app_metadata"]["tenant_id"])
@@ -179,7 +180,7 @@ class TestAuthContext:
         assert auth.has_role("User") is True
         assert auth.has_role("Manager") is False
 
-    def test_has_any_role(self, valid_jwt_payload):
+    def test_has_any_role(self, valid_jwt_payload) -> None:
         """Test any role checking."""
         user_id = UUID(valid_jwt_payload["sub"])
         tenant_id = UUID(valid_jwt_payload["app_metadata"]["tenant_id"])
@@ -200,7 +201,7 @@ class TestAuthContext:
 class TestDependencies:
     """Test FastAPI dependencies."""
 
-    def test_get_current_user_success(self, app_with_auth, valid_token):
+    def test_get_current_user_success(self, app_with_auth, valid_token) -> None:
         """Test get_current_user dependency with valid auth."""
         from fastapi import Depends
         from typing import Annotated
@@ -220,7 +221,7 @@ class TestDependencies:
         assert response.status_code == 200
         assert "user_id" in response.json()
 
-    def test_get_current_user_no_auth(self, app_with_auth):
+    def test_get_current_user_no_auth(self, app_with_auth) -> None:
         """Test get_current_user dependency without auth."""
         from fastapi import Depends
         from typing import Annotated
@@ -236,7 +237,7 @@ class TestDependencies:
         
         assert response.status_code == 401
 
-    def test_require_role_success(self, app_with_auth, valid_token):
+    def test_require_role_success(self, app_with_auth, valid_token) -> None:
         """Test require_role dependency with correct role."""
         from fastapi import Depends
         from typing import Annotated
@@ -255,7 +256,7 @@ class TestDependencies:
         
         assert response.status_code == 200
 
-    def test_require_role_failure(self, app_with_auth, mock_config):
+    def test_require_role_failure(self, app_with_auth, mock_config) -> None:
         """Test require_role dependency with incorrect role."""
         from fastapi import Depends
         from typing import Annotated
@@ -285,7 +286,7 @@ class TestDependencies:
         
         assert response.status_code == 403
 
-    def test_require_any_role_success(self, app_with_auth, valid_token):
+    def test_require_any_role_success(self, app_with_auth, valid_token) -> None:
         """Test require_any_role dependency with matching role."""
         from fastapi import Depends
         from typing import Annotated
@@ -304,7 +305,7 @@ class TestDependencies:
         
         assert response.status_code == 200
 
-    def test_require_any_role_failure(self, app_with_auth, mock_config):
+    def test_require_any_role_failure(self, app_with_auth, mock_config) -> None:
         """Test require_any_role dependency with no matching roles."""
         from fastapi import Depends
         from typing import Annotated

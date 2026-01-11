@@ -23,7 +23,7 @@ class TestCheckProcessingLock:
     """Tests for check_processing_lock function."""
 
     @pytest.mark.asyncio
-    async def test_no_active_lock(self):
+    async def test_no_active_lock(self) -> None:
         """Test when no active extraction exists."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -37,7 +37,7 @@ class TestCheckProcessingLock:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_active_lock_exists(self):
+    async def test_active_lock_exists(self) -> None:
         """Test when active extraction exists."""
         document_id = uuid4()
         extraction_id = uuid4()
@@ -61,7 +61,7 @@ class TestCheckProcessingLock:
         assert result["status"] == "processing"
 
     @pytest.mark.asyncio
-    async def test_old_processing_ignored(self):
+    async def test_old_processing_ignored(self) -> None:
         """Test that old processing extractions are ignored."""
         document_id = uuid4()
 
@@ -86,7 +86,7 @@ class TestAcquireProcessingLock:
     """Tests for acquire_processing_lock function."""
 
     @pytest.mark.asyncio
-    async def test_acquire_when_no_lock(self):
+    async def test_acquire_when_no_lock(self) -> None:
         """Test acquiring lock when none exists."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -100,7 +100,7 @@ class TestAcquireProcessingLock:
             mock_check.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cannot_acquire_when_locked(self):
+    async def test_cannot_acquire_when_locked(self) -> None:
         """Test cannot acquire when lock exists."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -118,7 +118,7 @@ class TestAcquireProcessingLock:
             assert result is False
 
     @pytest.mark.asyncio
-    async def test_force_acquire(self):
+    async def test_force_acquire(self) -> None:
         """Test force acquiring lock even if exists."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -137,7 +137,7 @@ class TestCheckDuplicateQueueItems:
     """Tests for check_duplicate_queue_items function."""
 
     @pytest.mark.asyncio
-    async def test_no_duplicates(self):
+    async def test_no_duplicates(self) -> None:
         """Test when only one queue item exists."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -151,7 +151,7 @@ class TestCheckDuplicateQueueItems:
         assert len(result) == 1
 
     @pytest.mark.asyncio
-    async def test_duplicates_found(self):
+    async def test_duplicates_found(self) -> None:
         """Test when multiple queue items exist."""
         document_id = uuid4()
 
@@ -171,7 +171,7 @@ class TestCheckDuplicateQueueItems:
         assert len(result) == 3
 
     @pytest.mark.asyncio
-    async def test_no_queue_items(self):
+    async def test_no_queue_items(self) -> None:
         """Test when no queue items exist."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -189,7 +189,7 @@ class TestIsAlreadyProcessed:
     """Tests for is_already_processed function."""
 
     @pytest.mark.asyncio
-    async def test_not_processed(self):
+    async def test_not_processed(self) -> None:
         """Test when document not processed."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -203,7 +203,7 @@ class TestIsAlreadyProcessed:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_already_processed(self):
+    async def test_already_processed(self) -> None:
         """Test when document already processed."""
         document_id = uuid4()
 
@@ -228,7 +228,7 @@ class TestEnsureIdempotentProcessing:
     """Tests for ensure_idempotent_processing function."""
 
     @pytest.mark.asyncio
-    async def test_safe_to_process(self):
+    async def test_safe_to_process(self) -> None:
         """Test when safe to process (no conflicts)."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -250,7 +250,7 @@ class TestEnsureIdempotentProcessing:
             assert skip_reason is None
 
     @pytest.mark.asyncio
-    async def test_skip_already_completed(self):
+    async def test_skip_already_completed(self) -> None:
         """Test skip when already completed."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -267,7 +267,7 @@ class TestEnsureIdempotentProcessing:
             assert skip_reason == "already_completed"
 
     @pytest.mark.asyncio
-    async def test_skip_already_processing(self):
+    async def test_skip_already_processing(self) -> None:
         """Test skip when already processing."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -292,7 +292,7 @@ class TestEnsureIdempotentProcessing:
             assert skip_reason == "already_processing"
 
     @pytest.mark.asyncio
-    async def test_warn_on_duplicates_but_allow(self):
+    async def test_warn_on_duplicates_but_allow(self) -> None:
         """Test warns on duplicate queue items but allows processing."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -321,7 +321,7 @@ class TestEnsureIdempotentProcessing:
             assert skip_reason is None
 
     @pytest.mark.asyncio
-    async def test_fail_safe_on_error(self):
+    async def test_fail_safe_on_error(self) -> None:
         """Test fails safe (allows processing) on error."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -343,7 +343,7 @@ class TestCleanupStaleLocks:
     """Tests for cleanup_stale_locks function."""
 
     @pytest.mark.asyncio
-    async def test_no_stale_locks(self):
+    async def test_no_stale_locks(self) -> None:
         """Test when no stale locks exist."""
         mock_supabase = Mock()
 
@@ -356,7 +356,7 @@ class TestCleanupStaleLocks:
         assert count == 0
 
     @pytest.mark.asyncio
-    async def test_cleanup_stale_locks(self):
+    async def test_cleanup_stale_locks(self) -> None:
         """Test cleaning up stale locks."""
         stale_extractions = [
             {
@@ -395,7 +395,7 @@ class TestIdempotencyIntegration:
     """Integration tests for idempotency workflow."""
 
     @pytest.mark.asyncio
-    async def test_concurrent_processing_prevented(self):
+    async def test_concurrent_processing_prevented(self) -> None:
         """Test that concurrent processing is prevented."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -431,7 +431,7 @@ class TestIdempotencyIntegration:
             assert reason_2 == "already_processing"
 
     @pytest.mark.asyncio
-    async def test_retry_after_completion(self):
+    async def test_retry_after_completion(self) -> None:
         """Test that completed documents are skipped on retry."""
         document_id = uuid4()
         mock_supabase = Mock()

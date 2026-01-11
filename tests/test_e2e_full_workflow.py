@@ -392,7 +392,7 @@ class TestFullTenantWorkflow:
         self,
         lease_documents,
         offering_memo_documents
-    ):
+    ) -> None:
         """
         Test complete tenant workflow: provision → connect → ingest → extract.
 
@@ -795,7 +795,7 @@ class TestDocumentTypeFuzzing:
         self,
         tenant_count: int,
         doc_count_per_tenant: int,
-    ):
+    ) -> None:
         """
         Property test: Multiple tenants can process documents concurrently
         without cross-tenant data leakage.
