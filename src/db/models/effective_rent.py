@@ -1,8 +1,8 @@
 """Pydantic models for effective rent calculations."""
-from datetime import datetime
-from uuid import UUID
-
 from pydantic import BaseModel, Field
+from typing import Optional, List
+from uuid import UUID
+from datetime import datetime
 
 
 class RentComponents(BaseModel):
@@ -20,7 +20,7 @@ class TenantEffectiveRent(BaseModel):
     tenant_name: str = Field(..., description="Tenant name")
     document_id: UUID = Field(..., description="Source document UUID")
     document_name: str = Field(..., description="Source document filename")
-    document_type: str | None = Field(None, description="Document type (lease, rent_roll, etc.)")
+    document_type: Optional[str] = Field(None, description="Document type (lease, rent_roll, etc.)")
     extraction_id: UUID = Field(..., description="Extraction UUID")
 
     rent_components: RentComponents = Field(..., description="Breakdown of rent components")
@@ -28,13 +28,13 @@ class TenantEffectiveRent(BaseModel):
     effective_monthly_rent: float = Field(..., ge=0.0, description="Total effective monthly rent")
     effective_annual_rent: float = Field(..., ge=0.0, description="Total effective annual rent (monthly × 12)")
 
-    confidence: float | None = Field(None, ge=0.0, le=1.0, description="Average extraction confidence")
-    extracted_at: datetime | None = Field(None, description="When extraction completed")
+    confidence: Optional[float] = Field(None, ge=0.0, le=1.0, description="Average extraction confidence")
+    extracted_at: Optional[datetime] = Field(None, description="When extraction completed")
 
 
 class EffectiveRentListResponse(BaseModel):
     """Response listing tenants by effective rent."""
-    tenants: list[TenantEffectiveRent] = Field(
+    tenants: List[TenantEffectiveRent] = Field(
         default_factory=list, description="Tenants sorted by effective rent"
     )
     total_count: int = Field(..., ge=0, description="Total number of tenants with rent data")
@@ -49,10 +49,10 @@ class EffectiveRentListResponse(BaseModel):
 class EffectiveRentSummary(BaseModel):
     """Summary statistics for effective rent across portfolio."""
     total_tenants: int = Field(..., ge=0, description="Total tenants with rent data")
-    highest_effective_rent: TenantEffectiveRent | None = Field(
+    highest_effective_rent: Optional[TenantEffectiveRent] = Field(
         None, description="Tenant with highest effective rent"
     )
-    lowest_effective_rent: TenantEffectiveRent | None = Field(
+    lowest_effective_rent: Optional[TenantEffectiveRent] = Field(
         None, description="Tenant with lowest effective rent"
     )
     average_effective_monthly_rent: float = Field(
@@ -69,19 +69,19 @@ class EffectiveRentSummary(BaseModel):
 class PropertyRentSummary(BaseModel):
     """Rent summary for a single property."""
     property_name: str = Field(..., description="Property/building name")
-    property_address: str | None = Field(None, description="Property address")
+    property_address: Optional[str] = Field(None, description="Property address")
     tenant_count: int = Field(..., ge=0, description="Number of tenants in property")
     total_monthly_rent: float = Field(..., ge=0.0, description="Total monthly rent for property")
     total_annual_rent: float = Field(..., ge=0.0, description="Total annual rent for property")
     average_rent_per_tenant: float = Field(..., ge=0.0, description="Average rent per tenant")
-    tenants: list[TenantEffectiveRent] = Field(
+    tenants: List[TenantEffectiveRent] = Field(
         default_factory=list, description="Tenants in this property"
     )
 
 
 class RentByPropertyResponse(BaseModel):
     """Response for rent grouped by property."""
-    properties: list[PropertyRentSummary] = Field(
+    properties: List[PropertyRentSummary] = Field(
         default_factory=list, description="Properties with rent summaries"
     )
     total_properties: int = Field(..., ge=0, description="Total number of properties")
@@ -104,7 +104,7 @@ class TenantConcentration(BaseModel):
 
 class RentConcentrationResponse(BaseModel):
     """Response for rent concentration analysis."""
-    top_tenants: list[TenantConcentration] = Field(
+    top_tenants: List[TenantConcentration] = Field(
         default_factory=list, description="Top tenants by rent concentration"
     )
     top_10_concentration: float = Field(
@@ -120,13 +120,13 @@ class RentPerSFAnalysis(BaseModel):
     square_footage: float = Field(..., gt=0.0, description="Square footage")
     rent_per_sf_monthly: float = Field(..., ge=0.0, description="Monthly rent per SF")
     rent_per_sf_annual: float = Field(..., ge=0.0, description="Annual rent per SF")
-    property_name: str | None = Field(None, description="Property name")
+    property_name: Optional[str] = Field(None, description="Property name")
     document_name: str = Field(..., description="Source document")
 
 
 class RentPerSFResponse(BaseModel):
     """Response for rent per SF analysis."""
-    tenants: list[RentPerSFAnalysis] = Field(
+    tenants: List[RentPerSFAnalysis] = Field(
         default_factory=list, description="Tenants with rent per SF data"
     )
     average_rent_per_sf_monthly: float = Field(

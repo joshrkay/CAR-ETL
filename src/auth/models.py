@@ -1,8 +1,8 @@
 """Pydantic models for authentication."""
+from pydantic import BaseModel, Field
 from datetime import datetime
 from uuid import UUID
-
-from pydantic import BaseModel, Field
+from typing import Optional
 
 
 class AuthContext(BaseModel):
@@ -13,7 +13,7 @@ class AuthContext(BaseModel):
     tenant_id: UUID = Field(..., description="Tenant UUID from app_metadata")
     roles: list[str] = Field(default_factory=list, description="User roles")
     token_exp: datetime = Field(..., description="Token expiration timestamp")
-    tenant_slug: str | None = Field(None, description="Tenant slug from app_metadata")
+    tenant_slug: Optional[str] = Field(None, description="Tenant slug from app_metadata")
 
     def has_role(self, role: str) -> bool:
         """Check if user has a specific role."""

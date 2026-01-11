@@ -4,12 +4,13 @@ Tests for error sanitizer - PII removal from error messages.
 Critical security component - must never leak PII into logs or database.
 """
 
+import pytest
 from src.services.error_sanitizer import (
-    get_loggable_error,
-    get_safe_error_context,
     sanitize_error_message,
     sanitize_exception,
+    get_safe_error_context,
     truncate_error_message,
+    get_loggable_error,
 )
 
 

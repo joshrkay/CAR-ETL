@@ -6,6 +6,7 @@ Wraps matching terms in <mark> tags for UI rendering.
 """
 
 import re
+from typing import List
 
 
 class SearchHighlighter:
@@ -31,7 +32,7 @@ class SearchHighlighter:
         self.snippet_length = snippet_length
         self.max_highlights = max_highlights
 
-    def highlight(self, content: str, query: str) -> list[str]:
+    def highlight(self, content: str, query: str) -> List[str]:
         """
         Generate highlighted snippets from content.
 
@@ -65,7 +66,7 @@ class SearchHighlighter:
         # Limit number of snippets
         return snippets[: self.max_highlights]
 
-    def _extract_query_terms(self, query: str) -> list[str]:
+    def _extract_query_terms(self, query: str) -> List[str]:
         """
         Extract individual query terms from query string.
 
@@ -88,7 +89,7 @@ class SearchHighlighter:
 
         return [term for term in terms if term not in stop_words and len(term) >= 2]
 
-    def _find_matches(self, content: str, query_terms: list[str]) -> list[tuple[int, int, str]]:
+    def _find_matches(self, content: str, query_terms: List[str]) -> List[tuple]:
         """
         Find all matches of query terms in content.
 
@@ -119,8 +120,8 @@ class SearchHighlighter:
     def _generate_snippets(
         self,
         content: str,
-        matches: list[tuple[int, int, str]],
-    ) -> list[str]:
+        matches: List[tuple],
+    ) -> List[str]:
         """
         Generate snippets centered around matches.
 
@@ -139,7 +140,7 @@ class SearchHighlighter:
         snippets = []
         used_positions = set()
 
-        for start, end, _term in matches:
+        for start, end, term in matches:
             # Skip if this match is already covered by a previous snippet
             if start in used_positions:
                 continue
@@ -207,7 +208,7 @@ class SearchHighlighter:
     def _highlight_terms(
         self,
         snippet: str,
-        matches: list[tuple[int, int, str]],
+        matches: List[tuple],
         snippet_start: int,
     ) -> str:
         """
@@ -237,7 +238,7 @@ class SearchHighlighter:
 
         # Insert <mark> tags (backward to avoid position shifts)
         result = snippet
-        for start, end, _term in relevant_matches:
+        for start, end, term in relevant_matches:
             result = result[:start] + "<mark>" + result[start:end] + "</mark>" + result[end:]
 
         return result

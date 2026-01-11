@@ -15,17 +15,18 @@ import os
 import signal
 import sys
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Dict, Any, List, Optional, Set
 from uuid import UUID
 
-from src.auth.client import create_service_client
-from src.extraction.idempotency import (
-    cleanup_stale_locks,
-    ensure_idempotent_processing,
-)
-from src.extraction.pipeline import process_document
-from src.services.error_sanitizer import get_loggable_error, sanitize_exception
 from supabase import Client
+
+from src.auth.client import create_service_client
+from src.extraction.pipeline import process_document
+from src.services.error_sanitizer import sanitize_exception, get_loggable_error
+from src.extraction.idempotency import (
+    ensure_idempotent_processing,
+    cleanup_stale_locks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,9 @@ class ExtractionWorker:
         self.retry_delay = retry_delay
         self.stale_timeout = stale_timeout
 
-        self.supabase: Client | None = None
+        self.supabase: Optional[Client] = None
         self.running = False
-        self.processing_ids: set[str] = set()  # Track items currently being processed
+        self.processing_ids: Set[str] = set()  # Track items currently being processed
         self.shutdown_event = asyncio.Event()
 
         # Statistics
@@ -135,7 +136,7 @@ class ExtractionWorker:
                         self.shutdown_event.wait(),
                         timeout=self.poll_interval,
                     )
-                except TimeoutError:
+                except asyncio.TimeoutError:
                     # Normal timeout - continue polling
                     pass
 
@@ -264,7 +265,7 @@ class ExtractionWorker:
         # Wait for all tasks to complete
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def _fetch_pending_items(self, limit: int) -> list[dict[str, Any]]:
+    async def _fetch_pending_items(self, limit: int) -> List[Dict[str, Any]]:
         """
         Fetch pending items from processing queue.
 
@@ -330,7 +331,7 @@ class ExtractionWorker:
             )
             return []
 
-    async def _process_queue_item(self, item: dict[str, Any]) -> None:
+    async def _process_queue_item(self, item: Dict[str, Any]) -> None:
         """
         Process a single queue item.
 
@@ -482,9 +483,9 @@ class ExtractionWorker:
         item_id: str,
         status: str,
         increment_attempts: bool = False,
-        last_error: str | None = None,
-        started_at: datetime | None = None,
-        completed_at: datetime | None = None,
+        last_error: Optional[str] = None,
+        started_at: Optional[datetime] = None,
+        completed_at: Optional[datetime] = None,
     ) -> None:
         """
         Update queue item status.
@@ -538,7 +539,7 @@ class ExtractionWorker:
                 exc_info=True,
             )
 
-    async def _dead_letter_item(self, item_id: str, error_message: str | None) -> None:
+    async def _dead_letter_item(self, item_id: str, error_message: Optional[str]) -> None:
         """
         Move item to dead letter queue (mark as permanently failed).
 
@@ -610,7 +611,7 @@ class ExtractionWorker:
             },
         )
 
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats(self) -> Dict[str, Any]:
         """
         Get worker statistics.
 

@@ -10,14 +10,15 @@ Security Layer: Defense in depth - never trust file extensions or client-provide
 import logging
 import zipfile
 from io import BytesIO
-
+from typing import Optional
 from pydantic import BaseModel
+
 
 # Maximum file size in bytes (100MB default)
 DEFAULT_MAX_FILE_SIZE = 100 * 1024 * 1024
 
 # Magic byte signatures for supported file types
-MAGIC_BYTES: dict[str, list[bytes] | None] = {
+MAGIC_BYTES: dict[str, Optional[list[bytes]]] = {
     "application/pdf": [b"%PDF"],
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [b"PK\x03\x04"],
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [b"PK\x03\x04"],
@@ -45,7 +46,7 @@ class ValidationResult(BaseModel):
 class FileValidator:
     """
     Validates file content integrity and security.
-
+    
     Responsibilities:
     - Magic byte verification
     - Office Open XML structural validation
@@ -55,7 +56,7 @@ class FileValidator:
     def __init__(self, max_file_size: int = DEFAULT_MAX_FILE_SIZE):
         """
         Initialize validator with size limit.
-
+        
         Args:
             max_file_size: Maximum allowed file size in bytes
         """
@@ -64,11 +65,11 @@ class FileValidator:
     def validate_file(self, content: bytes, claimed_mime: str) -> ValidationResult:
         """
         Validate file content against claimed MIME type.
-
+        
         Args:
             content: Raw file bytes
             claimed_mime: Client-provided MIME type
-
+            
         Returns:
             ValidationResult with validation status and errors
         """
@@ -112,11 +113,11 @@ class FileValidator:
     def _validate_magic_bytes(self, content: bytes, claimed_mime: str) -> bool:
         """
         Verify file content matches claimed MIME type.
-
+        
         Args:
             content: Raw file bytes
             claimed_mime: Claimed MIME type
-
+            
         Returns:
             True if magic bytes match or no validation required
         """
@@ -132,13 +133,13 @@ class FileValidator:
     def _validate_office_document(self, content: bytes, claimed_mime: str) -> list[str]:
         """
         Validate Office Open XML document structure.
-
+        
         Checks for presence of [Content_Types].xml to verify legitimate Office document.
-
+        
         Args:
             content: Raw file bytes
             claimed_mime: Claimed MIME type (DOCX or XLSX)
-
+            
         Returns:
             List of validation errors (empty if valid)
         """
@@ -160,7 +161,7 @@ class FileValidator:
 
         except zipfile.BadZipFile:
             errors.append("Corrupted ZIP structure - not a valid Office document")
-        except (OSError, MemoryError) as e:
+        except (IOError, OSError, MemoryError) as e:
             errors.append(f"Office document validation failed: {str(e)}")
         except Exception as e:
             logger = logging.getLogger(__name__)
@@ -180,16 +181,16 @@ class FileValidator:
 def validate_file_with_tenant_config(
     content: bytes,
     claimed_mime: str,
-    tenant_max_size: int | None = None
+    tenant_max_size: Optional[int] = None
 ) -> ValidationResult:
     """
     Validate file with tenant-specific configuration.
-
+    
     Args:
         content: Raw file bytes
         claimed_mime: Client-provided MIME type
         tenant_max_size: Optional tenant-specific size limit
-
+        
     Returns:
         ValidationResult with validation status
     """

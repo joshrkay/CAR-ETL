@@ -1,7 +1,7 @@
 """Tests for entity matching and resolution."""
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from datetime import datetime, timezone
 from uuid import uuid4
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,10 +14,10 @@ from src.entities.matching import (
     normalize_text,
 )
 from src.entities.resolution import (
-    fetch_document_reference_count,
     fetch_entity_record,
-    merge_entities,
+    fetch_document_reference_count,
     merge_entity_attributes,
+    merge_entities,
     redact_json_value,
     select_merge_plan,
 )
@@ -80,14 +80,14 @@ def test_merge_entity_attributes_prefers_newer() -> None:
         tenant_id=tenant_id,
         canonical_name="Alpha",
         attributes={"address": "Old", "phone": "111"},
-        updated_at=datetime(2024, 1, 1, tzinfo=UTC),
+        updated_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
     )
     newer = EntityRecord(
         id=uuid4(),
         tenant_id=tenant_id,
         canonical_name="Alpha",
         attributes={"address": "New", "email": "a@example.com"},
-        updated_at=datetime(2024, 2, 1, tzinfo=UTC),
+        updated_at=datetime(2024, 2, 1, tzinfo=timezone.utc),
     )
 
     merged = merge_entity_attributes(older, newer)
@@ -159,7 +159,7 @@ async def test_merge_entities_updates_references():
         "canonical_name": "Source",
         "attributes": {"address": "A"},
         "external_id": "EXT-1",
-        "updated_at": datetime(2024, 1, 1, tzinfo=UTC).isoformat(),
+        "updated_at": datetime(2024, 1, 1, tzinfo=timezone.utc).isoformat(),
     }
     target_record = {
         "id": str(target_id),
@@ -167,7 +167,7 @@ async def test_merge_entities_updates_references():
         "canonical_name": "Target",
         "attributes": {"address": "B"},
         "external_id": "EXT-1",
-        "updated_at": datetime(2024, 2, 1, tzinfo=UTC).isoformat(),
+        "updated_at": datetime(2024, 2, 1, tzinfo=timezone.utc).isoformat(),
     }
 
     supabase = MagicMock()

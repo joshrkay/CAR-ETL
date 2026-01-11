@@ -1,10 +1,10 @@
 """Retriever for RAG pipeline: embed, retrieve, re-rank."""
 import logging
+from typing import List, Optional
 from uuid import UUID
-
-from src.search.embeddings import EmbeddingService
 from supabase import Client
 
+from src.search.embeddings import EmbeddingService
 from .models import ChunkMatch
 
 logger = logging.getLogger(__name__)
@@ -33,8 +33,8 @@ class Retriever:
         question: str,
         top_k: int = 20,
         rerank_to: int = 5,
-        document_ids: list[UUID] | None = None,
-    ) -> list[ChunkMatch]:
+        document_ids: Optional[List[UUID]] = None,
+    ) -> List[ChunkMatch]:
         """
         Retrieve and re-rank chunks for question.
 
@@ -77,10 +77,10 @@ class Retriever:
 
     async def _search_chunks(
         self,
-        embedding: list[float],
+        embedding: List[float],
         match_count: int,
-        document_ids: list[UUID] | None,
-    ) -> list[ChunkMatch]:
+        document_ids: Optional[List[UUID]],
+    ) -> List[ChunkMatch]:
         """
         Search chunks using vector similarity.
 
@@ -120,7 +120,7 @@ class Retriever:
 
         return chunks
 
-    def _rerank(self, chunks: list[ChunkMatch], top_n: int) -> list[ChunkMatch]:
+    def _rerank(self, chunks: List[ChunkMatch], top_n: int) -> List[ChunkMatch]:
         """
         Re-rank chunks by similarity score.
 

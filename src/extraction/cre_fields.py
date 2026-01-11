@@ -5,8 +5,8 @@ Industry-configurable field definitions for Commercial Real Estate document extr
 Fields are organized by document type and can be configured per industry.
 """
 
+from typing import Dict, List, Optional
 from enum import Enum
-
 from pydantic import BaseModel, Field
 
 
@@ -26,21 +26,21 @@ class FieldDefinition(BaseModel):
     type: FieldType = Field(..., description="Field data type")
     required: bool = Field(default=False, description="Whether field is required")
     weight: float = Field(..., ge=0.0, description="Weight for confidence calculation")
-    values: list[str] | None = Field(None, description="Allowed enum values")
-    aliases: list[str] | None = Field(None, description="Alternative names/synonyms for this field")
+    values: Optional[List[str]] = Field(None, description="Allowed enum values")
+    aliases: Optional[List[str]] = Field(None, description="Alternative names/synonyms for this field")
 
 
 class IndustryFieldConfig(BaseModel):
     """Field configuration for a specific industry and document type."""
     industry: str = Field(..., min_length=1, description="Industry identifier (e.g., 'cre')")
     document_type: str = Field(..., min_length=1, description="Document type (e.g., 'lease')")
-    fields: dict[str, FieldDefinition] = Field(..., description="Field definitions")
+    fields: Dict[str, FieldDefinition] = Field(..., description="Field definitions")
 
 
-def get_cre_lease_fields() -> dict[str, FieldDefinition]:
+def get_cre_lease_fields() -> Dict[str, FieldDefinition]:
     """
     Get CRE lease field definitions with aliases for NLP extraction.
-
+    
     Returns:
         Dictionary mapping field names to field definitions
     """
@@ -134,7 +134,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.7,
             values=["office", "retail", "industrial", "medical", "mixed_use"]
         ),
-
+        
         # LEASE TERM
         "lease_start_date": FieldDefinition(
             type=FieldType.DATE,
@@ -170,7 +170,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.7
         ),
-
+        
         # RENT & PAYMENTS
         "base_rent": FieldDefinition(
             type=FieldType.CURRENCY,
@@ -230,7 +230,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.7
         ),
-
+        
         # LEASE STRUCTURE
         "lease_type": FieldDefinition(
             type=FieldType.ENUM,
@@ -268,7 +268,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["insurance pass-through", "policy reimbursement"]
         ),
-
+        
         # SPACE DETAILS
         "square_footage": FieldDefinition(
             type=FieldType.INTEGER,
@@ -309,7 +309,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.6
         ),
-
+        
         # DEPOSITS & FINANCIAL SECURITY
         "security_deposit": FieldDefinition(
             type=FieldType.CURRENCY,
@@ -334,7 +334,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.9  # Increased: appears in 3+ tests, important for tenant quality
         ),
-
+        
         # OPTIONS & RIGHTS
         "renewal_options": FieldDefinition(
             type=FieldType.STRING,
@@ -374,7 +374,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.8
         ),
-
+        
         # USE & RESTRICTIONS
         "permitted_use": FieldDefinition(
             type=FieldType.STRING,
@@ -406,7 +406,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             values=["allowed", "restricted", "prohibited"]
         ),
-
+        
         # IMPROVEMENTS & MAINTENANCE
         "tenant_improvement_allowance": FieldDefinition(
             type=FieldType.CURRENCY,
@@ -442,7 +442,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.7,
             values=["landlord", "tenant"]
         ),
-
+        
         # INSURANCE & COMPLIANCE
         "tenant_insurance_required": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -464,7 +464,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.6
         ),
-
+        
         # DEFAULTS & LEGAL
         "default_events": FieldDefinition(
             type=FieldType.STRING,
@@ -493,7 +493,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             required=False,
             weight=0.6
         ),
-
+        
         # MISC
         "force_majeure": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -522,7 +522,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["fee", "leasing fee", "commission payable"]
         ),
-
+        
         # OFFICE PROPERTY TYPE
         "office_class": FieldDefinition(
             type=FieldType.ENUM,
@@ -580,7 +580,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.5,
             aliases=["workspace efficiency"]
         ),
-
+        
         # RETAIL PROPERTY TYPE
         "retail_type": FieldDefinition(
             type=FieldType.ENUM,
@@ -638,7 +638,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["marketing fund", "promotion fee"]
         ),
-
+        
         # INDUSTRIAL PROPERTY TYPE
         "clear_height": FieldDefinition(
             type=FieldType.INTEGER,
@@ -701,7 +701,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["through dock"]
         ),
-
+        
         # MULTI-FAMILY PROPERTY TYPE
         "unit_count": FieldDefinition(
             type=FieldType.INTEGER,
@@ -763,7 +763,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["spaces per unit"]
         ),
-
+        
         # MIXED-USE PROPERTY TYPE
         "component_breakdown": FieldDefinition(
             type=FieldType.STRING,
@@ -819,7 +819,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.7,
             aliases=["zoning"]
         ),
-
+        
         # CROSS-PROPERTY UNIVERSAL FIELDS
         "cap_rate": FieldDefinition(
             type=FieldType.FLOAT,
@@ -863,7 +863,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["FEMA zone"]
         ),
-
+        
         # TENANT QUALITY - IDENTITY & CREDITWORTHINESS
         "tenant_duns_number": FieldDefinition(
             type=FieldType.STRING,
@@ -901,7 +901,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             aliases=["credit score", "business credit score"]
         ),
-
+        
         # TENANT QUALITY - LEASE PERFORMANCE & PAYMENT RISK
         "payment_history_status": FieldDefinition(
             type=FieldType.ENUM,
@@ -928,7 +928,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.7,
             aliases=["returned payment", "bounced check", "NSF"]
         ),
-
+        
         # TENANT QUALITY - LEASE SECURITY & GUARANTEES
         "security_deposit_months": FieldDefinition(
             type=FieldType.FLOAT,
@@ -943,7 +943,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             values=["none", "personal", "corporate", "parent", "good_guy", "limited", "springing"],
             aliases=["guaranty type", "guarantee type", "guarantee structure"]
         ),
-
+        
         # TENANT QUALITY - BUSINESS STRENGTH & DURABILITY
         "tenant_years_in_business": FieldDefinition(
             type=FieldType.INTEGER,
@@ -969,7 +969,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["annual revenue", "sales volume", "top-line"]
         ),
-
+        
         # TENANT QUALITY - LEASE-SPECIFIC RISK
         "lease_expiration_risk_bucket": FieldDefinition(
             type=FieldType.ENUM,
@@ -997,7 +997,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["cotenant", "co-tenancy clause", "anchor clause"]
         ),
-
+        
         # TENANT QUALITY - RETAIL-SPECIFIC
         "percentage_rent_applies": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -1011,7 +1011,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=1.0,
             aliases=["$ per sf sales", "productivity"]
         ),
-
+        
         # TENANT QUALITY - MULTIFAMILY-SPECIFIC
         "income_verification": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -1031,7 +1031,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["RTI", "income ratio"]
         ),
-
+        
         # TENANT QUALITY SCORE
         "tenant_quality_score": FieldDefinition(
             type=FieldType.INTEGER,
@@ -1052,7 +1052,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             aliases=["notes", "underwriting notes", "risk notes"]
         ),
-
+        
         # RISK FLAGS
         "risk_flag_short_term": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -1102,7 +1102,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=1.0,
             aliases=["unamortized TI", "tenant allowance exposure"]
         ),
-
+        
         # PROPERTY-TYPE SPECIFIC TENANT QUALITY
         # Office
         "after_hours_hvac_charges": FieldDefinition(
@@ -1117,7 +1117,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["unamortized TI", "remaining TI allowance"]
         ),
-
+        
         # Retail
         "anchor_dependency": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -1131,7 +1131,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.7,
             aliases=["exclusivity strength", "no-compete strength"]
         ),
-
+        
         # Industrial
         "specialized_improvements": FieldDefinition(
             type=FieldType.STRING,
@@ -1139,7 +1139,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             aliases=["specialized buildout", "custom improvements", "cold storage", "heavy power", "rail improvements"]
         ),
-
+        
         # Multifamily
         "eviction_history_count": FieldDefinition(
             type=FieldType.INTEGER,
@@ -1147,7 +1147,7 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             aliases=["eviction count", "evictions"]
         ),
-
+        
         # Mixed-Use
         "cross_default_clause": FieldDefinition(
             type=FieldType.BOOLEAN,
@@ -1158,13 +1158,13 @@ def get_cre_lease_fields() -> dict[str, FieldDefinition]:
     }
 
 
-def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
+def get_cre_rent_roll_fields() -> Dict[str, FieldDefinition]:
     """
     Get CRE rent roll field definitions.
-
+    
     Includes property-level and tenant/unit-level fields for rent roll documents.
     Reuses some fields from lease definitions where applicable.
-
+    
     Returns:
         Dictionary mapping field names to field definitions
     """
@@ -1237,7 +1237,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             aliases=["physical occupancy", "leased %"]
         ),
     }
-
+    
     # Add rent roll specific fields
     rent_roll_fields = {
         # PROPERTY LEVEL
@@ -1307,7 +1307,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["collections loss"]
         ),
-
+        
         # TENANT / UNIT LEVEL
         "unit_number": FieldDefinition(
             type=FieldType.STRING,
@@ -1370,7 +1370,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=1.1,
             aliases=["scheduled rent"]
         ),
-
+        
         # RENT COMPONENT BREAKDOWN
         "parking_rent": FieldDefinition(
             type=FieldType.CURRENCY,
@@ -1390,7 +1390,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.7,
             aliases=["misc income"]
         ),
-
+        
         # ESCALATIONS & FUTURE RENT
         "rent_step_schedule": FieldDefinition(
             type=FieldType.STRING,
@@ -1416,7 +1416,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["annual increase %"]
         ),
-
+        
         # RISK & EXPOSURE
         "credit_rating": FieldDefinition(
             type=FieldType.STRING,
@@ -1443,7 +1443,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.9,
             aliases=["rent concentration"]
         ),
-
+        
         # PROPERTY TYPE SPECIFIC - MULTI-FAMILY
         "unit_type": FieldDefinition(
             type=FieldType.STRING,
@@ -1463,7 +1463,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             values=["6-mo", "9-mo", "12-mo", "month-to-month"]
         ),
-
+        
         # PROPERTY TYPE SPECIFIC - OFFICE
         "tenant_industry": FieldDefinition(
             type=FieldType.STRING,
@@ -1477,7 +1477,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["office count"]
         ),
-
+        
         # PROPERTY TYPE SPECIFIC - RETAIL
         "gross_sales": FieldDefinition(
             type=FieldType.CURRENCY,
@@ -1491,7 +1491,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.8,
             aliases=["natural breakpoint"]
         ),
-
+        
         # PROPERTY TYPE SPECIFIC - INDUSTRIAL
         "truck_court_depth": FieldDefinition(
             type=FieldType.INTEGER,
@@ -1499,7 +1499,7 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             weight=0.6,
             aliases=["yard depth"]
         ),
-
+        
         # SUMMARY METRICS (Note: These may be calculated, but can be extracted if present)
         "weighted_average_lease_term": FieldDefinition(
             type=FieldType.FLOAT,
@@ -1526,23 +1526,23 @@ def get_cre_rent_roll_fields() -> dict[str, FieldDefinition]:
             aliases=["rollover schedule"]
         ),
     }
-
+    
     # Merge base fields with rent roll specific fields
     # Base fields take precedence if there are duplicates
     return {**rent_roll_fields, **base_fields}
 
 
-def get_field_config(industry: str, document_type: str) -> dict[str, FieldDefinition]:
+def get_field_config(industry: str, document_type: str) -> Dict[str, FieldDefinition]:
     """
     Get field configuration for a specific industry and document type.
-
+    
     Args:
         industry: Industry identifier (e.g., 'cre')
         document_type: Document type (e.g., 'lease')
-
+        
     Returns:
         Dictionary mapping field names to field definitions
-
+        
     Raises:
         ValueError: If industry or document type is not supported
     """
@@ -1557,19 +1557,19 @@ def get_field_config(industry: str, document_type: str) -> dict[str, FieldDefini
         raise ValueError(f"Industry '{industry}' not yet supported")
 
 
-def get_field_definitions_for_prompt(fields: dict[str, FieldDefinition]) -> str:
+def get_field_definitions_for_prompt(fields: Dict[str, FieldDefinition]) -> str:
     """
     Format field definitions for LLM prompt.
-
+    
     Includes aliases to help LLM recognize field variations.
-
+    
     Args:
         fields: Dictionary of field definitions
-
+        
     Returns:
         Formatted string describing fields for LLM
     """
-    lines: list[str] = []
+    lines: List[str] = []
     for field_name, field_def in fields.items():
         field_desc = f"- {field_name}: {field_def.type.value}"
         if field_def.required:
