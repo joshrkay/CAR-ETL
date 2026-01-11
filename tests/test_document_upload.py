@@ -10,7 +10,7 @@ Tests cover:
 """
 
 import io
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import Mock, patch
 from zipfile import ZipFile
 from uuid import uuid4
 from datetime import datetime, timedelta, timezone
@@ -22,7 +22,6 @@ from fastapi.testclient import TestClient
 
 from src.main import app
 from src.auth.models import AuthContext
-from src.auth.config import get_auth_config
 
 
 # Test File Fixtures
@@ -44,7 +43,6 @@ def create_valid_docx() -> bytes:
 @pytest.fixture
 def mock_auth_context():
     """Create a mock authenticated user context."""
-    from uuid import uuid4
     auth = Mock(spec=AuthContext)
     auth.user_id = uuid4()
     auth.tenant_id = uuid4()
@@ -191,7 +189,6 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
         return mock_supabase_client
     
     from src.dependencies import get_current_user, get_supabase_client
-    from src.middleware.audit import AuditMiddleware
     
     # Patch create_client so rate limiter uses mocked client
     rate_limiter_patcher = patch("src.auth.rate_limit.create_client", return_value=mock_supabase_client)
@@ -434,7 +431,6 @@ class TestAuthentication:
     
     def test_upload_requires_permission(self, mock_supabase_client):
         """Test that upload requires 'documents:create' permission."""
-        from uuid import uuid4
         # Create auth context without permission
         auth = Mock(spec=AuthContext)
         auth.user_id = uuid4()

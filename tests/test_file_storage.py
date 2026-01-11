@@ -5,8 +5,8 @@ Tests file upload to Supabase Storage, hash calculation, and error handling.
 """
 
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from uuid import uuid4, UUID
+from unittest.mock import Mock
+from uuid import uuid4
 from io import BytesIO
 
 from src.services.file_storage import FileStorageService, StorageUploadError
@@ -48,7 +48,7 @@ class TestFileStorageService:
     def test_upload_file_success(self):
         """Test successful file upload."""
         supabase_mock = Mock()
-        storage_mock = Mock()
+        Mock()
         bucket_mock = Mock()
         
         supabase_mock.storage.from_ = Mock(return_value=bucket_mock)
@@ -83,7 +83,7 @@ class TestFileStorageService:
     def test_upload_file_storage_error(self):
         """Test file upload with storage error."""
         supabase_mock = Mock()
-        storage_mock = Mock()
+        Mock()
         bucket_mock = Mock()
         
         supabase_mock.storage.from_ = Mock(return_value=bucket_mock)

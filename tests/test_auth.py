@@ -8,7 +8,7 @@ import jwt
 
 from src.auth.config import AuthConfig
 from src.auth.middleware import AuthMiddleware
-from src.auth.models import AuthContext, AuthError
+from src.auth.models import AuthContext
 from src.dependencies import get_current_user, require_role, require_any_role
 
 

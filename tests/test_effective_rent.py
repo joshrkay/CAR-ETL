@@ -2,12 +2,9 @@
 import pytest
 from uuid import uuid4
 from unittest.mock import Mock
-from datetime import datetime
 
 from src.services.effective_rent import EffectiveRentService
 from src.db.models.effective_rent import (
-    TenantEffectiveRent,
-    RentComponents,
     EffectiveRentListResponse,
     EffectiveRentSummary,
 )

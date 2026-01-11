@@ -1,8 +1,7 @@
 """Unit tests for feature flag system."""
 import pytest
-from uuid import UUID, uuid4
+from uuid import uuid4
 from unittest.mock import Mock
-from datetime import datetime, timedelta
 
 from src.features.service import FeatureFlagService, _shared_cache
 
@@ -112,7 +111,7 @@ async def test_is_enabled_flag_not_exists(flag_service, mock_supabase_client):
 @pytest.mark.asyncio
 async def test_is_enabled_uses_cache(flag_service, mock_supabase_client):
     """Test that is_enabled uses cache when valid."""
-    flag_id = uuid4()
+    uuid4()
     
     # Set up cache with TTLCache
     cache_key = (flag_service.tenant_id, "test_flag")

@@ -12,7 +12,7 @@ Tests cover:
 """
 
 import io
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from zipfile import ZipFile
 
 import pytest
@@ -443,7 +443,7 @@ class TestBulkUploadEndpoint:
         """Test rejection of empty ZIP."""
         # Create empty ZIP
         buffer = io.BytesIO()
-        with ZipFile(buffer, "w") as zf:
+        with ZipFile(buffer, "w"):
             pass  # No files
         
         files = {

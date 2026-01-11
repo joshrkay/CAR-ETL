@@ -1,5 +1,4 @@
 """Tests for PII detection and redaction."""
-import pytest
 from hypothesis import given, strategies as st, settings
 from src.extraction.pii_detector import detect_pii
 from src.extraction.redactor import redact_pii, RedactionMode, RedactedEntity
@@ -58,7 +57,7 @@ class TestPIIDetection:
         results = detect_pii(text)
         
         # Company names should be filtered out
-        person_results = [r for r in results if r.entity_type == "PERSON"]
+        [r for r in results if r.entity_type == "PERSON"]
         # May have some results, but company context should filter them
         # This is context-dependent, so we just verify it doesn't break
     
@@ -68,7 +67,7 @@ class TestPIIDetection:
         results = detect_pii(text)
         
         # Business emails should be filtered out
-        email_results = [r for r in results if r.entity_type == "EMAIL_ADDRESS"]
+        [r for r in results if r.entity_type == "EMAIL_ADDRESS"]
         # Business domain emails should be filtered
         # This is context-dependent
     

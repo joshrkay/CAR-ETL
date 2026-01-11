@@ -174,7 +174,6 @@ class TestHealthChecker:
     @pytest.mark.asyncio
     async def test_check_auth_success(self, health_checker):
         """Test auth check succeeds."""
-        import httpx
         
         health_checker.config = MagicMock()
         health_checker.config.supabase_url = "https://test.supabase.co"
@@ -222,7 +221,6 @@ class TestHealthChecker:
         health_checker.config = MagicMock()
         health_checker.config.supabase_url = "https://test.supabase.co"
         
-        import httpx
         mock_response = MagicMock()
         mock_response.status_code = 200
         

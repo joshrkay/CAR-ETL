@@ -2,13 +2,12 @@
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 from fastapi import Request, HTTPException, status
-from fastapi.testclient import TestClient
 from uuid import uuid4
 from datetime import datetime, timedelta
 import jwt
 
 from src.auth.middleware import AuthMiddleware
-from src.auth.models import AuthContext, AuthError
+from src.auth.models import AuthContext
 from src.auth.config import AuthConfig
 from src.auth.client import create_user_client, create_service_client
 from src.main import app
@@ -57,7 +56,7 @@ def test_create_user_client_uses_anon_key(mock_config) -> None:
         mock_client.postgrest.session.headers = {}
         mock_create.return_value = mock_client
         
-        client = create_user_client(token, mock_config)
+        create_user_client(token, mock_config)
         
         # Verify anon_key is used, not service_key
         mock_create.assert_called_once()
@@ -178,7 +177,7 @@ def test_user_client_respects_rls(mock_config, sample_token) -> None:
         mock_client.postgrest.session.headers = {}
         mock_create.return_value = mock_client
         
-        client = create_user_client(sample_token, mock_config)
+        create_user_client(sample_token, mock_config)
         
         # Verify anon_key was used (not service_key)
         call_args = mock_create.call_args
@@ -195,7 +194,7 @@ def test_service_client_bypasses_rls(mock_config) -> None:
         mock_client = Mock()
         mock_create.return_value = mock_client
         
-        client = create_service_client(mock_config)
+        create_service_client(mock_config)
         
         # Verify service_key was used
         call_args = mock_create.call_args

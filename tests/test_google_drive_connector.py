@@ -31,14 +31,12 @@ except ImportError:
     pass
 
 import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
-from supabase import Client
 
 from src.main import app
 from src.auth.models import AuthContext
-from src.connectors.google_drive.oauth import GoogleDriveOAuth, GoogleDriveOAuthError
-from src.connectors.google_drive.client import GoogleDriveClient, GoogleDriveClientError
+from src.connectors.google_drive.oauth import GoogleDriveOAuth
+from src.connectors.google_drive.client import GoogleDriveClient
 from src.utils.encryption import encrypt_value, decrypt_value
 
 
@@ -387,12 +385,6 @@ class TestGoogleDriveSync:
             SyncStateStore,
             IngestionEmitter,
         )
-        from src.connectors.google_drive.stores import (
-            SupabaseTokenStore,
-            SupabaseConnectorConfigStore,
-            SupabaseSyncStateStore,
-        )
-        from src.connectors.google_drive.emitter import SupabaseIngestionEmitter
         from uuid import uuid4
         
         tenant_id = uuid4()

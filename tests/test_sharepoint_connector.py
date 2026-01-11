@@ -30,12 +30,11 @@ except ImportError:
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from supabase import create_client, Client
 
 from src.main import app
 from src.auth.models import AuthContext
-from src.connectors.sharepoint.oauth import SharePointOAuth, SharePointOAuthError
-from src.connectors.sharepoint.client import SharePointClient, SharePointClientError
+from src.connectors.sharepoint.oauth import SharePointOAuth
+from src.connectors.sharepoint.client import SharePointClient
 from src.utils.encryption import encrypt_value, decrypt_value
 
 
@@ -180,7 +179,7 @@ class TestAPIRoutes:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         
         # Restore auth
-        from src.dependencies import get_current_user, get_supabase_client
+        from src.dependencies import get_current_user
         from unittest.mock import Mock
         auth = Mock(spec=AuthContext)
         auth.user_id = uuid4()

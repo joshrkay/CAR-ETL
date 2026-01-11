@@ -6,7 +6,6 @@ Includes unit tests and property-based tests for critical paths.
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-from typing import Dict, Any
 import json
 
 from src.extraction.cre_fields import (

@@ -503,7 +503,6 @@ class TestSearchPropertyBased:
     def test_rrf_algorithm_properties(self):
         """Test mathematical properties of RRF algorithm."""
         from src.search.hybrid import HybridSearchService
-        from src.search.embeddings import EmbeddingService
 
         mock_client = Mock()
         mock_embedding = Mock()

@@ -15,7 +15,6 @@ from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any
 
 from src.extraction.extractor import FieldExtractor, ExtractionResult
-from src.extraction.cre_fields import get_cre_lease_fields
 
 
 class TestComplexLeasesAllAssetClasses:

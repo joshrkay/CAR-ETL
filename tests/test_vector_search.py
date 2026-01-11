@@ -6,8 +6,7 @@ Tests embedding generation, document chunk storage, and semantic search.
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
-from uuid import uuid4, UUID
-from typing import List
+from uuid import uuid4
 
 from src.search.embeddings import EmbeddingService
 from supabase import Client

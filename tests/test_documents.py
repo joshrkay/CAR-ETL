@@ -198,7 +198,7 @@ class TestProcessingQueue:
     def test_queue_item_insert_on_document_insert(self, mock_supabase_client, document_data):
         """Test that queue item is automatically created when document is inserted."""
         document_id = uuid4()
-        queue_id = uuid4()
+        uuid4()
         
         # Mock document insert - set up the chain properly
         mock_execute = Mock(return_value=Mock(data=[{
@@ -317,7 +317,7 @@ class TestDocumentRLS:
 
     def test_user_cannot_select_other_tenant_documents(self, mock_supabase_client):
         """Test that user cannot SELECT documents from other tenant."""
-        tenant_a_id = uuid4()
+        uuid4()
         tenant_b_id = uuid4()
         
         # Mock RLS filtering (user can only see tenant_a)
@@ -430,7 +430,7 @@ class TestDocumentTrigger:
     def test_trigger_enqueues_on_insert(self, mock_supabase_client, document_data):
         """Test that trigger automatically enqueues document on insert."""
         document_id = uuid4()
-        queue_id = uuid4()
+        uuid4()
         
         # Mock document insert - set up the chain properly
         mock_execute = Mock(return_value=Mock(data=[{
@@ -513,14 +513,14 @@ class TestDocumentForeignKeys:
     def test_document_cascade_delete(self, mock_supabase_client, tenant_id):
         """Test that deleting document cascades to queue items."""
         document_id = uuid4()
-        queue_id = uuid4()
+        uuid4()
         
         # Mock cascade delete
         # When document is deleted, queue items should be deleted automatically
         mock_supabase_client.execute.return_value = Mock(data=[])
         
         # Delete document (should cascade to queue)
-        result = mock_supabase_client.table("documents").delete().eq(
+        mock_supabase_client.table("documents").delete().eq(
             "id", str(document_id)
         ).execute()
         

@@ -1,10 +1,8 @@
 """Tests for error handler middleware."""
 import json
 import pytest
-from unittest.mock import Mock, MagicMock, AsyncMock
-from fastapi import Request, HTTPException, status
-from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, ValidationError as PydanticValidationError
+from unittest.mock import Mock, AsyncMock
+from fastapi import Request, HTTPException
 
 from src.middleware.error_handler import ErrorHandlerMiddleware
 from src.exceptions import (

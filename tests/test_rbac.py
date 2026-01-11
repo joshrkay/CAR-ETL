@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from uuid import uuid4, UUID
 from fastapi import FastAPI, Request, Depends
 from fastapi.testclient import TestClient
-from typing import Annotated
 import jwt
 
 from src.auth.config import AuthConfig

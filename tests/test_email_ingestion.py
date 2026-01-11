@@ -6,16 +6,15 @@ Tests email parsing, ingestion, rate limiting, and webhook handling.
 
 import pytest
 import base64
-from unittest.mock import Mock, patch, AsyncMock
-from uuid import uuid4, UUID
+from unittest.mock import Mock, patch
+from uuid import uuid4
 from fastapi.testclient import TestClient
-from fastapi import Request
 
 from src.services.email_parser import EmailParser, ParsedEmail, Attachment
 from src.services.email_ingestion import EmailIngestionService
 from src.services.email_rate_limiter import EmailRateLimiter
 from src.services.resend_verifier import ResendVerifier
-from src.exceptions import RateLimitError, ValidationError, NotFoundError
+from src.exceptions import RateLimitError, NotFoundError
 
 
 class TestEmailParser:

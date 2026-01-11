@@ -9,7 +9,7 @@ import time
 import asyncio
 import statistics
 from unittest.mock import Mock, AsyncMock, patch
-from uuid import uuid4, UUID
+from uuid import uuid4
 from typing import List
 
 from src.search.embeddings import EmbeddingService
@@ -104,7 +104,7 @@ class TestVectorSearchLatency:
     async def test_vector_search_query_latency(self, mock_supabase_client):
         """Test latency of vector search query (match_document_chunks function)."""
         query_embedding = [0.1] * 1536
-        tenant_id = uuid4()
+        uuid4()
         
         start_time = time.perf_counter()
         result = (
@@ -133,7 +133,7 @@ class TestVectorSearchLatency:
     ):
         """Test end-to-end search latency (embedding + search)."""
         query_text = "What are the key findings in this research?"
-        tenant_id = uuid4()
+        uuid4()
         
         # Step 1: Generate embedding
         embed_start = time.perf_counter()
@@ -161,7 +161,7 @@ class TestVectorSearchLatency:
         total_latency_ms = embed_latency_ms + search_latency_ms
         
         assert len(result.data) == 10
-        print(f"\nEnd-to-end search latency breakdown:")
+        print("\nEnd-to-end search latency breakdown:")
         print(f"  Embedding: {embed_latency_ms:.2f}ms")
         print(f"  Search: {search_latency_ms:.2f}ms")
         print(f"  Total: {total_latency_ms:.2f}ms")
@@ -179,7 +179,7 @@ class TestVectorSearchLatency:
             "What are the key findings?",
         ]
         
-        tenant_id = uuid4()
+        uuid4()
         latencies: List[float] = []
         
         for query in queries:
@@ -189,7 +189,7 @@ class TestVectorSearchLatency:
             query_embedding = await embedding_service.embed_single(query)
             
             # Execute search
-            result = (
+            (
                 mock_supabase_client
                 .rpc(
                     "match_document_chunks",
@@ -228,13 +228,13 @@ class TestVectorSearchLatency:
     ):
         """Test search latency when filtering by specific documents."""
         query_text = "What is discussed in these documents?"
-        tenant_id = uuid4()
+        uuid4()
         document_ids = [str(uuid4()) for _ in range(3)]
         
         query_embedding = await embedding_service.embed_single(query_text)
         
         start_time = time.perf_counter()
-        result = (
+        (
             mock_supabase_client
             .rpc(
                 "match_document_chunks",
