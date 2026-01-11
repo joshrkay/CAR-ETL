@@ -1,5 +1,4 @@
 """
-from typing import Any, Generator
 Integration Tests for Document Upload Endpoint
 
 Tests cover:
@@ -10,6 +9,7 @@ Tests cover:
 - Error handling
 """
 
+from typing import Any, Generator
 import io
 from unittest.mock import Mock, patch
 from zipfile import ZipFile

@@ -1,10 +1,10 @@
 """
-from typing import Any, Generator
 Tests for field extraction functionality.
 
 Includes unit tests and property-based tests for critical paths.
 """
 
+from typing import Any, Generator
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
 import json

@@ -1,5 +1,4 @@
 """
-from typing import Any, Generator
 Integration Tests for Entity Merge Endpoint
 
 Tests cover:
@@ -11,6 +10,7 @@ Tests cover:
 - General exception handling
 """
 
+from typing import Any, Generator
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 from uuid import uuid4

@@ -1,5 +1,4 @@
 """
-from typing import Any, Generator
 Integration and Unit Tests for Bulk Upload
 
 Tests cover:
@@ -12,6 +11,7 @@ Tests cover:
 - Permission enforcement
 """
 
+from typing import Any, Generator
 import io
 from unittest.mock import Mock, patch
 from zipfile import ZipFile

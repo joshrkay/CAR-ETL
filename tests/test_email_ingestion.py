@@ -1,10 +1,10 @@
 """
-from typing import Any, Generator
 Tests for email ingestion functionality.
 
 Tests email parsing, ingestion, rate limiting, and webhook handling.
 """
 
+from typing import Any, Generator
 import pytest
 import base64
 from unittest.mock import Mock, patch

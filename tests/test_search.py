@@ -1,10 +1,10 @@
 """
-from typing import Any, Generator
 Tests for hybrid search functionality.
 
 Tests RRF algorithm, search modes, highlighting, and API endpoint.
 """
 
+from typing import Any, Generator
 import pytest
 from unittest.mock import Mock, AsyncMock
 from uuid import uuid4, UUID
