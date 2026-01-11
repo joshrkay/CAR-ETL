@@ -66,7 +66,7 @@ def process_file(file_path: Path) -> tuple[bool, int]:
     Process a single file to add type annotations.
 
     Returns:
-        Tuple of (was_modified, num_changes)
+        tuple of (was_modified, num_changes)
     """
     try:
         with open(file_path, encoding='utf-8') as f:
