@@ -41,7 +41,7 @@ class TestLeaseExtractionIntegration:
         return mock_response
     
     @pytest.mark.asyncio
-    async def test_simple_short_lease(self, extractor, mock_openai_client):
+    async def test_simple_short_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from a simple, short lease (1-2 pages)."""
         lease_text = """
         COMMERCIAL LEASE AGREEMENT
@@ -80,7 +80,7 @@ class TestLeaseExtractionIntegration:
         assert result.overall_confidence > 0.0
     
     @pytest.mark.asyncio
-    async def test_medium_complexity_lease(self, extractor, mock_openai_client):
+    async def test_medium_complexity_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from medium complexity lease (5-10 pages)."""
         lease_text = """
         COMMERCIAL OFFICE LEASE AGREEMENT
@@ -171,7 +171,7 @@ class TestLeaseExtractionIntegration:
         assert result.overall_confidence > 0.0
     
     @pytest.mark.asyncio
-    async def test_complex_retail_lease(self, extractor, mock_openai_client):
+    async def test_complex_retail_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from complex retail lease with percentage rent."""
         lease_text = """
         RETAIL LEASE AGREEMENT
@@ -250,7 +250,7 @@ class TestLeaseExtractionIntegration:
         assert result.fields["retail_type"].value == "inline"
     
     @pytest.mark.asyncio
-    async def test_industrial_warehouse_lease(self, extractor, mock_openai_client):
+    async def test_industrial_warehouse_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from industrial/warehouse lease."""
         lease_text = """
         INDUSTRIAL WAREHOUSE LEASE
@@ -321,7 +321,7 @@ class TestLeaseExtractionIntegration:
         assert result.fields["lease_type"].value == "nnn"
     
     @pytest.mark.asyncio
-    async def test_office_class_a_lease(self, extractor, mock_openai_client):
+    async def test_office_class_a_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from Class A office lease with certifications."""
         lease_text = """
         CLASS A OFFICE LEASE AGREEMENT
@@ -390,7 +390,7 @@ class TestLeaseExtractionIntegration:
         assert "building_certifications" in result.fields
     
     @pytest.mark.asyncio
-    async def test_mixed_use_lease(self, extractor, mock_openai_client):
+    async def test_mixed_use_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from mixed-use property lease."""
         lease_text = """
         MIXED-USE PROPERTY LEASE
@@ -450,7 +450,7 @@ class TestLeaseExtractionIntegration:
         assert "shared_parking" in result.fields
     
     @pytest.mark.asyncio
-    async def test_long_complex_lease(self, extractor, mock_openai_client):
+    async def test_long_complex_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from long, complex lease (20+ pages equivalent)."""
         # Simulate a very long lease with many sections
         lease_text = """
@@ -672,7 +672,7 @@ class TestLeaseExtractionIntegration:
         assert "year_built" in result.fields
     
     @pytest.mark.asyncio
-    async def test_minimal_lease_missing_fields(self, extractor, mock_openai_client):
+    async def test_minimal_lease_missing_fields(self, extractor, mock_openai_client) -> None:
         """Test extraction from minimal lease with many missing optional fields."""
         lease_text = """
         LEASE AGREEMENT
@@ -709,7 +709,7 @@ class TestLeaseExtractionIntegration:
         assert "base_rent" in result.fields
     
     @pytest.mark.asyncio
-    async def test_lease_with_abbreviations(self, extractor, mock_openai_client):
+    async def test_lease_with_abbreviations(self, extractor, mock_openai_client) -> None:
         """Test extraction handling abbreviations and industry jargon."""
         lease_text = """
         LEASE
@@ -751,7 +751,7 @@ class TestLeaseExtractionIntegration:
         assert result.fields["lease_type"].value == "nnn"
     
     @pytest.mark.asyncio
-    async def test_multi_family_lease(self, extractor, mock_openai_client):
+    async def test_multi_family_lease(self, extractor, mock_openai_client) -> None:
         """Test extraction from multi-family property lease."""
         lease_text = """
         APARTMENT LEASE AGREEMENT

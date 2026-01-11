@@ -155,7 +155,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client):
 class TestBulkUploadService:
     """Unit tests for BulkUploadService."""
     
-    def test_validate_zip_file_success(self):
+    def test_validate_zip_file_success(self) -> None:
         """Test successful ZIP validation."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -168,7 +168,7 @@ class TestBulkUploadService:
         
         assert len(errors) == 0
     
-    def test_validate_zip_file_too_large(self):
+    def test_validate_zip_file_too_large(self) -> None:
         """Test rejection of oversized ZIP."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -180,7 +180,7 @@ class TestBulkUploadService:
         assert len(errors) > 0
         assert any("exceeds maximum" in err for err in errors)
     
-    def test_validate_zip_file_empty(self):
+    def test_validate_zip_file_empty(self) -> None:
         """Test rejection of empty ZIP."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -189,7 +189,7 @@ class TestBulkUploadService:
         assert len(errors) > 0
         assert any("empty" in err.lower() for err in errors)
     
-    def test_validate_zip_file_invalid_format(self):
+    def test_validate_zip_file_invalid_format(self) -> None:
         """Test rejection of invalid ZIP format."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -198,7 +198,7 @@ class TestBulkUploadService:
         assert len(errors) > 0
         assert any("Invalid ZIP" in err for err in errors)
     
-    def test_validate_zip_file_too_many_files(self):
+    def test_validate_zip_file_too_many_files(self) -> None:
         """Test rejection of ZIP with too many files."""
         service = BulkUploadService(
             file_validator=FileValidator(),
@@ -214,7 +214,7 @@ class TestBulkUploadService:
         assert len(errors) > 0
         assert any("maximum" in err.lower() for err in errors)
     
-    def test_validate_zip_file_no_valid_files(self):
+    def test_validate_zip_file_no_valid_files(self) -> None:
         """Test rejection of ZIP with only directories."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -229,7 +229,7 @@ class TestBulkUploadService:
         assert len(errors) > 0
         assert any("no valid files" in err.lower() for err in errors)
     
-    def test_extract_and_validate_files(self):
+    def test_extract_and_validate_files(self) -> None:
         """Test extraction of files from ZIP."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -253,7 +253,7 @@ class TestBulkUploadService:
         assert "doc2.txt" in filenames
         assert "image.png" in filenames
     
-    def test_extract_skips_system_files(self):
+    def test_extract_skips_system_files(self) -> None:
         """Test that system files are skipped during extraction."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -274,7 +274,7 @@ class TestBulkUploadService:
         assert len(extracted) == 1
         assert extracted[0][0] == "doc1.pdf"
     
-    def test_process_file_valid(self):
+    def test_process_file_valid(self) -> None:
         """Test processing of valid file."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -290,7 +290,7 @@ class TestBulkUploadService:
         assert result.filename == "test.pdf"
         assert result.file_size == len(PDF_CONTENT)
     
-    def test_process_file_invalid(self):
+    def test_process_file_invalid(self) -> None:
         """Test processing of invalid file."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -306,7 +306,7 @@ class TestBulkUploadService:
         assert result.error is not None
         assert "Magic bytes" in result.error
     
-    def test_calculate_file_hash(self):
+    def test_calculate_file_hash(self) -> None:
         """Test file hash calculation."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -321,7 +321,7 @@ class TestBulkUploadService:
         hash3 = service.calculate_file_hash(TEXT_CONTENT)
         assert hash1 != hash3
     
-    def test_detect_mime_type(self):
+    def test_detect_mime_type(self) -> None:
         """Test MIME type detection from filename."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -337,7 +337,7 @@ class TestBulkUploadService:
         # Unsupported extension
         assert service._detect_mime_type("file.exe") is None
     
-    def test_is_system_file(self):
+    def test_is_system_file(self) -> None:
         """Test system file detection."""
         service = create_bulk_upload_service(max_file_size=100 * 1024 * 1024)
         
@@ -355,7 +355,7 @@ class TestBulkUploadService:
 class TestBulkUploadEndpoint:
     """Integration tests for bulk upload endpoint."""
     
-    def test_bulk_upload_success(self, client_with_auth):
+    def test_bulk_upload_success(self, client_with_auth) -> None:
         """Test successful bulk upload."""
         zip_content = create_test_zip({
             "doc1.pdf": (PDF_CONTENT, "application/pdf"),
@@ -384,7 +384,7 @@ class TestBulkUploadEndpoint:
             assert doc["document_id"] is not None
             assert doc["error"] is None
     
-    def test_bulk_upload_partial_failure(self, client_with_auth):
+    def test_bulk_upload_partial_failure(self, client_with_auth) -> None:
         """Test bulk upload with some invalid files."""
         zip_content = create_test_zip({
             "valid.pdf": (PDF_CONTENT, "application/pdf"),
@@ -412,7 +412,7 @@ class TestBulkUploadEndpoint:
         assert failed_docs[0]["error"] is not None
         assert failed_docs[0]["document_id"] is None
     
-    def test_bulk_upload_reject_invalid_zip(self, client_with_auth):
+    def test_bulk_upload_reject_invalid_zip(self, client_with_auth) -> None:
         """Test rejection of invalid ZIP file."""
         files = {
             "file": ("notzip.zip", io.BytesIO(b"This is not a ZIP"), "application/zip")
@@ -424,7 +424,7 @@ class TestBulkUploadEndpoint:
         data = response.json()
         assert data["detail"]["code"] == "ZIP_VALIDATION_ERROR"
     
-    def test_bulk_upload_reject_oversized_zip(self, client_with_auth):
+    def test_bulk_upload_reject_oversized_zip(self, client_with_auth) -> None:
         """Test rejection of oversized ZIP file."""
         # Create ZIP larger than 500MB (using mock)
         large_content = b"x" * (500 * 1024 * 1024 + 1)
@@ -439,7 +439,7 @@ class TestBulkUploadEndpoint:
         data = response.json()
         assert "exceeds maximum" in str(data["detail"]["errors"])
     
-    def test_bulk_upload_empty_zip(self, client_with_auth):
+    def test_bulk_upload_empty_zip(self, client_with_auth) -> None:
         """Test rejection of empty ZIP."""
         # Create empty ZIP
         buffer = io.BytesIO()
@@ -456,7 +456,7 @@ class TestBulkUploadEndpoint:
         data = response.json()
         assert any("no valid files" in err.lower() for err in data["detail"]["errors"])
     
-    def test_bulk_upload_mixed_file_types(self, client_with_auth):
+    def test_bulk_upload_mixed_file_types(self, client_with_auth) -> None:
         """Test bulk upload with various supported file types."""
         docx_content = create_valid_docx()
         
@@ -481,7 +481,7 @@ class TestBulkUploadEndpoint:
         assert data["successful"] == 5
         assert data["failed"] == 0
     
-    def test_bulk_upload_skips_unsupported_files(self, client_with_auth):
+    def test_bulk_upload_skips_unsupported_files(self, client_with_auth) -> None:
         """Test that unsupported file types are skipped."""
         buffer = io.BytesIO()
         with ZipFile(buffer, "w") as zf:
@@ -502,7 +502,7 @@ class TestBulkUploadEndpoint:
         assert data["total_files"] == 1
         assert data["successful"] == 1
     
-    def test_bulk_upload_requires_authentication(self):
+    def test_bulk_upload_requires_authentication(self) -> None:
         """Test that bulk upload requires authentication."""
         client = TestClient(app)
         
@@ -518,7 +518,7 @@ class TestBulkUploadEndpoint:
         
         assert response.status_code in [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN]
     
-    def test_bulk_upload_requires_permission(self, mock_supabase_client):
+    def test_bulk_upload_requires_permission(self, mock_supabase_client) -> None:
         """Test that bulk upload requires documents:write permission."""
         auth = Mock(spec=AuthContext)
         auth.user_id = "user-123"
@@ -552,7 +552,7 @@ class TestBulkUploadEndpoint:
         
         app.dependency_overrides.clear()
     
-    def test_bulk_upload_tenant_isolation(self, client_with_auth, mock_supabase_client):
+    def test_bulk_upload_tenant_isolation(self, client_with_auth, mock_supabase_client) -> None:
         """Test that bulk upload respects tenant isolation."""
         zip_content = create_test_zip({
             "doc.pdf": (PDF_CONTENT, "application/pdf"),
@@ -577,7 +577,7 @@ class TestBulkUploadEndpoint:
 class TestBulkUploadResponseFormat:
     """Test response format and structure."""
     
-    def test_response_structure(self, client_with_auth):
+    def test_response_structure(self, client_with_auth) -> None:
         """Test that response has correct structure."""
         zip_content = create_test_zip({
             "doc1.pdf": (PDF_CONTENT, "application/pdf"),
@@ -615,7 +615,7 @@ class TestBulkUploadResponseFormat:
             assert isinstance(doc["filename"], str)
             assert doc["status"] in ["processing", "failed"]
     
-    def test_failed_file_includes_error(self, client_with_auth):
+    def test_failed_file_includes_error(self, client_with_auth) -> None:
         """Test that failed files include error message."""
         zip_content = create_test_zip({
             "invalid.pdf": (b"Not a PDF", "application/pdf"),

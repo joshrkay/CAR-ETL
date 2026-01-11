@@ -26,21 +26,21 @@ class TestEffectiveRentService:
         """Create EffectiveRentService instance."""
         return EffectiveRentService(mock_supabase)
 
-    def test_extract_numeric_currency(self, service):
+    def test_extract_numeric_currency(self, service) -> None:
         """Test extracting numeric values from currency strings."""
         assert service._extract_numeric("$5,000.00") == 5000.0
         assert service._extract_numeric("$10,500") == 10500.0
         assert service._extract_numeric("2500.50") == 2500.50
         assert service._extract_numeric("$1,234,567.89") == 1234567.89
 
-    def test_extract_numeric_invalid(self, service):
+    def test_extract_numeric_invalid(self, service) -> None:
         """Test extracting numeric values from invalid strings."""
         assert service._extract_numeric("") == 0.0
         assert service._extract_numeric(None) == 0.0
         assert service._extract_numeric("N/A") == 0.0
         assert service._extract_numeric("TBD") == 0.0
 
-    def test_get_field_value(self, service):
+    def test_get_field_value(self, service) -> None:
         """Test getting field values from extraction fields."""
         fields = [
             {
@@ -59,7 +59,7 @@ class TestEffectiveRentService:
         assert service._get_field_value(fields, "cam_charges") == 500.0
         assert service._get_field_value(fields, "nonexistent") == 0.0
 
-    def test_get_field_confidence(self, service):
+    def test_get_field_confidence(self, service) -> None:
         """Test getting confidence scores for fields."""
         fields = [
             {
@@ -73,7 +73,7 @@ class TestEffectiveRentService:
         assert service._get_field_confidence(fields, "nonexistent") is None
 
     @pytest.mark.asyncio
-    async def test_calculate_all_effective_rents_no_data(self, service, mock_supabase):
+    async def test_calculate_all_effective_rents_no_data(self, service, mock_supabase) -> None:
         """Test calculation when no extractions exist."""
         mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
 
@@ -85,7 +85,7 @@ class TestEffectiveRentService:
         assert result.total_effective_monthly_rent == 0.0
 
     @pytest.mark.asyncio
-    async def test_calculate_all_effective_rents_single_tenant(self, service, mock_supabase):
+    async def test_calculate_all_effective_rents_single_tenant(self, service, mock_supabase) -> None:
         """Test calculation with single tenant."""
         extraction_id = str(uuid4())
         doc_id = str(uuid4())
@@ -148,7 +148,7 @@ class TestEffectiveRentService:
         assert tenant.effective_annual_rent == 156000.0  # 13000 * 12
 
     @pytest.mark.asyncio
-    async def test_calculate_all_effective_rents_sorting(self, service, mock_supabase):
+    async def test_calculate_all_effective_rents_sorting(self, service, mock_supabase) -> None:
         """Test that results are sorted correctly."""
         # Create mock data for 3 tenants with different rents
         extractions = [
@@ -196,7 +196,7 @@ class TestEffectiveRentService:
         assert result_asc.tenants[1].effective_monthly_rent <= result_asc.tenants[2].effective_monthly_rent
 
     @pytest.mark.asyncio
-    async def test_calculate_all_effective_rents_limit(self, service, mock_supabase):
+    async def test_calculate_all_effective_rents_limit(self, service, mock_supabase) -> None:
         """Test limit parameter."""
         extractions = [
             {"id": str(uuid4()), "document_id": str(uuid4()), "document_type": "lease", "extracted_at": None}
@@ -229,7 +229,7 @@ class TestEffectiveRentService:
         assert len(result.tenants) == 5
 
     @pytest.mark.asyncio
-    async def test_get_highest_effective_rent(self, service, mock_supabase):
+    async def test_get_highest_effective_rent(self, service, mock_supabase) -> None:
         """Test getting tenant with highest rent."""
         extraction_id = str(uuid4())
         doc_id = str(uuid4())
@@ -260,7 +260,7 @@ class TestEffectiveRentService:
         assert result.effective_monthly_rent == 20000.0
 
     @pytest.mark.asyncio
-    async def test_get_highest_effective_rent_no_data(self, service, mock_supabase):
+    async def test_get_highest_effective_rent_no_data(self, service, mock_supabase) -> None:
         """Test getting highest rent when no data exists."""
         mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
 
@@ -269,7 +269,7 @@ class TestEffectiveRentService:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_get_summary_no_data(self, service, mock_supabase):
+    async def test_get_summary_no_data(self, service, mock_supabase) -> None:
         """Test summary when no data exists."""
         mock_supabase.table.return_value.select.return_value.eq.return_value.execute.return_value.data = []
 
@@ -283,7 +283,7 @@ class TestEffectiveRentService:
         assert summary.total_portfolio_monthly_rent == 0.0
 
     @pytest.mark.asyncio
-    async def test_skip_zero_rent_tenants(self, service, mock_supabase):
+    async def test_skip_zero_rent_tenants(self, service, mock_supabase) -> None:
         """Test that tenants with zero rent are skipped."""
         extraction_id = str(uuid4())
         doc_id = str(uuid4())
@@ -313,7 +313,7 @@ class TestEffectiveRentService:
         assert len(result.tenants) == 0
 
     @pytest.mark.asyncio
-    async def test_skip_tenants_without_name(self, service, mock_supabase):
+    async def test_skip_tenants_without_name(self, service, mock_supabase) -> None:
         """Test that extractions without tenant name are skipped."""
         extraction_id = str(uuid4())
         doc_id = str(uuid4())

@@ -23,7 +23,7 @@ class TestSearchHighlighter:
         """Create SearchHighlighter instance."""
         return SearchHighlighter(snippet_length=100, max_highlights=3)
 
-    def test_highlight_single_term(self, highlighter):
+    def test_highlight_single_term(self, highlighter) -> None:
         """Test highlighting a single query term."""
         content = "This is a test document about rental agreements and base rent calculations."
         query = "rent"
@@ -36,7 +36,7 @@ class TestSearchHighlighter:
         # Should match "rental" and "rent" (case insensitive)
         assert highlights[0].count("<mark>") >= 1
 
-    def test_highlight_multiple_terms(self, highlighter):
+    def test_highlight_multiple_terms(self, highlighter) -> None:
         """Test highlighting multiple query terms."""
         content = "The lease agreement includes base rent and escalation clauses."
         query = "lease base rent"
@@ -49,7 +49,7 @@ class TestSearchHighlighter:
         assert "<mark>base</mark>" in snippet.lower()
         assert "<mark>rent</mark>" in snippet.lower()
 
-    def test_highlight_no_matches(self, highlighter):
+    def test_highlight_no_matches(self, highlighter) -> None:
         """Test that no highlights are returned when query doesn't match."""
         content = "This is a document about commercial properties."
         query = "residential leases"
@@ -59,7 +59,7 @@ class TestSearchHighlighter:
         # Should return empty list if no matches
         assert len(highlights) == 0
 
-    def test_highlight_case_insensitive(self, highlighter):
+    def test_highlight_case_insensitive(self, highlighter) -> None:
         """Test that highlighting is case insensitive."""
         content = "The RENT includes utilities. Rent is due monthly."
         query = "rent"
@@ -70,7 +70,7 @@ class TestSearchHighlighter:
         # Should match both "RENT" and "Rent"
         assert highlights[0].count("<mark>") >= 2
 
-    def test_highlight_snippet_length(self, highlighter):
+    def test_highlight_snippet_length(self, highlighter) -> None:
         """Test that snippets are limited to configured length."""
         content = "a " * 500  # Very long content
         query = "a"
@@ -81,7 +81,7 @@ class TestSearchHighlighter:
         # Snippet should be shorter than full content
         assert len(highlights[0]) < len(content)
 
-    def test_highlight_max_snippets(self, highlighter):
+    def test_highlight_max_snippets(self, highlighter) -> None:
         """Test that number of snippets is limited."""
         # Create content with many matches far apart
         content = " ".join([f"Section {i}: important rent information." for i in range(10)])
@@ -92,13 +92,13 @@ class TestSearchHighlighter:
         # Should be limited to max_highlights
         assert len(highlights) <= highlighter.max_highlights
 
-    def test_highlight_empty_inputs(self, highlighter):
+    def test_highlight_empty_inputs(self, highlighter) -> None:
         """Test handling of empty inputs."""
         assert highlighter.highlight("", "query") == []
         assert highlighter.highlight("content", "") == []
         assert highlighter.highlight("", "") == []
 
-    def test_extract_query_terms_removes_stop_words(self, highlighter):
+    def test_extract_query_terms_removes_stop_words(self, highlighter) -> None:
         """Test that common stop words are filtered out."""
         query = "the lease and the rent"
 
@@ -139,7 +139,7 @@ class TestHybridSearchService:
         )
 
     @pytest.mark.asyncio
-    async def test_search_semantic_mode(self, hybrid_service, mock_supabase_client):
+    async def test_search_semantic_mode(self, hybrid_service, mock_supabase_client) -> None:
         """Test semantic search mode calls vector search function."""
         mock_results = [
             {
@@ -166,7 +166,7 @@ class TestHybridSearchService:
         assert call_args[0][0] == "match_document_chunks"
 
     @pytest.mark.asyncio
-    async def test_search_keyword_mode(self, hybrid_service, mock_supabase_client):
+    async def test_search_keyword_mode(self, hybrid_service, mock_supabase_client) -> None:
         """Test keyword search mode calls keyword search function."""
         mock_results = [
             {
@@ -193,7 +193,7 @@ class TestHybridSearchService:
         assert call_args[0][0] == "match_document_chunks_keyword"
 
     @pytest.mark.asyncio
-    async def test_search_hybrid_mode(self, hybrid_service, mock_supabase_client):
+    async def test_search_hybrid_mode(self, hybrid_service, mock_supabase_client) -> None:
         """Test hybrid mode combines vector and keyword results."""
         vector_result_id = str(uuid4())
         keyword_result_id = str(uuid4())
@@ -258,7 +258,7 @@ class TestHybridSearchService:
         assert results[0].chunk_id == UUID(both_result_id)
 
     @pytest.mark.asyncio
-    async def test_search_with_document_filter(self, hybrid_service, mock_supabase_client):
+    async def test_search_with_document_filter(self, hybrid_service, mock_supabase_client) -> None:
         """Test search with document ID filter."""
         doc_id = uuid4()
         mock_results = [
@@ -285,7 +285,7 @@ class TestHybridSearchService:
         assert call_args[1]["filter_document_ids"] == [str(doc_id)]
 
     @pytest.mark.asyncio
-    async def test_search_invalid_query(self, hybrid_service):
+    async def test_search_invalid_query(self, hybrid_service) -> None:
         """Test that empty query raises ValueError."""
         with pytest.raises(ValueError, match="non-empty string"):
             await hybrid_service.search(query="", mode="hybrid", limit=10)
@@ -294,12 +294,12 @@ class TestHybridSearchService:
             await hybrid_service.search(query="   ", mode="hybrid", limit=10)
 
     @pytest.mark.asyncio
-    async def test_search_invalid_mode(self, hybrid_service):
+    async def test_search_invalid_mode(self, hybrid_service) -> None:
         """Test that invalid search mode raises ValueError."""
         with pytest.raises(ValueError, match="Invalid search mode"):
             await hybrid_service.search(query="test", mode="invalid", limit=10)
 
-    def test_reciprocal_rank_fusion(self, hybrid_service):
+    def test_reciprocal_rank_fusion(self, hybrid_service) -> None:
         """Test RRF algorithm combines rankings correctly."""
         chunk_id_1 = uuid4()
         chunk_id_2 = uuid4()
@@ -350,7 +350,7 @@ class TestHybridSearchService:
         # Should have all 3 unique results
         assert len(fused) == 3
 
-    def test_reciprocal_rank_fusion_empty_lists(self, hybrid_service):
+    def test_reciprocal_rank_fusion_empty_lists(self, hybrid_service) -> None:
         """Test RRF handles empty result lists."""
         result = hybrid_service._reciprocal_rank_fusion([], [], k=60)
         assert len(result) == 0
@@ -372,7 +372,7 @@ class TestHybridSearchService:
 class TestSearchReranker:
     """Unit tests for SearchReranker."""
 
-    def test_reranker_graceful_degradation(self):
+    def test_reranker_graceful_degradation(self) -> None:
         """Test that reranker gracefully degrades if model unavailable."""
         reranker = SearchReranker()
 
@@ -390,7 +390,7 @@ class TestSearchReranker:
             reranked = reranker.rerank("query", results)
             assert reranked == results
 
-    def test_reranker_single_result(self):
+    def test_reranker_single_result(self) -> None:
         """Test that single result is returned unchanged."""
         reranker = SearchReranker()
 
@@ -408,7 +408,7 @@ class TestSearchReranker:
         assert len(reranked) == 1
         assert reranked[0].chunk_id == results[0].chunk_id
 
-    def test_reranker_empty_results(self):
+    def test_reranker_empty_results(self) -> None:
         """Test that empty results list returns empty."""
         reranker = SearchReranker()
         reranked = reranker.rerank("query", [])
@@ -431,7 +431,7 @@ class TestSearchAPI:
         return client
 
     @pytest.mark.asyncio
-    async def test_search_api_request_validation(self):
+    async def test_search_api_request_validation(self) -> None:
         """Test that search API validates request parameters."""
         from src.api.routes.search import SearchRequest
 
@@ -473,7 +473,7 @@ class TestSearchPropertyBased:
         """Create SearchHighlighter for property tests."""
         return SearchHighlighter()
 
-    def test_highlight_special_characters(self, highlighter):
+    def test_highlight_special_characters(self, highlighter) -> None:
         """Test highlighting with special regex characters."""
         content = "Price: $1,000 per month. Contact: user@example.com"
         query = "$1,000 user@example.com"
@@ -482,7 +482,7 @@ class TestSearchPropertyBased:
         highlights = highlighter.highlight(content, query)
         assert isinstance(highlights, list)
 
-    def test_highlight_unicode(self, highlighter):
+    def test_highlight_unicode(self, highlighter) -> None:
         """Test highlighting with unicode characters."""
         content = "租赁协议 Lease Agreement 🏠 Property"
         query = "Lease Property"
@@ -491,7 +491,7 @@ class TestSearchPropertyBased:
         assert len(highlights) > 0
         assert "<mark>" in highlights[0]
 
-    def test_highlight_very_long_query(self, highlighter):
+    def test_highlight_very_long_query(self, highlighter) -> None:
         """Test highlighting with very long query."""
         query = "test " * 100  # Very long query
         content = "This is a test document with test content."
@@ -500,7 +500,7 @@ class TestSearchPropertyBased:
         highlights = highlighter.highlight(content, query)
         assert isinstance(highlights, list)
 
-    def test_rrf_algorithm_properties(self):
+    def test_rrf_algorithm_properties(self) -> None:
         """Test mathematical properties of RRF algorithm."""
         from src.search.hybrid import HybridSearchService
         from src.search.embeddings import EmbeddingService
@@ -528,7 +528,7 @@ class TestSearchPropertyBased:
         for i in range(len(fused) - 1):
             assert fused[i].score >= fused[i + 1].score
 
-    def test_rrf_symmetry(self):
+    def test_rrf_symmetry(self) -> None:
         """Test that RRF is symmetric (order of inputs doesn't matter)."""
         from src.search.hybrid import HybridSearchService
 

@@ -10,13 +10,13 @@ from src.middleware.request_id import RequestIDMiddleware
 class TestRequestIDMiddleware:
     """Test request ID middleware functionality."""
 
-    def test_generates_request_id_when_not_provided(self):
+    def test_generates_request_id_when_not_provided(self) -> None:
         """Test that middleware generates a request ID when not provided by client."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> None:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -32,13 +32,13 @@ class TestRequestIDMiddleware:
         except ValueError:
             pytest.fail(f"Generated request_id '{request_id}' is not a valid UUID")
 
-    def test_uses_client_provided_request_id(self):
+    def test_uses_client_provided_request_id(self) -> None:
         """Test that middleware uses client-provided request ID."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> None:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -48,13 +48,13 @@ class TestRequestIDMiddleware:
         assert response.status_code == 200
         assert response.json()["request_id"] == custom_request_id
 
-    def test_adds_request_id_to_response_header(self):
+    def test_adds_request_id_to_response_header(self) -> None:
         """Test that middleware adds request ID to response headers."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint():
+        async def test_endpoint() -> None:
             return {"message": "success"}
 
         client = TestClient(app)
@@ -70,13 +70,13 @@ class TestRequestIDMiddleware:
         except ValueError:
             pytest.fail(f"Response header request_id '{request_id}' is not a valid UUID")
 
-    def test_preserves_client_request_id_in_response_header(self):
+    def test_preserves_client_request_id_in_response_header(self) -> None:
         """Test that client-provided request ID appears in response header."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint():
+        async def test_endpoint() -> None:
             return {"message": "success"}
 
         client = TestClient(app)
@@ -86,7 +86,7 @@ class TestRequestIDMiddleware:
         assert response.status_code == 200
         assert response.headers["X-Request-ID"] == custom_request_id
 
-    def test_request_id_available_in_request_state(self):
+    def test_request_id_available_in_request_state(self) -> None:
         """Test that request ID is stored in request.state."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
@@ -94,7 +94,7 @@ class TestRequestIDMiddleware:
         captured_request_id = None
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> None:
             nonlocal captured_request_id
             captured_request_id = request.state.request_id
             return {"message": "success"}
@@ -106,13 +106,13 @@ class TestRequestIDMiddleware:
         assert captured_request_id is not None
         assert response.headers["X-Request-ID"] == captured_request_id
 
-    def test_different_requests_get_different_ids(self):
+    def test_different_requests_get_different_ids(self) -> None:
         """Test that different requests get different request IDs."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> None:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -125,13 +125,13 @@ class TestRequestIDMiddleware:
 
         assert request_id1 != request_id2
 
-    def test_request_id_survives_error_responses(self):
+    def test_request_id_survives_error_responses(self) -> None:
         """Test that request ID is preserved even when endpoint raises error."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint():
+        async def test_endpoint() -> None:
             from fastapi import HTTPException
             raise HTTPException(status_code=500, detail="Test error")
 
@@ -142,13 +142,13 @@ class TestRequestIDMiddleware:
         assert "X-Request-ID" in response.headers
         assert response.headers["X-Request-ID"] is not None
 
-    def test_request_id_with_post_request(self):
+    def test_request_id_with_post_request(self) -> None:
         """Test request ID generation works with POST requests."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.post("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> None:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -159,7 +159,7 @@ class TestRequestIDMiddleware:
         request_id = response.json()["request_id"]
         assert request_id == response.headers["X-Request-ID"]
 
-    def test_request_id_with_various_http_methods(self):
+    def test_request_id_with_various_http_methods(self) -> None:
         """Test request ID works with various HTTP methods."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
@@ -188,13 +188,13 @@ class TestRequestIDMiddleware:
             assert "X-Request-ID" in response.headers
             assert response.json()["request_id"] is not None
 
-    def test_request_id_format_validation(self):
+    def test_request_id_format_validation(self) -> None:
         """Test that generated request IDs are valid UUIDs."""
         app = FastAPI()
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> None:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)

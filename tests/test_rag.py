@@ -225,7 +225,7 @@ def test_format_user_prompt() -> None:
 # ========== Retriever Tests ==========
 
 @pytest.mark.asyncio
-async def test_retriever_retrieve():
+async def test_retriever_retrieve() -> None:
     """Test retriever retrieval flow."""
     # Mock dependencies
     mock_supabase = Mock()
@@ -262,7 +262,7 @@ async def test_retriever_retrieve():
 
 
 @pytest.mark.asyncio
-async def test_retriever_rerank():
+async def test_retriever_rerank() -> None:
     """Test retriever re-ranking."""
     mock_supabase = Mock()
     mock_embeddings = AsyncMock()
@@ -297,7 +297,7 @@ async def test_retriever_rerank():
 # ========== Generator Tests ==========
 
 @pytest.mark.asyncio
-async def test_generator_generate():
+async def test_generator_generate() -> None:
     """Test generator answer generation."""
     mock_response = Mock()
     mock_response.choices = [Mock()]
@@ -319,7 +319,7 @@ async def test_generator_generate():
 # ========== Pipeline Integration Tests ==========
 
 @pytest.mark.asyncio
-async def test_pipeline_ask_success():
+async def test_pipeline_ask_success() -> None:
     """Test full RAG pipeline with successful answer."""
     # Mock Supabase
     mock_supabase = Mock()
@@ -374,7 +374,7 @@ async def test_pipeline_ask_success():
 
 
 @pytest.mark.asyncio
-async def test_pipeline_ask_no_chunks():
+async def test_pipeline_ask_no_chunks() -> None:
     """Test pipeline when no relevant chunks found."""
     mock_supabase = Mock()
     mock_supabase.rpc.return_value.execute.return_value.data = []
@@ -398,7 +398,7 @@ async def test_pipeline_ask_no_chunks():
 
 
 @pytest.mark.asyncio
-async def test_pipeline_ask_invalid_citations():
+async def test_pipeline_ask_invalid_citations() -> None:
     """Test pipeline when generated answer has invalid citations."""
     mock_supabase = Mock()
     doc_id = uuid4()

@@ -62,17 +62,17 @@ def app_with_auth(mock_config):
 class TestPermissionMatrix:
     """Test permission matrix structure."""
     
-    def test_permissions_defined(self):
+    def test_permissions_defined(self) -> None:
         """Test that all expected roles are defined."""
         assert "Admin" in PERMISSIONS
         assert "Analyst" in PERMISSIONS
         assert "Viewer" in PERMISSIONS
     
-    def test_admin_has_wildcard(self):
+    def test_admin_has_wildcard(self) -> None:
         """Test that Admin role has wildcard permission."""
         assert "*" in PERMISSIONS["Admin"]
     
-    def test_analyst_permissions(self):
+    def test_analyst_permissions(self) -> None:
         """Test Analyst role permissions."""
         analyst_perms = PERMISSIONS["Analyst"]
         assert "documents:read" in analyst_perms
@@ -85,7 +85,7 @@ class TestPermissionMatrix:
         assert "exports:read" in analyst_perms
         assert "exports:write" in analyst_perms
     
-    def test_viewer_permissions(self):
+    def test_viewer_permissions(self) -> None:
         """Test Viewer role permissions."""
         viewer_perms = PERMISSIONS["Viewer"]
         assert "documents:read" in viewer_perms
@@ -102,7 +102,7 @@ class TestPermissionMatrix:
 class TestHasPermission:
     """Test has_permission function."""
     
-    def test_admin_has_all_permissions(self):
+    def test_admin_has_all_permissions(self) -> None:
         """Test that Admin role grants all permissions."""
         assert has_permission(["Admin"], "documents:read") is True
         assert has_permission(["Admin"], "documents:write") is True
@@ -115,7 +115,7 @@ class TestHasPermission:
         assert has_permission(["Admin"], "exports:write") is True
         assert has_permission(["Admin"], "nonexistent:permission") is True
     
-    def test_analyst_permissions(self):
+    def test_analyst_permissions(self) -> None:
         """Test Analyst role permissions."""
         assert has_permission(["Analyst"], "documents:read") is True
         assert has_permission(["Analyst"], "documents:write") is True
@@ -129,7 +129,7 @@ class TestHasPermission:
         # Analyst should NOT have admin-only permissions
         assert has_permission(["Analyst"], "admin:manage") is False
     
-    def test_viewer_permissions(self):
+    def test_viewer_permissions(self) -> None:
         """Test Viewer role permissions."""
         assert has_permission(["Viewer"], "documents:read") is True
         assert has_permission(["Viewer"], "search:read") is True
@@ -142,7 +142,7 @@ class TestHasPermission:
         assert has_permission(["Viewer"], "extractions:override") is False
         assert has_permission(["Viewer"], "exports:write") is False
     
-    def test_case_insensitive_roles(self):
+    def test_case_insensitive_roles(self) -> None:
         """Test that role comparison is case-insensitive."""
         assert has_permission(["admin"], "documents:read") is True
         assert has_permission(["ADMIN"], "documents:read") is True
@@ -152,7 +152,7 @@ class TestHasPermission:
         assert has_permission(["viewer"], "documents:read") is True
         assert has_permission(["VIEWER"], "documents:read") is True
     
-    def test_multiple_roles(self):
+    def test_multiple_roles(self) -> None:
         """Test permission check with multiple roles."""
         # User with both Viewer and Analyst roles
         assert has_permission(["Viewer", "Analyst"], "documents:read") is True
@@ -160,17 +160,17 @@ class TestHasPermission:
         # User with Viewer role only
         assert has_permission(["Viewer"], "documents:write") is False
     
-    def test_empty_roles(self):
+    def test_empty_roles(self) -> None:
         """Test permission check with empty roles list."""
         assert has_permission([], "documents:read") is False
         assert has_permission([], "documents:write") is False
     
-    def test_unknown_role(self):
+    def test_unknown_role(self) -> None:
         """Test permission check with unknown role."""
         assert has_permission(["UnknownRole"], "documents:read") is False
         assert has_permission(["UnknownRole"], "documents:write") is False
     
-    def test_role_with_whitespace(self):
+    def test_role_with_whitespace(self) -> None:
         """Test permission check with role containing whitespace."""
         assert has_permission(["  Admin  "], "documents:read") is True
         assert has_permission(["  Analyst  "], "documents:write") is True
@@ -179,7 +179,7 @@ class TestHasPermission:
 class TestRequirePermission:
     """Test require_permission FastAPI dependency."""
     
-    def test_admin_can_access_any_permission(self, app_with_auth, create_jwt_token):
+    def test_admin_can_access_any_permission(self, app_with_auth, create_jwt_token) -> None:
         """Test that Admin can access any permission-protected endpoint."""
         token = create_jwt_token(["Admin"])
         
@@ -199,7 +199,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_analyst_can_delete_document(self, app_with_auth, create_jwt_token):
+    def test_analyst_can_delete_document(self, app_with_auth, create_jwt_token) -> None:
         """Test that Analyst can delete documents."""
         token = create_jwt_token(["Analyst"])
         
@@ -219,7 +219,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_viewer_cannot_delete_document(self, app_with_auth, create_jwt_token):
+    def test_viewer_cannot_delete_document(self, app_with_auth, create_jwt_token) -> None:
         """Test that Viewer cannot delete documents."""
         token = create_jwt_token(["Viewer"])
         
@@ -243,7 +243,7 @@ class TestRequirePermission:
         assert "documents:delete" in data["detail"]["message"]
         assert data["detail"]["your_roles"] == ["Viewer"]
     
-    def test_viewer_can_read_documents(self, app_with_auth, create_jwt_token):
+    def test_viewer_can_read_documents(self, app_with_auth, create_jwt_token) -> None:
         """Test that Viewer can read documents."""
         token = create_jwt_token(["Viewer"])
         
@@ -262,7 +262,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_analyst_can_override_extractions(self, app_with_auth, create_jwt_token):
+    def test_analyst_can_override_extractions(self, app_with_auth, create_jwt_token) -> None:
         """Test that Analyst can override extractions."""
         token = create_jwt_token(["Analyst"])
         
@@ -282,7 +282,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_viewer_cannot_override_extractions(self, app_with_auth, create_jwt_token):
+    def test_viewer_cannot_override_extractions(self, app_with_auth, create_jwt_token) -> None:
         """Test that Viewer cannot override extractions."""
         token = create_jwt_token(["Viewer"])
         
@@ -302,7 +302,7 @@ class TestRequirePermission:
         
         assert response.status_code == 403
     
-    def test_permission_denial_logging(self, app_with_auth, create_jwt_token, caplog):
+    def test_permission_denial_logging(self, app_with_auth, create_jwt_token, caplog) -> None:
         """Test that permission denials are logged."""
         token = create_jwt_token(["Viewer"])
         
@@ -344,7 +344,7 @@ class TestRequirePermission:
 class TestRoleShortcuts:
     """Test role shortcut dependencies."""
     
-    def test_require_admin_allows_admin(self, app_with_auth, create_jwt_token):
+    def test_require_admin_allows_admin(self, app_with_auth, create_jwt_token) -> None:
         """Test RequireAdmin shortcut allows Admin role."""
         token = create_jwt_token(["Admin"])
         
@@ -363,7 +363,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 200
     
-    def test_require_admin_denies_viewer(self, app_with_auth, create_jwt_token):
+    def test_require_admin_denies_viewer(self, app_with_auth, create_jwt_token) -> None:
         """Test RequireAdmin shortcut denies Viewer role."""
         token = create_jwt_token(["Viewer"])
         
@@ -382,7 +382,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 403
     
-    def test_require_analyst_allows_analyst(self, app_with_auth, create_jwt_token):
+    def test_require_analyst_allows_analyst(self, app_with_auth, create_jwt_token) -> None:
         """Test RequireAnalyst shortcut allows Analyst role."""
         token = create_jwt_token(["Analyst"])
         
@@ -401,7 +401,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 200
     
-    def test_require_analyst_allows_admin(self, app_with_auth, create_jwt_token):
+    def test_require_analyst_allows_admin(self, app_with_auth, create_jwt_token) -> None:
         """Test RequireAnalyst shortcut allows Admin role (hierarchical)."""
         token = create_jwt_token(["Admin"])
         
@@ -420,7 +420,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 200
     
-    def test_require_analyst_denies_viewer(self, app_with_auth, create_jwt_token):
+    def test_require_analyst_denies_viewer(self, app_with_auth, create_jwt_token) -> None:
         """Test RequireAnalyst shortcut denies Viewer role."""
         token = create_jwt_token(["Viewer"])
         
@@ -439,7 +439,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 403
     
-    def test_require_viewer_allows_all_roles(self, app_with_auth, create_jwt_token):
+    def test_require_viewer_allows_all_roles(self, app_with_auth, create_jwt_token) -> None:
         """Test RequireViewer shortcut allows all roles."""
         for role in ["Admin", "Analyst", "Viewer"]:
             token = create_jwt_token([role])

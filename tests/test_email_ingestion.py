@@ -21,7 +21,7 @@ from src.exceptions import RateLimitError, ValidationError, NotFoundError
 class TestEmailParser:
     """Unit tests for EmailParser."""
     
-    def test_parse_resend_webhook_basic(self):
+    def test_parse_resend_webhook_basic(self) -> None:
         """Test parsing basic Resend webhook payload."""
         parser = EmailParser()
         
@@ -43,7 +43,7 @@ class TestEmailParser:
         assert parsed.body_html == "<p>Email body text</p>"
         assert len(parsed.attachments) == 0
     
-    def test_parse_resend_webhook_with_attachment(self):
+    def test_parse_resend_webhook_with_attachment(self) -> None:
         """Test parsing webhook with attachment."""
         parser = EmailParser()
         
@@ -73,21 +73,21 @@ class TestEmailParser:
         assert parsed.attachments[0].content == attachment_content
         assert parsed.attachments[0].size == len(attachment_content)
     
-    def test_extract_address_simple(self):
+    def test_extract_address_simple(self) -> None:
         """Test extracting email address from simple string."""
         parser = EmailParser()
         
         assert parser._extract_address("user@example.com") == "user@example.com"
         assert parser._extract_address("  user@example.com  ") == "user@example.com"
     
-    def test_extract_address_with_name(self):
+    def test_extract_address_with_name(self) -> None:
         """Test extracting email address from 'Name <email>' format."""
         parser = EmailParser()
         
         assert parser._extract_address("John Doe <john@example.com>") == "john@example.com"
         assert parser._extract_address("<john@example.com>") == "john@example.com"
     
-    def test_parse_attachment_invalid(self):
+    def test_parse_attachment_invalid(self) -> None:
         """Test parsing invalid attachment (missing content)."""
         parser = EmailParser()
 
@@ -100,7 +100,7 @@ class TestEmailParser:
         result = parser._parse_attachment(att_data)
         assert result is None
 
-    def test_parse_webhook_html_only(self):
+    def test_parse_webhook_html_only(self) -> None:
         """Test parsing webhook with HTML but no text version."""
         parser = EmailParser()
 
@@ -117,14 +117,14 @@ class TestEmailParser:
         assert parsed.body_html == "<p>This is HTML content</p>"
         assert parsed.body_text == "This is HTML content"  # Extracted from HTML
 
-    def test_extract_address_empty(self):
+    def test_extract_address_empty(self) -> None:
         """Test extracting address from empty string."""
         parser = EmailParser()
 
         assert parser._extract_address("") == ""
         assert parser._extract_address(None) == ""
 
-    def test_extract_address_comma_separated(self):
+    def test_extract_address_comma_separated(self) -> None:
         """Test extracting address from comma-separated list."""
         parser = EmailParser()
 
@@ -132,7 +132,7 @@ class TestEmailParser:
         result = parser._extract_address("first@example.com, second@example.com")
         assert result == "first@example.com"
 
-    def test_extract_address_no_valid_address(self):
+    def test_extract_address_no_valid_address(self) -> None:
         """Test extracting address when parseaddr fails."""
         parser = EmailParser()
 
@@ -140,7 +140,7 @@ class TestEmailParser:
         result = parser._extract_address("invalid,format,test")
         assert result == "invalid"  # Takes first part
 
-    def test_parse_attachment_with_bytes_content(self):
+    def test_parse_attachment_with_bytes_content(self) -> None:
         """Test parsing attachment with bytes content (not base64 string)."""
         parser = EmailParser()
 
@@ -157,7 +157,7 @@ class TestEmailParser:
         assert result.content == content
         assert result.size == len(content)
 
-    def test_parse_attachment_with_exception(self):
+    def test_parse_attachment_with_exception(self) -> None:
         """Test parsing attachment that raises exception during decoding."""
         parser = EmailParser()
 
@@ -170,7 +170,7 @@ class TestEmailParser:
         result = parser._parse_attachment(att_data)
         assert result is None
 
-    def test_parse_attachment_default_values(self):
+    def test_parse_attachment_default_values(self) -> None:
         """Test parsing attachment with missing optional fields."""
         parser = EmailParser()
 
@@ -190,7 +190,7 @@ class TestEmailParser:
         assert result.filename == "alternate.txt"
         assert result.content_type == "text/plain"
 
-    def test_parse_attachment_no_filename(self):
+    def test_parse_attachment_no_filename(self) -> None:
         """Test parsing attachment with no filename uses default."""
         parser = EmailParser()
 
@@ -208,7 +208,7 @@ class TestEmailParser:
         assert result.filename == "attachment"  # Default
         assert result.content_type == "application/octet-stream"  # Default
 
-    def test_html_to_text_with_tags(self):
+    def test_html_to_text_with_tags(self) -> None:
         """Test HTML to text conversion removes tags."""
         parser = EmailParser()
 
@@ -220,7 +220,7 @@ class TestEmailParser:
         assert "<p>" not in text
         assert "<b>" not in text
 
-    def test_html_to_text_with_whitespace(self):
+    def test_html_to_text_with_whitespace(self) -> None:
         """Test HTML to text conversion normalizes whitespace."""
         parser = EmailParser()
 
@@ -234,7 +234,7 @@ class TestEmailParser:
 class TestResendVerifier:
     """Unit tests for ResendVerifier."""
     
-    def test_verify_signature_valid(self):
+    def test_verify_signature_valid(self) -> None:
         """Test verifying valid signature."""
         secret = "test_secret"
         payload = b'{"test": "data"}'
@@ -255,7 +255,7 @@ class TestResendVerifier:
         verifier = ResendVerifier(secret)
         assert verifier.verify_signature(payload, signature_header) is True
     
-    def test_verify_signature_invalid(self):
+    def test_verify_signature_invalid(self) -> None:
         """Test verifying invalid signature."""
         secret = "test_secret"
         payload = b'{"test": "data"}'
@@ -264,7 +264,7 @@ class TestResendVerifier:
         verifier = ResendVerifier(secret)
         assert verifier.verify_signature(payload, signature_header) is False
     
-    def test_verify_signature_missing_header(self):
+    def test_verify_signature_missing_header(self) -> None:
         """Test verifying with missing signature header."""
         secret = "test_secret"
         payload = b'{"test": "data"}'
@@ -272,7 +272,7 @@ class TestResendVerifier:
         verifier = ResendVerifier(secret)
         assert verifier.verify_signature(payload, None) is False
     
-    def test_verify_signature_wrong_format(self):
+    def test_verify_signature_wrong_format(self) -> None:
         """Test verifying with wrong header format."""
         secret = "test_secret"
         payload = b'{"test": "data"}'
@@ -285,7 +285,7 @@ class TestResendVerifier:
 class TestEmailRateLimiter:
     """Unit tests for EmailRateLimiter."""
     
-    def test_check_rate_limit_under_limit(self):
+    def test_check_rate_limit_under_limit(self) -> None:
         """Test rate limit check when under limit."""
         mock_client = Mock()
         mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.execute.return_value.count = 50
@@ -295,7 +295,7 @@ class TestEmailRateLimiter:
         # Should not raise
         limiter.check_rate_limit("sender@example.com")
     
-    def test_check_rate_limit_exceeded(self):
+    def test_check_rate_limit_exceeded(self) -> None:
         """Test rate limit check when limit exceeded."""
         mock_client = Mock()
         mock_client.table.return_value.select.return_value.eq.return_value.gte.return_value.execute.return_value.count = 101
@@ -329,7 +329,7 @@ class TestEmailIngestionService:
         
         return client
     
-    def test_ingest_email_basic(self, mock_supabase):
+    def test_ingest_email_basic(self, mock_supabase) -> None:
         """Test ingesting email with body only."""
         service = EmailIngestionService(mock_supabase)
         
@@ -350,7 +350,7 @@ class TestEmailIngestionService:
         assert "attachment_document_ids" in result
         assert len(result["attachment_document_ids"]) == 0
     
-    def test_ingest_email_with_attachment(self, mock_supabase):
+    def test_ingest_email_with_attachment(self, mock_supabase) -> None:
         """Test ingesting email with attachment."""
         service = EmailIngestionService(mock_supabase)
         
@@ -382,7 +382,7 @@ class TestEmailIngestionService:
             assert result["body_document_id"] is not None
             assert len(result["attachment_document_ids"]) == 1
     
-    def test_ingest_email_tenant_not_found(self, mock_supabase):
+    def test_ingest_email_tenant_not_found(self, mock_supabase) -> None:
         """Test ingesting email with non-existent tenant."""
         service = EmailIngestionService(mock_supabase)
         
@@ -402,7 +402,7 @@ class TestEmailIngestionService:
         with pytest.raises(NotFoundError):
             service.ingest_email(parsed_email, tenant_id)
     
-    def test_calculate_hash(self, mock_supabase):
+    def test_calculate_hash(self, mock_supabase) -> None:
         """Test file hash calculation."""
         service = EmailIngestionService(mock_supabase)
         
@@ -428,7 +428,7 @@ class TestEmailWebhookEndpoint:
         from src.main import app
         return TestClient(app)
     
-    def test_webhook_missing_signature(self, client):
+    def test_webhook_missing_signature(self, client) -> None:
         """Test webhook without signature header."""
         response = client.post(
             "/api/v1/webhooks/email/inbound",
@@ -437,7 +437,7 @@ class TestEmailWebhookEndpoint:
         
         assert response.status_code == 401
     
-    def test_webhook_invalid_signature(self, client):
+    def test_webhook_invalid_signature(self, client) -> None:
         """Test webhook with invalid signature."""
         response = client.post(
             "/api/v1/webhooks/email/inbound",
@@ -447,7 +447,7 @@ class TestEmailWebhookEndpoint:
         
         assert response.status_code == 401
     
-    def test_webhook_invalid_recipient(self, client):
+    def test_webhook_invalid_recipient(self, client) -> None:
         """Test webhook with invalid recipient format."""
         # This test would require mocking the signature verification
         # For now, we'll skip the full integration test

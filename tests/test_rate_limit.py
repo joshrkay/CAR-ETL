@@ -31,7 +31,7 @@ def mock_supabase():
 class TestAuthRateLimiter:
     """Test authentication rate limiter."""
 
-    def test_first_attempt_creates_new_record(self, mock_config, mock_supabase):
+    def test_first_attempt_creates_new_record(self, mock_config, mock_supabase) -> None:
         """Test that first attempt from IP creates new rate limit record."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -52,7 +52,7 @@ class TestAuthRateLimiter:
             assert call_args["ip_address"] == "192.168.1.1"
             assert call_args["attempt_count"] == 1
 
-    def test_subsequent_attempts_increment_count(self, mock_config, mock_supabase):
+    def test_subsequent_attempts_increment_count(self, mock_config, mock_supabase) -> None:
         """Test that subsequent attempts increment the attempt count."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -79,7 +79,7 @@ class TestAuthRateLimiter:
             call_args = mock_supabase.table.return_value.update.call_args[0][0]
             assert call_args["attempt_count"] == 3
 
-    def test_rate_limit_exceeded_raises_error(self, mock_config, mock_supabase):
+    def test_rate_limit_exceeded_raises_error(self, mock_config, mock_supabase) -> None:
         """Test that exceeding rate limit raises RateLimitError."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -105,7 +105,7 @@ class TestAuthRateLimiter:
 
             assert exc_info.value.retry_after > 0
 
-    def test_rate_limit_retry_after_calculation(self, mock_config, mock_supabase):
+    def test_rate_limit_retry_after_calculation(self, mock_config, mock_supabase) -> None:
         """Test that retry_after is calculated correctly."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -131,7 +131,7 @@ class TestAuthRateLimiter:
             # retry_after should be approximately 200 seconds (300 - 100)
             assert 190 <= exc_info.value.retry_after <= 210
 
-    def test_window_start_with_timezone(self, mock_config, mock_supabase):
+    def test_window_start_with_timezone(self, mock_config, mock_supabase) -> None:
         """Test handling of window_start with timezone suffix."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -157,7 +157,7 @@ class TestAuthRateLimiter:
             # Should still calculate retry_after correctly
             assert exc_info.value.retry_after > 0
 
-    def test_reset_rate_limit(self, mock_config, mock_supabase):
+    def test_reset_rate_limit(self, mock_config, mock_supabase) -> None:
         """Test resetting rate limit for an IP address."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -167,7 +167,7 @@ class TestAuthRateLimiter:
             # Verify delete was called
             mock_supabase.table.return_value.delete.return_value.eq.assert_called_once()
 
-    def test_error_handling_in_non_production(self, mock_config, mock_supabase):
+    def test_error_handling_in_non_production(self, mock_config, mock_supabase) -> None:
         """Test that errors are suppressed in non-production mode."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -181,7 +181,7 @@ class TestAuthRateLimiter:
             # Should not raise in non-production
             limiter.check_rate_limit("192.168.1.1")
 
-    def test_error_handling_in_production(self, mock_config, mock_supabase):
+    def test_error_handling_in_production(self, mock_config, mock_supabase) -> None:
         """Test that errors are raised in production mode."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -196,7 +196,7 @@ class TestAuthRateLimiter:
             with pytest.raises(Exception, match="Database error"):
                 limiter.check_rate_limit("192.168.1.1")
 
-    def test_increment_attempt_error_handling(self, mock_config, mock_supabase):
+    def test_increment_attempt_error_handling(self, mock_config, mock_supabase) -> None:
         """Test error handling in _increment_attempt."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -224,7 +224,7 @@ class TestAuthRateLimiter:
             # Should not raise in non-production
             limiter.check_rate_limit("192.168.1.1")
 
-    def test_create_record_error_handling(self, mock_config, mock_supabase):
+    def test_create_record_error_handling(self, mock_config, mock_supabase) -> None:
         """Test error handling in _create_new_record."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -245,7 +245,7 @@ class TestAuthRateLimiter:
             # Should not raise in non-production
             limiter.check_rate_limit("192.168.1.1")
 
-    def test_reset_error_handling_production(self, mock_config, mock_supabase):
+    def test_reset_error_handling_production(self, mock_config, mock_supabase) -> None:
         """Test error handling in reset_rate_limit in production."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -260,7 +260,7 @@ class TestAuthRateLimiter:
             with pytest.raises(Exception, match="Delete error"):
                 limiter.reset_rate_limit("192.168.1.1")
 
-    def test_reset_error_handling_non_production(self, mock_config, mock_supabase):
+    def test_reset_error_handling_non_production(self, mock_config, mock_supabase) -> None:
         """Test error handling in reset_rate_limit in non-production."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -274,7 +274,7 @@ class TestAuthRateLimiter:
             # Should not raise in non-production
             limiter.reset_rate_limit("192.168.1.1")
 
-    def test_get_rate_limiter(self):
+    def test_get_rate_limiter(self) -> None:
         """Test get_rate_limiter factory function."""
         with patch("src.auth.rate_limit.get_auth_config") as mock_get_config:
             mock_config = Mock(spec=AuthConfig)
@@ -287,7 +287,7 @@ class TestAuthRateLimiter:
                 assert isinstance(limiter, AuthRateLimiter)
                 assert limiter.config == mock_config
 
-    def test_rate_limit_window_expiry(self, mock_config, mock_supabase):
+    def test_rate_limit_window_expiry(self, mock_config, mock_supabase) -> None:
         """Test that old records outside the window are ignored."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -305,7 +305,7 @@ class TestAuthRateLimiter:
             # Verify insert was called (starting fresh count)
             assert mock_supabase.table.return_value.insert.called
 
-    def test_rate_limit_error_propagates(self, mock_config, mock_supabase):
+    def test_rate_limit_error_propagates(self, mock_config, mock_supabase) -> None:
         """Test that RateLimitError is always propagated even in non-production."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -329,7 +329,7 @@ class TestAuthRateLimiter:
             with pytest.raises(RateLimitError):
                 limiter.check_rate_limit("192.168.1.1")
 
-    def test_attempt_count_none_defaults_to_zero(self, mock_config, mock_supabase):
+    def test_attempt_count_none_defaults_to_zero(self, mock_config, mock_supabase) -> None:
         """Test that None attempt_count defaults to 0."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -356,7 +356,7 @@ class TestAuthRateLimiter:
             call_args = mock_supabase.table.return_value.update.call_args[0][0]
             assert call_args["attempt_count"] == 1
 
-    def test_attempt_count_invalid_string_defaults_to_zero(self, mock_config, mock_supabase):
+    def test_attempt_count_invalid_string_defaults_to_zero(self, mock_config, mock_supabase) -> None:
         """Test that invalid string attempt_count defaults to 0."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)
@@ -383,7 +383,7 @@ class TestAuthRateLimiter:
             call_args = mock_supabase.table.return_value.update.call_args[0][0]
             assert call_args["attempt_count"] == 1
 
-    def test_attempt_count_numeric_string_converts_correctly(self, mock_config, mock_supabase):
+    def test_attempt_count_numeric_string_converts_correctly(self, mock_config, mock_supabase) -> None:
         """Test that numeric string attempt_count is converted correctly."""
         with patch("src.auth.rate_limit.create_client", return_value=mock_supabase):
             limiter = AuthRateLimiter(mock_config)

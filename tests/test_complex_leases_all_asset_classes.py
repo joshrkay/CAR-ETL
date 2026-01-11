@@ -47,7 +47,7 @@ class TestComplexLeasesAllAssetClasses:
     # ========== OFFICE LEASES (3 tests) ==========
     
     @pytest.mark.asyncio
-    async def test_office_class_a_premium_lease(self, extractor, mock_openai_client):
+    async def test_office_class_a_premium_lease(self, extractor, mock_openai_client) -> None:
         """Test Class A premium office lease with certifications."""
         lease_text = """
         CLASS A OFFICE LEASE AGREEMENT
@@ -148,7 +148,7 @@ class TestComplexLeasesAllAssetClasses:
         assert len(result.fields) > 25
     
     @pytest.mark.asyncio
-    async def test_office_class_b_standard_lease(self, extractor, mock_openai_client):
+    async def test_office_class_b_standard_lease(self, extractor, mock_openai_client) -> None:
         """Test Class B standard office lease."""
         lease_text = """
         OFFICE LEASE AGREEMENT
@@ -205,7 +205,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["lease_type"].value == "modified_gross"
     
     @pytest.mark.asyncio
-    async def test_office_class_c_value_lease(self, extractor, mock_openai_client):
+    async def test_office_class_c_value_lease(self, extractor, mock_openai_client) -> None:
         """Test Class C value office lease."""
         lease_text = """
         OFFICE LEASE
@@ -258,7 +258,7 @@ class TestComplexLeasesAllAssetClasses:
     # ========== RETAIL LEASES (3 tests) ==========
     
     @pytest.mark.asyncio
-    async def test_retail_anchor_lease(self, extractor, mock_openai_client):
+    async def test_retail_anchor_lease(self, extractor, mock_openai_client) -> None:
         """Test anchor tenant retail lease with co-tenancy."""
         lease_text = """
         RETAIL LEASE AGREEMENT - ANCHOR TENANT
@@ -328,7 +328,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["percentage_rent"].value is not None
     
     @pytest.mark.asyncio
-    async def test_retail_inline_lease(self, extractor, mock_openai_client):
+    async def test_retail_inline_lease(self, extractor, mock_openai_client) -> None:
         """Test inline retail lease with percentage rent."""
         lease_text = """
         RETAIL LEASE - INLINE STORE
@@ -382,7 +382,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["percentage_rent"].value is not None
     
     @pytest.mark.asyncio
-    async def test_retail_pad_lease(self, extractor, mock_openai_client):
+    async def test_retail_pad_lease(self, extractor, mock_openai_client) -> None:
         """Test pad site retail lease with drive-thru."""
         lease_text = """
         RETAIL PAD LEASE
@@ -438,7 +438,7 @@ class TestComplexLeasesAllAssetClasses:
     # ========== INDUSTRIAL LEASES (3 tests) ==========
     
     @pytest.mark.asyncio
-    async def test_industrial_warehouse_lease(self, extractor, mock_openai_client):
+    async def test_industrial_warehouse_lease(self, extractor, mock_openai_client) -> None:
         """Test warehouse/distribution industrial lease."""
         lease_text = """
         INDUSTRIAL WAREHOUSE LEASE
@@ -512,7 +512,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["rail_access"].value is True
     
     @pytest.mark.asyncio
-    async def test_industrial_manufacturing_lease(self, extractor, mock_openai_client):
+    async def test_industrial_manufacturing_lease(self, extractor, mock_openai_client) -> None:
         """Test manufacturing facility industrial lease."""
         lease_text = """
         MANUFACTURING FACILITY LEASE
@@ -571,7 +571,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["specialized_improvements"].value is not None
     
     @pytest.mark.asyncio
-    async def test_industrial_cold_storage_lease(self, extractor, mock_openai_client):
+    async def test_industrial_cold_storage_lease(self, extractor, mock_openai_client) -> None:
         """Test cold storage industrial lease with specialized features."""
         lease_text = """
         COLD STORAGE FACILITY LEASE
@@ -632,7 +632,7 @@ class TestComplexLeasesAllAssetClasses:
     # ========== MULTI-FAMILY LEASES (3 tests) ==========
     
     @pytest.mark.asyncio
-    async def test_multifamily_luxury_lease(self, extractor, mock_openai_client):
+    async def test_multifamily_luxury_lease(self, extractor, mock_openai_client) -> None:
         """Test luxury multi-family apartment lease."""
         lease_text = """
         LUXURY APARTMENT LEASE AGREEMENT
@@ -710,7 +710,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["income_verification"].value is True
     
     @pytest.mark.asyncio
-    async def test_multifamily_mid_market_lease(self, extractor, mock_openai_client):
+    async def test_multifamily_mid_market_lease(self, extractor, mock_openai_client) -> None:
         """Test mid-market multi-family lease."""
         lease_text = """
         APARTMENT LEASE AGREEMENT
@@ -775,7 +775,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["occupancy_rate"].value == 95.0
     
     @pytest.mark.asyncio
-    async def test_multifamily_affordable_lease(self, extractor, mock_openai_client):
+    async def test_multifamily_affordable_lease(self, extractor, mock_openai_client) -> None:
         """Test affordable housing multi-family lease."""
         lease_text = """
         AFFORDABLE HOUSING LEASE
@@ -843,7 +843,7 @@ class TestComplexLeasesAllAssetClasses:
     # ========== MIXED-USE LEASES (3 tests) ==========
     
     @pytest.mark.asyncio
-    async def test_mixed_use_retail_office_lease(self, extractor, mock_openai_client):
+    async def test_mixed_use_retail_office_lease(self, extractor, mock_openai_client) -> None:
         """Test mixed-use property with retail and office components."""
         lease_text = """
         MIXED-USE PROPERTY LEASE - RETAIL/OFFICE
@@ -907,7 +907,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["cross_default_clause"].value is True
     
     @pytest.mark.asyncio
-    async def test_mixed_use_retail_residential_lease(self, extractor, mock_openai_client):
+    async def test_mixed_use_retail_residential_lease(self, extractor, mock_openai_client) -> None:
         """Test mixed-use property with retail and residential components."""
         lease_text = """
         MIXED-USE LEASE - RETAIL/RESIDENTIAL
@@ -969,7 +969,7 @@ class TestComplexLeasesAllAssetClasses:
         assert result.fields["percentage_rent"].value is not None
     
     @pytest.mark.asyncio
-    async def test_mixed_use_office_residential_lease(self, extractor, mock_openai_client):
+    async def test_mixed_use_office_residential_lease(self, extractor, mock_openai_client) -> None:
         """Test mixed-use property with office and residential components."""
         lease_text = """
         MIXED-USE LEASE - OFFICE/RESIDENTIAL

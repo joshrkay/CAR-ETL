@@ -45,7 +45,7 @@ def test_document_confidence_penalizes_missing_critical() -> None:
 
 
 @pytest.mark.asyncio
-async def test_om_extractor_mock_llm():
+async def test_om_extractor_mock_llm() -> None:
     mock_response = {
         "property_info": {
             "property_name": {"value": "Harbor Point", "confidence": 0.92, "page": 1, "quote": "Harbor Point"},

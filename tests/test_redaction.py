@@ -148,7 +148,7 @@ class TestRedactionPropertyBased:
     """
     
     @given(st.text(min_size=1, max_size=10000))
-    def test_presidio_redact_no_email_leakage(self, text: str):
+    def test_presidio_redact_no_email_leakage(self, text: str) -> None:
         """
         Property-based test: Verify no email patterns leak through redaction.
         
@@ -168,7 +168,7 @@ class TestRedactionPropertyBased:
                 assert email not in redacted, f"Email leaked in redaction: {email}"
     
     @given(st.text(min_size=1, max_size=10000))
-    def test_presidio_redact_no_ssn_leakage(self, text: str):
+    def test_presidio_redact_no_ssn_leakage(self, text: str) -> None:
         """
         Property-based test: Verify no SSN patterns leak through redaction.
         """
@@ -183,7 +183,7 @@ class TestRedactionPropertyBased:
                 assert ssn not in redacted, f"SSN leaked in redaction: {ssn}"
     
     @given(st.text(min_size=1, max_size=10000))
-    def test_presidio_redact_no_phone_leakage(self, text: str):
+    def test_presidio_redact_no_phone_leakage(self, text: str) -> None:
         """
         Property-based test: Verify no phone number patterns leak through redaction.
         """
@@ -204,7 +204,7 @@ class TestRedactionPropertyBased:
                     assert phone not in redacted, f"Phone leaked in redaction: {phone}"
     
     @given(st.text(min_size=1, max_size=5000))
-    def test_presidio_redact_idempotent(self, text: str):
+    def test_presidio_redact_idempotent(self, text: str) -> None:
         """
         Property-based test: Verify redaction is idempotent.
         
@@ -218,7 +218,7 @@ class TestRedactionPropertyBased:
         assert redacted_twice == redacted_once or len(redacted_twice) <= len(redacted_once)
     
     @given(st.text(min_size=1, max_size=10000))
-    def test_presidio_redact_preserves_structure(self, text: str):
+    def test_presidio_redact_preserves_structure(self, text: str) -> None:
         """
         Property-based test: Verify redaction preserves text structure.
         
