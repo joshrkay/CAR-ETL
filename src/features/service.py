@@ -38,8 +38,7 @@ class FeatureFlagService:
     def _get_cached_value(self, flag_name: str) -> Optional[bool]:
         """Get cached value if valid. TTLCache handles expiration automatically."""
         cache_key = self._get_cache_key(flag_name)
-        cached = _shared_cache.get(cache_key)
-        return cast(Optional[bool], cached)
+        return _shared_cache.get(cache_key)
     
     def _set_cached_value(self, flag_name: str, value: bool) -> None:
         """Set cached value with TTL. TTLCache handles expiration automatically."""
