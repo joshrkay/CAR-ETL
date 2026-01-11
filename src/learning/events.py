@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from supabase import Client
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def emit_field_override_event(
     supabase: Client,
-    event: Dict[str, Any],
+    event: dict[str, Any],
 ) -> None:
     """
     Emit a field override event for ML training.

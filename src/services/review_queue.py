@@ -92,7 +92,7 @@ class ReviewQueueService:
         query = query.order('priority', desc=True)
 
         # Apply pagination
-        query = query.range(offset, offset + limit - 1)
+        query = query.range(offset, offset + limit - 1)  # type: ignore[attr-defined]
 
         # Execute query
         result = query.execute()
@@ -183,7 +183,7 @@ class ReviewQueueService:
             documents(original_filename),
             extractions(overall_confidence, document_type)
             '''
-        ).eq('id', str(item_id)).single().execute()
+        ).eq('id', str(item_id)).single().execute()  # type: ignore[attr-defined]
 
         item = self._transform_queue_item(item_result.data)
 

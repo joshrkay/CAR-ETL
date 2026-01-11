@@ -86,4 +86,4 @@ class AuthConfig(BaseSettings):
 
 def get_auth_config() -> AuthConfig:
     """Get auth configuration instance."""
-    return AuthConfig()
+    return AuthConfig()  # type: ignore[call-arg]

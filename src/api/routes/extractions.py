@@ -3,17 +3,17 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
-from supabase import Client
 
 from src.auth.decorators import require_permission
 from src.auth.models import AuthContext
 from src.dependencies import get_supabase_client
-from src.services.field_override import FieldOverrideService, FieldOverrideNotFoundError
+from src.services.field_override import FieldOverrideNotFoundError, FieldOverrideService
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -27,15 +27,15 @@ class FieldOverrideRequest(BaseModel):
     """Request payload for overriding an extraction field."""
 
     value: str = Field(..., description="Corrected field value")
-    notes: Optional[str] = Field(None, description="Notes about the correction")
+    notes: str | None = Field(None, description="Notes about the correction")
 
 
 class FieldOverrideResponse(BaseModel):
     """Response payload for an extraction field override."""
 
     field_id: str
-    old_value: Optional[Any]
-    new_value: Optional[Any]
+    old_value: Any | None
+    new_value: Any | None
     is_override: bool
     overridden_by: str
     overridden_at: datetime
