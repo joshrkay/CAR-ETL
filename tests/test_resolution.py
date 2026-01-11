@@ -147,7 +147,7 @@ def test_fetch_document_reference_count_returns_count() -> None:
 
 
 @pytest.mark.asyncio
-async def test_merge_entities_updates_references():
+async def test_merge_entities_updates_references() -> None:
     tenant_id = uuid4()
     user_id = uuid4()
     source_id = uuid4()

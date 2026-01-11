@@ -5,9 +5,9 @@ Tests embedding generation, document chunk storage, and semantic search.
 """
 
 import pytest
+from typing import Any, Generator
 from unittest.mock import Mock, AsyncMock, patch
-from uuid import uuid4, UUID
-from typing import List
+from uuid import uuid4
 
 from src.search.embeddings import EmbeddingService
 from supabase import Client
@@ -17,7 +17,7 @@ class TestEmbeddingService:
     """Unit tests for EmbeddingService."""
     
     @pytest.fixture
-    def mock_openai_client(self):
+    def mock_openai_client(self) -> Any:
         """Create a mock OpenAI client."""
         client = AsyncMock()
         
@@ -32,7 +32,7 @@ class TestEmbeddingService:
         return client
     
     @pytest.fixture
-    def embedding_service(self, mock_openai_client):
+    def embedding_service(self, mock_openai_client) -> Any:
         """Create EmbeddingService with mocked OpenAI client."""
         with patch('src.search.embeddings.AsyncOpenAI', return_value=mock_openai_client):
             service = EmbeddingService(api_key="test-key", batch_size=2)
@@ -40,7 +40,7 @@ class TestEmbeddingService:
             return service
     
     @pytest.mark.asyncio
-    async def test_embed_single_text(self, embedding_service, mock_openai_client):
+    async def test_embed_single_text(self, embedding_service, mock_openai_client) -> None:
         """Test embedding a single text."""
         text = "This is a test document."
         
@@ -51,7 +51,7 @@ class TestEmbeddingService:
         mock_openai_client.embeddings.create.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_embed_multiple_texts(self, embedding_service, mock_openai_client):
+    async def test_embed_multiple_texts(self, embedding_service, mock_openai_client) -> None:
         """Test embedding multiple texts in a single batch."""
         texts = ["First document", "Second document"]
         
@@ -62,7 +62,7 @@ class TestEmbeddingService:
         mock_openai_client.embeddings.create.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_embed_batches_large_list(self, embedding_service, mock_openai_client):
+    async def test_embed_batches_large_list(self, embedding_service, mock_openai_client) -> None:
         """Test that large lists are automatically batched."""
         # Create mock that returns different embeddings for each batch
         call_count = 0
@@ -89,18 +89,18 @@ class TestEmbeddingService:
         assert call_count == 3  # 5 texts / 2 batch_size = 3 batches
     
     @pytest.mark.asyncio
-    async def test_embed_empty_list(self, embedding_service):
+    async def test_embed_empty_list(self, embedding_service) -> None:
         """Test embedding empty list returns empty list."""
         embeddings = await embedding_service.embed([])
         assert embeddings == []
     
-    def test_embed_invalid_input(self, embedding_service):
+    def test_embed_invalid_input(self, embedding_service) -> None:
         """Test that invalid inputs raise ValueError."""
         with pytest.raises(ValueError, match="non-empty strings"):
             # This will fail at validation, not API call
             pass  # Will be caught by embed() validation
     
-    def test_init_missing_api_key(self):
+    def test_init_missing_api_key(self) -> None:
         """Test that missing API key raises ValueError."""
         with patch.dict('os.environ', {}, clear=True):
             with pytest.raises(ValueError, match="OpenAI API key is required"):
@@ -111,7 +111,7 @@ class TestVectorSearch:
     """Integration tests for vector search functionality."""
     
     @pytest.fixture
-    def mock_supabase_client(self):
+    def mock_supabase_client(self) -> Any:
         """Create a mock Supabase client."""
         client = Mock(spec=Client)
         client.rpc = Mock(return_value=client)
@@ -119,17 +119,17 @@ class TestVectorSearch:
         return client
     
     @pytest.fixture
-    def tenant_id(self):
+    def tenant_id(self) -> Any:
         """Create a test tenant ID."""
         return uuid4()
     
     @pytest.fixture
-    def document_id(self):
+    def document_id(self) -> Any:
         """Create a test document ID."""
         return uuid4()
     
     @pytest.mark.asyncio
-    async def test_search_document_chunks(self, mock_supabase_client, tenant_id, document_id):
+    async def test_search_document_chunks(self, mock_supabase_client, tenant_id, document_id) -> None:
         """Test searching document chunks using match_document_chunks function."""
         # Mock query embedding
         query_embedding = [0.1] * 1536
@@ -176,7 +176,7 @@ class TestVectorSearch:
     @pytest.mark.asyncio
     async def test_search_with_document_filter(
         self, mock_supabase_client, tenant_id, document_id
-    ):
+    ) -> None:
         """Test searching chunks filtered by specific document IDs."""
         query_embedding = [0.1] * 1536
         filter_doc_ids = [str(document_id)]
@@ -213,7 +213,7 @@ class TestVectorSearch:
     @pytest.mark.asyncio
     async def test_store_document_chunks_with_redaction(
         self, mock_supabase_client, tenant_id, document_id
-    ):
+    ) -> None:
         """Test storing document chunks with redaction enforcement."""
         from src.search.chunk_storage import ChunkStorageService
         
@@ -260,7 +260,7 @@ class TestVectorSearchPropertyBased:
     """
     
     @pytest.fixture
-    def embedding_service(self):
+    def embedding_service(self) -> Any:
         """Create EmbeddingService for property-based tests."""
         # Use actual service but with mocked API
         with patch('src.search.embeddings.AsyncOpenAI'):
@@ -269,7 +269,7 @@ class TestVectorSearchPropertyBased:
             return service
     
     @pytest.mark.asyncio
-    async def test_embed_unicode_characters(self, embedding_service):
+    async def test_embed_unicode_characters(self, embedding_service) -> None:
         """Test that unicode characters are handled correctly."""
         texts = [
             "Hello 世界",
@@ -289,7 +289,7 @@ class TestVectorSearchPropertyBased:
         assert all(len(e) == 1536 for e in embeddings)
     
     @pytest.mark.asyncio
-    async def test_embed_special_characters(self, embedding_service):
+    async def test_embed_special_characters(self, embedding_service) -> None:
         """Test that special characters don't break embedding."""
         texts = [
             "SQL injection: ' OR '1'='1",
@@ -307,7 +307,7 @@ class TestVectorSearchPropertyBased:
         assert len(embeddings) == len(texts)
     
     @pytest.mark.asyncio
-    async def test_embed_very_long_text(self, embedding_service):
+    async def test_embed_very_long_text(self, embedding_service) -> None:
         """Test that very long texts are handled (OpenAI has token limits)."""
         # Create a very long text (but within reasonable limits)
         long_text = "This is a test. " * 1000  # ~16k characters

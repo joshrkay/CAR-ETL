@@ -1,6 +1,7 @@
 """Unit tests for tenant provisioning."""
 import pytest
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from typing import Any, Generator
+from unittest.mock import Mock, patch
 from uuid import uuid4
 from supabase import Client
 
@@ -12,7 +13,7 @@ from src.services.storage_setup import StorageSetupService, StorageSetupError
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock(spec=Client)
     client.table = Mock(return_value=client)
@@ -29,7 +30,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def provisioning_service(mock_supabase_client):
+def provisioning_service(mock_supabase_client) -> Any:
     """Create a TenantProvisioningService instance."""
     with patch('src.services.tenant_provisioning.get_auth_config') as mock_config:
         mock_config.return_value = Mock(
@@ -230,7 +231,6 @@ def test_provision_tenant_rollback_on_user_failure(
 
 def test_storage_setup_create_bucket(mock_supabase_client) -> None:
     """Test storage bucket creation."""
-    from src.services.storage_setup import StorageSetupService
     
     tenant_id = uuid4()
     bucket_name = f"documents-{tenant_id}"
@@ -261,7 +261,6 @@ def test_storage_setup_create_bucket(mock_supabase_client) -> None:
 
 def test_storage_setup_delete_bucket(mock_supabase_client) -> None:
     """Test storage bucket deletion."""
-    from src.services.storage_setup import StorageSetupService
     
     tenant_id = uuid4()
     

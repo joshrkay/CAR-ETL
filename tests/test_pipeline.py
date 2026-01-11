@@ -29,7 +29,7 @@ class TestGetDocument:
     """Tests for get_document function."""
 
     @pytest.mark.asyncio
-    async def test_get_document_success(self):
+    async def test_get_document_success(self) -> None:
         """Test successful document retrieval."""
         document_id = uuid4()
         mock_document = {
@@ -51,7 +51,7 @@ class TestGetDocument:
         mock_supabase.table.assert_called_once_with("documents")
 
     @pytest.mark.asyncio
-    async def test_get_document_not_found(self):
+    async def test_get_document_not_found(self) -> None:
         """Test document not found error."""
         document_id = uuid4()
 
@@ -64,7 +64,7 @@ class TestGetDocument:
             await get_document(mock_supabase, document_id)
 
     @pytest.mark.asyncio
-    async def test_get_document_database_error(self):
+    async def test_get_document_database_error(self) -> None:
         """Test database error handling."""
         document_id = uuid4()
 
@@ -81,7 +81,7 @@ class TestDownloadDocument:
     """Tests for download_document function."""
 
     @pytest.mark.asyncio
-    async def test_download_document_success(self):
+    async def test_download_document_success(self) -> None:
         """Test successful document download."""
         tenant_id = uuid4()
         storage_path = "uploads/test.pdf"
@@ -97,7 +97,7 @@ class TestDownloadDocument:
         mock_supabase.storage.from_.return_value.download.assert_called_once_with(storage_path)
 
     @pytest.mark.asyncio
-    async def test_download_document_not_found(self):
+    async def test_download_document_not_found(self) -> None:
         """Test document not found in storage."""
         tenant_id = uuid4()
         storage_path = "uploads/missing.pdf"
@@ -109,7 +109,7 @@ class TestDownloadDocument:
             await download_document(mock_supabase, storage_path, tenant_id)
 
     @pytest.mark.asyncio
-    async def test_download_document_storage_error(self):
+    async def test_download_document_storage_error(self) -> None:
         """Test storage error handling."""
         tenant_id = uuid4()
         storage_path = "uploads/test.pdf"
@@ -125,7 +125,7 @@ class TestParseDocumentContent:
     """Tests for parse_document_content function."""
 
     @pytest.mark.asyncio
-    async def test_parse_document_success(self):
+    async def test_parse_document_success(self) -> None:
         """Test successful document parsing."""
         content = b"PDF content"
         mime_type = "application/pdf"
@@ -147,7 +147,7 @@ class TestParseDocumentContent:
             mock_route.assert_called_once_with(content, mime_type)
 
     @pytest.mark.asyncio
-    async def test_parse_document_parser_error(self):
+    async def test_parse_document_parser_error(self) -> None:
         """Test parser error handling."""
         content = b"Invalid content"
         mime_type = "application/pdf"
@@ -163,7 +163,7 @@ class TestRedactPII:
     """Tests for redact_pii function."""
 
     @pytest.mark.asyncio
-    async def test_redact_pii_enabled(self):
+    async def test_redact_pii_enabled(self) -> None:
         """Test PII redaction when enabled."""
         text = "John Smith lives at 123 Main St"
 
@@ -176,7 +176,7 @@ class TestRedactPII:
             mock_redact.assert_called_once_with(text)
 
     @pytest.mark.asyncio
-    async def test_redact_pii_disabled(self):
+    async def test_redact_pii_disabled(self) -> None:
         """Test PII redaction when disabled."""
         text = "John Smith lives at 123 Main St"
 
@@ -185,7 +185,7 @@ class TestRedactPII:
         assert result == text
 
     @pytest.mark.asyncio
-    async def test_redact_pii_error(self):
+    async def test_redact_pii_error(self) -> None:
         """Test PII redaction error handling."""
         text = "Some text"
 
@@ -200,7 +200,7 @@ class TestExtractCREFields:
     """Tests for extract_cre_fields function."""
 
     @pytest.mark.asyncio
-    async def test_extract_cre_fields_with_document_type(self):
+    async def test_extract_cre_fields_with_document_type(self) -> None:
         """Test field extraction with provided document type."""
         document_text = "Lease agreement for ABC Corp..."
         document_type = "lease"
@@ -235,7 +235,7 @@ class TestExtractCREFields:
             )
 
     @pytest.mark.asyncio
-    async def test_extract_cre_fields_auto_detect_type(self):
+    async def test_extract_cre_fields_auto_detect_type(self) -> None:
         """Test field extraction with auto-detection of document type."""
         document_text = "Lease agreement for ABC Corp..."
 
@@ -264,7 +264,7 @@ class TestExtractCREFields:
             mock_extractor.extract_fields.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_extract_cre_fields_error(self):
+    async def test_extract_cre_fields_error(self) -> None:
         """Test field extraction error handling."""
         document_text = "Some text"
 
@@ -283,7 +283,7 @@ class TestSaveExtraction:
     """Tests for save_extraction function."""
 
     @pytest.mark.asyncio
-    async def test_save_extraction_success(self):
+    async def test_save_extraction_success(self) -> None:
         """Test successful extraction save."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -331,7 +331,7 @@ class TestSaveExtraction:
         assert any("extraction_fields" in str(call) for call in calls)
 
     @pytest.mark.asyncio
-    async def test_save_extraction_no_extraction_record(self):
+    async def test_save_extraction_no_extraction_record(self) -> None:
         """Test save extraction when record creation fails."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -357,7 +357,7 @@ class TestSaveExtraction:
             )
 
     @pytest.mark.asyncio
-    async def test_save_extraction_database_error(self):
+    async def test_save_extraction_database_error(self) -> None:
         """Test save extraction with database error."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -392,7 +392,7 @@ class TestProcessDocument:
     """Integration tests for process_document function."""
 
     @pytest.mark.asyncio
-    async def test_process_document_success(self):
+    async def test_process_document_success(self) -> None:
         """Test successful end-to-end document processing."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -439,7 +439,7 @@ class TestProcessDocument:
             mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_process_document_parsing_failure(self):
+    async def test_process_document_parsing_failure(self) -> None:
         """Test document processing with parsing failure."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -478,7 +478,7 @@ class TestProcessDocument:
             mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_process_document_extraction_failure(self):
+    async def test_process_document_extraction_failure(self) -> None:
         """Test document processing with extraction failure."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -516,7 +516,7 @@ class TestProcessDocument:
             mock_finalize.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_process_document_not_found(self):
+    async def test_process_document_not_found(self) -> None:
         """Test document processing with document not found."""
         document_id = uuid4()
         mock_supabase = Mock()
@@ -544,7 +544,7 @@ class TestHelperFunctions:
     """Tests for refactored helper functions."""
 
     @pytest.mark.asyncio
-    async def test_validate_and_prepare_success(self):
+    async def test_validate_and_prepare_success(self) -> None:
         """Test _validate_and_prepare with valid document."""
         from src.extraction.pipeline import _validate_and_prepare
 
@@ -569,7 +569,7 @@ class TestHelperFunctions:
             # No document status update - documents table is immutable
 
     @pytest.mark.asyncio
-    async def test_parse_and_redact_success(self):
+    async def test_parse_and_redact_success(self) -> None:
         """Test _parse_and_redact with valid document."""
         from src.extraction.pipeline import _parse_and_redact
 
@@ -603,7 +603,7 @@ class TestHelperFunctions:
             mock_redact.assert_called_once_with("Document text", enabled=True)
 
     @pytest.mark.asyncio
-    async def test_extract_and_persist_success(self):
+    async def test_extract_and_persist_success(self) -> None:
         """Test _extract_and_persist with valid extraction."""
         from src.extraction.pipeline import _extract_and_persist
 
@@ -638,7 +638,7 @@ class TestHelperFunctions:
             mock_save.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_finalize_success(self):
+    async def test_finalize_success(self) -> None:
         """Test _finalize_success creates correct result."""
         from src.extraction.pipeline import _finalize_success
 
@@ -661,7 +661,7 @@ class TestHelperFunctions:
         # No document status update - extraction record status is source of truth
 
     @pytest.mark.asyncio
-    async def test_finalize_failure(self):
+    async def test_finalize_failure(self) -> None:
         """Test _finalize_failure creates failed extraction record."""
         from src.extraction.pipeline import _finalize_failure
 
@@ -697,7 +697,7 @@ class TestPipelineEdgeCases:
     """Tests for edge cases and error scenarios."""
 
     @pytest.mark.asyncio
-    async def test_empty_extraction_fields(self):
+    async def test_empty_extraction_fields(self) -> None:
         """Test save extraction with no fields."""
         document_id = uuid4()
         tenant_id = uuid4()
@@ -726,13 +726,13 @@ class TestPipelineEdgeCases:
         assert result == extraction_id
 
     @pytest.mark.asyncio
-    async def test_redact_empty_text(self):
+    async def test_redact_empty_text(self) -> None:
         """Test PII redaction with empty text."""
         result = await redact_pii("", enabled=True)
         assert result == ""
 
     @pytest.mark.asyncio
-    async def test_parse_document_empty_content(self):
+    async def test_parse_document_empty_content(self) -> None:
         """Test parsing empty document."""
         content = b""
         mime_type = "application/pdf"
