@@ -69,7 +69,7 @@ async def test_om_extractor_mock_llm() -> None:
         return_value=Mock(choices=[Mock(message=Mock(content=json.dumps(mock_response)))])
     )
 
-    with patch("src.extraction.om_extractor.AsyncOpenAI", return_value=mock_llm):
+    with patch("openai.AsyncOpenAI", return_value=mock_llm):
         with patch("src.extraction.om_extractor.presidio_redact", return_value=lambda x: x):
             extractor = OMExtractor(api_key="test-key")
             extractor.client = mock_llm
