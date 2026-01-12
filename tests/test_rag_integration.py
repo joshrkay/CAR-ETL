@@ -5,6 +5,7 @@ Tests the complete flow from HTTP request to answer generation with citations.
 """
 
 import pytest
+from typing import Any
 from uuid import uuid4
 from unittest.mock import Mock, AsyncMock, patch
 from fastapi.testclient import TestClient
@@ -16,7 +17,7 @@ class TestRAGIntegration:
     """Integration tests for RAG Q&A endpoint."""
 
     @pytest.fixture
-    def mock_auth(self) -> TestClient:
+    def mock_auth(self) -> dict[str, Any]:
         """Mock authentication context."""
         return {
             "user_id": str(uuid4()),

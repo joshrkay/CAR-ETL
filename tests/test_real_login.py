@@ -27,7 +27,7 @@ import jwt
 from uuid import uuid4
 
 
-def test_real_login_flow() -> None:
+def test_real_login_flow() -> bool:
     """Test the complete login flow with a real Supabase user."""
     config = get_auth_config()
     

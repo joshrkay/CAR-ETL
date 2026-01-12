@@ -55,6 +55,7 @@ def test_calculate_match_score_full_match() -> None:
         canonical_name="Acme Holdings",
         attributes={"address": "123 Main St"},
         external_id="EXT-1",
+        updated_at=None,
     )
     entity2 = EntityRecord(
         id=uuid4(),
@@ -62,6 +63,7 @@ def test_calculate_match_score_full_match() -> None:
         canonical_name="Acme Holdings",
         attributes={"address": "123 Main St"},
         external_id="EXT-1",
+        updated_at=None,
     )
 
     assert calculate_match_score(entity1, entity2) == 1.0

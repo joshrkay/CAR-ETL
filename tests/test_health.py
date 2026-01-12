@@ -6,11 +6,11 @@ from fastapi import FastAPI
 
 from src.api.routes import health as health_routes
 from src.services.health_checker import HealthChecker, HealthCheckResult
-
-
 from typing import Any, Generator
+
+
 @pytest.fixture
-def app() -> TestClient:
+def app() -> FastAPI:
     """Create FastAPI app with health routes."""
     app = FastAPI()
     app.include_router(health_routes.router)
