@@ -112,7 +112,7 @@ def mock_supabase_client() -> Any:
     rate_limit_query.select = Mock(return_value=rate_limit_query)
     rate_limit_query.execute = Mock(return_value=rate_limit_response)
     
-    def table_side_effect(table_name):
+    def table_side_effect(table_name: str) -> Any:
         if table_name == "tenants":
             return tenant_query
         elif table_name == "auth_rate_limits":
@@ -128,10 +128,10 @@ def mock_supabase_client() -> Any:
 @pytest.fixture
 def client_with_auth(mock_auth_context, mock_supabase_client) -> Generator:
     """Create test client with mocked auth."""
-    def override_get_current_user():
+    def override_get_current_user() -> Any:
         return mock_auth_context
     
-    def override_get_supabase_client():
+    def override_get_supabase_client() -> Any:
         return mock_supabase_client
     
     from src.dependencies import get_current_user, get_supabase_client
@@ -527,10 +527,10 @@ class TestBulkUploadEndpoint:
         auth.roles = ["Viewer"]
         auth.has_permission = Mock(return_value=False)
         
-        def override_get_current_user():
+        def override_get_current_user() -> Any:
             return auth
         
-        def override_get_supabase_client():
+        def override_get_supabase_client() -> Any:
             return mock_supabase_client
         
         from src.dependencies import get_current_user, get_supabase_client

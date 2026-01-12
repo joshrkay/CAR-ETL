@@ -237,7 +237,7 @@ class TestHybridSearchService:
         ]
 
         # Configure mock to return different results for different functions
-        def mock_rpc_side_effect(function_name, *args, **kwargs):
+        def mock_rpc_side_effect(function_name: str, *args: Any, **kwargs: Any) -> Any:
             if function_name == "match_document_chunks":
                 mock_supabase_client.execute.return_value.data = vector_results
             elif function_name == "match_document_chunks_keyword":

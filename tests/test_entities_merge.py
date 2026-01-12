@@ -105,13 +105,13 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
     """Create test client with mocked auth and dependencies."""
     from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
     
-    def override_get_current_user():
+    def override_get_current_user() -> Any:
         return mock_auth_context
     
-    def override_get_supabase_client():
+    def override_get_supabase_client() -> Any:
         return mock_supabase_client
     
-    def override_get_audit_logger():
+    def override_get_audit_logger() -> Any:
         return mock_audit_logger
     
     # Patch rate limiter
@@ -269,13 +269,13 @@ class TestEntityMergeEndpoint:
         auth_without_permission.tenant_slug = "test-tenant"
         auth_without_permission.has_permission = Mock(return_value=False)
         
-        def override_get_current_user():
+        def override_get_current_user() -> Any:
             return auth_without_permission
         
-        def override_get_supabase_client():
+        def override_get_supabase_client() -> Any:
             return mock_supabase_client
         
-        def override_get_audit_logger():
+        def override_get_audit_logger() -> Any:
             return mock_audit_logger
         
         # Patch rate limiter
@@ -350,7 +350,7 @@ class TestEntityMergeEndpoint:
         """Test request without Authorization header returns 401."""
         from src.dependencies import get_supabase_client
         
-        def override_get_supabase_client():
+        def override_get_supabase_client() -> Any:
             return mock_supabase_client
         
         # Patch rate limiter

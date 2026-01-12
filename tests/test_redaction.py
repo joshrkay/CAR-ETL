@@ -4,6 +4,7 @@ import re
 from unittest.mock import patch
 from hypothesis import given, strategies as st
 from src.services.redaction import presidio_redact, presidio_redact_bytes
+from typing import Any
 
 
 def test_presidio_redact_email() -> None:

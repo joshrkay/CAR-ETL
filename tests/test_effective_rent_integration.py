@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 
 from src.main import app
+from typing import Any
 
 
 class TestEffectiveRentAPIIntegration:
@@ -38,7 +39,7 @@ class TestEffectiveRentAPIIntegration:
                 mock_supabase = Mock()
                 mock_get_supabase.return_value = mock_supabase
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -108,7 +109,7 @@ class TestEffectiveRentAPIIntegration:
 
                 call_count = [0]
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = extractions
@@ -154,7 +155,7 @@ class TestEffectiveRentAPIIntegration:
                 rents = [5000, 10000, 7500]
                 call_count = [0]
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = extractions
@@ -197,7 +198,7 @@ class TestEffectiveRentAPIIntegration:
                 mock_supabase = Mock()
                 mock_get_supabase.return_value = mock_supabase
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -276,7 +277,7 @@ class TestEffectiveRentAPIIntegration:
                 rents = [5000, 7500, 10000, 6000, 8000]
                 call_count = [0]
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = extractions

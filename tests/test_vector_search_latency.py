@@ -51,7 +51,7 @@ class TestVectorSearchLatency:
         client = Mock(spec=Client)
         
         # Simulate database query latency (10-50ms)
-        def mock_rpc(*args, **kwargs):
+        def mock_rpc(*args: Any, **kwargs: Any) -> Any:
             time.sleep(0.02)  # 20ms average query latency
             mock_result = Mock()
             mock_result.data = [

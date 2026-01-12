@@ -49,7 +49,7 @@ def test_provision_tenant_success(provisioning_service, mock_supabase_client) ->
     # Mock slug validation (no existing tenant)
     call_count = [0]  # Use list to allow modification in nested function
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count[0] += 1
         current_count = call_count[0]
         
@@ -134,7 +134,7 @@ def test_provision_tenant_rollback_on_bucket_failure(
     # Mock slug validation (no existing tenant)
     call_count = [0]
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count[0] += 1
         current_count = call_count[0]
         
@@ -190,7 +190,7 @@ def test_provision_tenant_rollback_on_user_failure(
     tenant_id = uuid4()
     
     # Mock slug validation and tenant creation
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count = getattr(execute_side_effect, "call_count", 0)
         execute_side_effect.call_count = call_count + 1
         

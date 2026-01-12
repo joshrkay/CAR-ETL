@@ -159,10 +159,10 @@ class TestErrorHandlerMiddleware:
 
         # Create a mock RequestValidationError
         class MockValidationError:
-            def __init__(self):
+            def __init__(self) -> None:
                 pass
 
-            def errors(self):
+            def errors(self) -> Any:
                 return [
                     {"loc": ("body", "name"), "msg": "field required"},
                     {"loc": ("body", "price"), "msg": "value must be greater than 0"},

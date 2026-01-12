@@ -96,7 +96,7 @@ def mock_supabase_client() -> Any:
     rate_limit_insert = Mock()
     rate_limit_insert.insert = Mock(return_value=rate_limit_insert_response)
     
-    def table_side_effect(table_name):
+    def table_side_effect(table_name: str) -> Any:
         if table_name == "tenants":
             return tenant_query
         elif table_name == "auth_rate_limits":
@@ -143,38 +143,38 @@ def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
 class AuthenticatedTestClient:
     """Wrapper around TestClient that automatically adds Authorization header."""
     
-    def __init__(self, test_client: TestClient, token: str):
+    def __init__(self, test_client: TestClient, token: str) -> None:
         self._client = test_client
         self._token = token
     
-    def _add_auth_header(self, kwargs):
+    def _add_auth_header(self, kwargs: Any) -> Any:
         """Add Authorization header to request kwargs."""
         if "headers" not in kwargs:
             kwargs["headers"] = {}
         kwargs["headers"]["Authorization"] = f"Bearer {self._token}"
         return kwargs
     
-    def post(self, *args, **kwargs):
+    def post(self, *args: Any, **kwargs: Any) -> Any:
         """POST request with automatic auth header."""
         kwargs = self._add_auth_header(kwargs)
         return self._client.post(*args, **kwargs)
     
-    def get(self, *args, **kwargs):
+    def get(self, *args: Any, **kwargs: Any) -> Any:
         """GET request with automatic auth header."""
         kwargs = self._add_auth_header(kwargs)
         return self._client.get(*args, **kwargs)
     
-    def put(self, *args, **kwargs):
+    def put(self, *args: Any, **kwargs: Any) -> Any:
         """PUT request with automatic auth header."""
         kwargs = self._add_auth_header(kwargs)
         return self._client.put(*args, **kwargs)
     
-    def delete(self, *args, **kwargs):
+    def delete(self, *args: Any, **kwargs: Any) -> Any:
         """DELETE request with automatic auth header."""
         kwargs = self._add_auth_header(kwargs)
         return self._client.delete(*args, **kwargs)
     
-    def patch(self, *args, **kwargs):
+    def patch(self, *args: Any, **kwargs: Any) -> Any:
         """PATCH request with automatic auth header."""
         kwargs = self._add_auth_header(kwargs)
         return self._client.patch(*args, **kwargs)
@@ -183,10 +183,10 @@ class AuthenticatedTestClient:
 @pytest.fixture
 def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config) -> Generator:
     """Create test client with mocked auth middleware."""
-    def override_get_current_user():
+    def override_get_current_user() -> Any:
         return mock_auth_context
     
-    def override_get_supabase_client():
+    def override_get_supabase_client() -> Any:
         return mock_supabase_client
     
     from src.dependencies import get_current_user, get_supabase_client
@@ -441,10 +441,10 @@ class TestAuthentication:
         auth.roles = ["Viewer"]  # Viewer doesn't have create permission
         auth.has_permission = Mock(return_value=False)
         
-        def override_get_current_user():
+        def override_get_current_user() -> Any:
             return auth
         
-        def override_get_supabase_client():
+        def override_get_supabase_client() -> Any:
             return mock_supabase_client
         
         from src.dependencies import get_current_user, get_supabase_client

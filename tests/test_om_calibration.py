@@ -2,10 +2,11 @@ import pytest
 from uuid import uuid4
 
 from src.extraction.om_calibration import OMCalibrationTracker
+from typing import Any
 
 
 class _ExtractionStub:
-    def __init__(self, asking_price, noi_in_place, cap_rate_in_place, overall_confidence=0.0):
+    def __init__(self, asking_price: Any, noi_in_place: Any, cap_rate_in_place: Any, overall_confidence: Any = 0.0) -> None:
         self.asking_price = asking_price
         self.noi_in_place = noi_in_place
         self.cap_rate_in_place = cap_rate_in_place

@@ -3,6 +3,8 @@ Property-Based Tests for Extraction Pipeline - Critical Paths
 
 Uses hypothesis for fuzzing critical security paths (redaction, versioning).
 Required by .cursorrules for all critical paths.
+from typing import Any
+
 """
 
 import pytest
@@ -19,7 +21,7 @@ from src.extraction.pipeline import (
 
 # Custom strategies for realistic test data
 @st.composite
-def pii_text(draw):
+def pii_text(draw: Any) -> Any:
     """Generate text that may contain PII-like patterns."""
     components = []
 

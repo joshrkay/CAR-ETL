@@ -10,6 +10,7 @@ from uuid import uuid4
 from io import BytesIO
 
 from src.services.file_storage import FileStorageService, StorageUploadError
+from typing import Any
 
 
 class TestFileStorageService:

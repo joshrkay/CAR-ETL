@@ -22,9 +22,10 @@ from src.entities.resolution import (
     select_merge_plan,
 )
 from src.exceptions import NotFoundError
+from typing import Any
 
 
-def _build_query_mock(data):
+def _build_query_mock(data: Any) -> Any:
     query = MagicMock()
     query.eq.return_value = query
     query.limit.return_value = query
@@ -32,7 +33,7 @@ def _build_query_mock(data):
     return query
 
 
-def _build_update_query_mock(data):
+def _build_update_query_mock(data: Any) -> Any:
     query = MagicMock()
     query.eq.return_value = query
     query.execute.return_value = MagicMock(data=data)

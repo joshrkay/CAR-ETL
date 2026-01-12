@@ -50,7 +50,7 @@ async def test_is_enabled_flag_exists_with_default(flag_service, mock_supabase_c
     
     call_count = {"count": 0}
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count["count"] += 1
         if call_count["count"] == 1:
             # First call: flag lookup
@@ -81,7 +81,7 @@ async def test_is_enabled_flag_exists_with_override(flag_service, mock_supabase_
     
     call_count = {"count": 0}
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count["count"] += 1
         if call_count["count"] == 1:
             return flag_result
@@ -142,7 +142,7 @@ async def test_is_enabled_cache_expired(flag_service, mock_supabase_client) -> N
     
     call_count = {"count": 0}
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count["count"] += 1
         if call_count["count"] == 1:
             return flag_result
@@ -177,7 +177,7 @@ async def test_get_all_flags(flag_service, mock_supabase_client) -> None:
     
     call_count = {"count": 0}
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count["count"] += 1
         if call_count["count"] == 1:
             return flags_result
@@ -218,7 +218,7 @@ async def test_get_flag_details(flag_service, mock_supabase_client) -> None:
     
     call_count = {"count": 0}
     
-    def execute_side_effect():
+    def execute_side_effect() -> Any:
         call_count["count"] += 1
         if call_count["count"] == 1:
             return flag_result

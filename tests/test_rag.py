@@ -10,6 +10,7 @@ from src.rag.prompts import format_system_prompt, format_user_prompt
 from src.rag.retriever import Retriever
 from src.rag.generator import Generator
 from src.rag.pipeline import RAGPipeline
+from typing import Any
 
 
 # ========== Citation Tests ==========

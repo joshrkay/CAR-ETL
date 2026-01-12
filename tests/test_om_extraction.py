@@ -11,6 +11,7 @@ from src.extraction.om_confidence import (
 )
 from src.extraction.om_extractor import OMExtractor
 from src.extraction.om_prompts import build_om_extraction_prompt
+from typing import Any
 
 
 def test_field_definitions_have_critical_fields() -> None:

@@ -109,7 +109,7 @@ class TestEffectiveRentService:
         ]
 
         # Mock documents query
-        def mock_table(table_name):
+        def mock_table(table_name: str) -> Any:
             mock_chain = Mock()
             if table_name == "extractions":
                 mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -159,7 +159,7 @@ class TestEffectiveRentService:
 
         call_count = [0]
 
-        def mock_table(table_name):
+        def mock_table(table_name: str) -> Any:
             mock_chain = Mock()
             if table_name == "extractions":
                 mock_chain.select.return_value.eq.return_value.execute.return_value.data = extractions
@@ -203,7 +203,7 @@ class TestEffectiveRentService:
 
         call_count = [0]
 
-        def mock_table(table_name):
+        def mock_table(table_name: str) -> Any:
             mock_chain = Mock()
             if table_name == "extractions":
                 mock_chain.select.return_value.eq.return_value.execute.return_value.data = extractions
@@ -232,7 +232,7 @@ class TestEffectiveRentService:
         extraction_id = str(uuid4())
         doc_id = str(uuid4())
 
-        def mock_table(table_name):
+        def mock_table(table_name: str) -> Any:
             mock_chain = Mock()
             if table_name == "extractions":
                 mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -286,7 +286,7 @@ class TestEffectiveRentService:
         extraction_id = str(uuid4())
         doc_id = str(uuid4())
 
-        def mock_table(table_name):
+        def mock_table(table_name: str) -> Any:
             mock_chain = Mock()
             if table_name == "extractions":
                 mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -316,7 +316,7 @@ class TestEffectiveRentService:
         extraction_id = str(uuid4())
         doc_id = str(uuid4())
 
-        def mock_table(table_name):
+        def mock_table(table_name: str) -> Any:
             mock_chain = Mock()
             if table_name == "extractions":
                 mock_chain.select.return_value.eq.return_value.execute.return_value.data = [

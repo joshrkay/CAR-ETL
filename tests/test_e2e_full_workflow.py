@@ -259,7 +259,7 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
     mock_tables = {}
 
     # Configure table chain for tenant operations
-    def table_side_effect(table_name):
+    def table_side_effect(table_name: str) -> Any:
         # Return cached mock if it exists (allows test to override)
         if table_name in mock_tables:
             return mock_tables[table_name]
@@ -275,14 +275,14 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
 
         if table_name == "tenants":
             # Capture insert data
-            def insert_side_effect(data):
+            def insert_side_effect(data: Any) -> Any:
                 tenant_insert_data.update(data)
                 return mock_table
 
             mock_table.insert = Mock(side_effect=insert_side_effect)
 
             # Track execute calls across multiple table("tenants") invocations
-            def execute_side_effect():
+            def execute_side_effect() -> Any:
                 count = execute_call_count["tenants"]
                 execute_call_count["tenants"] += 1
                 if count == 0:

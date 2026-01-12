@@ -114,7 +114,7 @@ class TestDocumentConstraints:
         mock_table2.insert = Mock(return_value=mock_insert2)
         
         call_count = [0]
-        def table_side_effect(table_name):
+        def table_side_effect(table_name: Any) -> Any:
             call_count[0] += 1
             if call_count[0] == 1:
                 return mock_table1

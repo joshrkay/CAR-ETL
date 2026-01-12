@@ -30,7 +30,7 @@ def mock_config() -> Any:
 @pytest.fixture
 def create_jwt_token(mock_config) -> Any:
     """Factory to create JWT tokens with specified roles."""
-    def _create_token(roles: list[str]):
+    def _create_token(roles: list[str]) -> Any:
         user_id = uuid4()
         tenant_id = uuid4()
         exp = datetime.utcnow() + timedelta(hours=1)

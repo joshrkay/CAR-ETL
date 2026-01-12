@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 from fastapi.testclient import TestClient
 
 from src.main import app
+from typing import Any
 
 
 class TestExtendedAnalyticsAPI:
@@ -28,7 +29,7 @@ class TestExtendedAnalyticsAPI:
                 mock_get_supabase.return_value = mock_supabase
 
                 # Mock extraction and field data
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -67,7 +68,7 @@ class TestExtendedAnalyticsAPI:
                 mock_supabase = Mock()
                 mock_get_supabase.return_value = mock_supabase
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -105,7 +106,7 @@ class TestExtendedAnalyticsAPI:
                 mock_supabase = Mock()
                 mock_get_supabase.return_value = mock_supabase
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = [
@@ -145,7 +146,7 @@ class TestExtendedAnalyticsAPI:
                 mock_supabase = Mock()
                 mock_get_supabase.return_value = mock_supabase
 
-                def mock_table(table_name):
+                def mock_table(table_name: str) -> Any:
                     mock_chain = Mock()
                     if table_name == "extractions":
                         mock_chain.select.return_value.eq.return_value.execute.return_value.data = [

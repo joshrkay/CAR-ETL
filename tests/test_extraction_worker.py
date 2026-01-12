@@ -3,6 +3,8 @@ Tests for extraction worker background processing.
 
 Comprehensive test coverage for ExtractionWorker class including:
 - Initialization and configuration
+from typing import Any
+
 - Start/stop lifecycle
 - Batch processing and concurrency
 - Retry logic and dead letter queue

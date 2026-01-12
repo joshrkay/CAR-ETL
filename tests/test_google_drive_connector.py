@@ -1,5 +1,5 @@
 """
-from typing import Any, Generator
+from typing import Any, Generator, Any
 End-to-End Tests for Google Drive Connector
 
 Tests cover:
@@ -96,7 +96,7 @@ def mock_supabase_client() -> Mock:
     documents_query.insert = Mock(return_value=documents_response)
     documents_query.update = Mock(return_value=documents_response)
     
-    def table_side_effect(table_name):
+    def table_side_effect(table_name: str) -> Any:
         if table_name == "connectors":
             return connector_query
         elif table_name == "oauth_states":
@@ -113,10 +113,10 @@ def mock_supabase_client() -> Mock:
 @pytest.fixture
 def client_with_auth(mock_auth_context, mock_supabase_client) -> Generator:
     """Create test client with mocked auth."""
-    def override_get_current_user():
+    def override_get_current_user() -> Any:
         return mock_auth_context
     
-    def override_get_supabase_client():
+    def override_get_supabase_client() -> Any:
         return mock_supabase_client
     
     from src.dependencies import get_current_user, get_supabase_client

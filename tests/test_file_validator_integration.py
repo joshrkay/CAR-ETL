@@ -10,6 +10,7 @@ Tests include:
 import hashlib
 from datetime import datetime, timedelta
 from src.services.file_validator import FileValidator
+from typing import Any
 
 
 class Test100MBFileBoundary:
@@ -206,7 +207,7 @@ class TestDuplicateDetection:
 class UploadSession:
     """Simple upload session for testing."""
     
-    def __init__(self, session_id: str, tenant_id: str, expires_at: datetime):
+    def __init__(self, session_id: str, tenant_id: str, expires_at: datetime) -> None:
         self.session_id = session_id
         self.tenant_id = tenant_id
         self.created_at = datetime.now()
@@ -214,7 +215,7 @@ class UploadSession:
         self.files: list[dict] = []
         self.is_active = True
 
-    def add_file(self, file_hash: str, file_size: int, mime_type: str):
+    def add_file(self, file_hash: str, file_size: int, mime_type: str) -> None:
         """Add file to session."""
         self.files.append({
             "hash": file_hash,
@@ -227,7 +228,7 @@ class UploadSession:
         """Check if session is expired."""
         return datetime.now() > self.expires_at
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Mark session for cleanup."""
         self.is_active = False
 
