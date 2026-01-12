@@ -125,7 +125,7 @@ def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any, valid_jw
     config_patcher2.start()
     
     # Patch the middleware's _validate_token to bypass validation
-    async def mock_validate_token(self, request: Any) -> None:
+    async def mock_validate_token(self: Any, request: Any) -> None:
         # Set auth context directly
         request.state.auth = mock_auth_context
         request.state.supabase = mock_supabase_client
@@ -289,7 +289,7 @@ class TestEntityMergeEndpoint:
         config_patcher2.start()
         
         # Patch the middleware's _validate_token to bypass validation
-        async def mock_validate_token(self, request: Any) -> None:
+        async def mock_validate_token(self: Any, request: Any) -> None:
             # Set auth context directly
             request.state.auth = auth_without_permission
             request.state.supabase = mock_supabase_client

@@ -256,7 +256,7 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
     tenant_insert_data = {}
 
     # Cache mock tables so test can override them later
-    mock_tables = {}
+    mock_tables: dict[str, Any] = {}
 
     # Configure table chain for tenant operations
     def table_side_effect(table_name: str) -> Any:

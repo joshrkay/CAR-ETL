@@ -112,7 +112,7 @@ class TestExtractionWorkerLifecycle:
                             async def stop_after_batch() -> None:
                                 await worker.stop()
 
-                            worker._process_batch.side_effect = stop_after_batch
+                            worker._process_batch.side_effect = stop_after_batch  # type: ignore[attr-defined]
 
                             await worker.start()
 
@@ -136,7 +136,7 @@ class TestExtractionWorkerLifecycle:
                             async def stop_now() -> None:
                                 await worker.stop()
 
-                            worker._process_batch.side_effect = stop_now
+                            worker._process_batch.side_effect = stop_now  # type: ignore[attr-defined]
 
                             await worker.start()
 
@@ -159,7 +159,7 @@ class TestExtractionWorkerLifecycle:
                             async def stop_now() -> None:
                                 await worker.stop()
 
-                            worker._process_batch.side_effect = stop_now
+                            worker._process_batch.side_effect = stop_now  # type: ignore[attr-defined]
 
                             await worker.start()
 

@@ -76,7 +76,7 @@ def test_validate_citations_invalid_doc() -> None:
 def test_validate_citations_no_info_response() -> None:
     """Test validation passes for 'no information' responses."""
     answer = "I don't have enough information to answer this based on the available documents."
-    chunks = []
+    chunks: list[ChunkMatch] = []
 
     assert validate_citations(answer, chunks) is True
 

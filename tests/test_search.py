@@ -447,7 +447,7 @@ class TestSearchAPI:
 
         # Invalid mode should fail validation
         with pytest.raises(ValidationError):
-            SearchRequest(query="test", mode="invalid_mode", limit=20)
+            SearchRequest(query="test", mode="invalid_mode", limit=20)  # type: ignore[arg-type]
 
         # Limit too high should fail validation
         with pytest.raises(ValidationError):

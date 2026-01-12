@@ -55,7 +55,7 @@ def create_jwt_token(mock_config: Any) -> Any:
 def app_with_auth(mock_config: Any) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
-    app.add_middleware(AuthMiddleware, config=mock_config)
+    app.add_middleware(AuthMiddleware, config=mock_config)  # type: ignore[arg-type]
     return app
 
 

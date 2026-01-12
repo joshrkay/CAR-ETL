@@ -405,11 +405,11 @@ class TestGoogleDriveSync:
         emitted_files = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs: Any) -> Any:
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 emitted_files.append(kwargs["file_id"])
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs: Any) -> None:
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
         
         mock_emitter = MockEmitter()
@@ -478,10 +478,10 @@ class TestGoogleDriveSync:
         deletions_emitted = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs: Any) -> Any:
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs: Any) -> None:
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 deletions_emitted.append(kwargs["file_id"])
         
         mock_emitter = MockEmitter()
@@ -543,16 +543,16 @@ class TestGoogleDriveSync:
         mock_state_store.get_page_token = AsyncMock(return_value=None)
         mock_state_store.save_page_token = AsyncMock()
         mock_state_store.update_last_sync = AsyncMock()
-        
+
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs: Any) -> Any:
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs: Any) -> None:
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
-        
+
         mock_emitter = MockEmitter()
-        
+
         # Mock client with shared drive
         mock_client = AsyncMock(spec=GoogleDriveClient)
         mock_client.get_start_page_token = AsyncMock(return_value="start-token")
@@ -621,11 +621,11 @@ class TestGoogleDriveSync:
         emitted_files = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs: Any) -> Any:
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 emitted_files.append(kwargs["file_id"])
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs: Any) -> None:
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
         
         mock_emitter = MockEmitter()
@@ -787,11 +787,11 @@ class TestIdempotency:
         emitted_file_ids = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs: Any) -> Any:
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 emitted_file_ids.append(kwargs["file_id"])
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs: Any) -> None:
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
         
         mock_emitter = MockEmitter()
@@ -873,9 +873,9 @@ class TestIdempotency:
         
         tenant_id = uuid4()
         connector_id = uuid4()
-        
+
         # Mock stores
-        saved_tokens = {}
+        saved_tokens: dict[Any, Any] = {}
         
         class MockStateStore(SyncStateStore):
             async def get_page_token(self, tenant_id: Any, connector_id: Any, drive_id: Any) -> Any:
@@ -893,16 +893,16 @@ class TestIdempotency:
         mock_config_store.get_shared_drive_ids = AsyncMock(return_value=[])
         
         mock_state_store = MockStateStore()
-        
+
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs: Any) -> Any:
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs: Any) -> None:
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
-        
+
         mock_emitter = MockEmitter()
-        
+
         # Simulate rapid token updates
         tokens = ["token-1", "token-2", "token-3", "token-4"]
         token_index = [0]

@@ -192,7 +192,7 @@ def test_provision_tenant_rollback_on_user_failure(
     # Mock slug validation and tenant creation
     def execute_side_effect() -> Any:
         call_count = getattr(execute_side_effect, "call_count", 0)
-        execute_side_effect.call_count = call_count + 1
+        execute_side_effect.call_count = call_count + 1  # type: ignore[attr-defined]
         
         if call_count == 1:
             return Mock(data=[])  # Slug check

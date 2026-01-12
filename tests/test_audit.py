@@ -228,7 +228,7 @@ class TestAuditMiddleware:
         """Create FastAPI app with audit middleware."""
         app = FastAPI()
         app.add_middleware(AuditMiddleware)
-        app.add_middleware(AuthMiddleware, config=mock_config)
+        app.add_middleware(AuthMiddleware, config=mock_config)  # type: ignore[arg-type]
         
         @app.get("/test")
         async def test_endpoint(request: Request) -> Any:
@@ -324,23 +324,23 @@ class TestEventTypes:
     
     def test_event_type_values(self) -> None:
         """Test all event types are defined."""
-        assert EventType.AUTH_LOGIN == "auth.login"
-        assert EventType.DOCUMENT_UPLOAD == "document.upload"
-        assert EventType.EXTRACTION_COMPLETE == "extraction.complete"
-        assert EventType.API_REQUEST == "api.request"
+        assert EventType.AUTH_LOGIN.value == "auth.login"
+        assert EventType.DOCUMENT_UPLOAD.value == "document.upload"
+        assert EventType.EXTRACTION_COMPLETE.value == "extraction.complete"
+        assert EventType.API_REQUEST.value == "api.request"
     
     def test_action_type_values(self) -> None:
         """Test all action types are defined."""
-        assert ActionType.CREATE == "create"
-        assert ActionType.READ == "read"
-        assert ActionType.UPDATE == "update"
-        assert ActionType.DELETE == "delete"
+        assert ActionType.CREATE.value == "create"
+        assert ActionType.READ.value == "read"
+        assert ActionType.UPDATE.value == "update"
+        assert ActionType.DELETE.value == "delete"
     
     def test_resource_type_values(self) -> None:
         """Test all resource types are defined."""
-        assert ResourceType.DOCUMENT == "document"
-        assert ResourceType.USER == "user"
-        assert ResourceType.TENANT == "tenant"
+        assert ResourceType.DOCUMENT.value == "document"
+        assert ResourceType.USER.value == "user"
+        assert ResourceType.TENANT.value == "tenant"
 
 
 class TestPropertyBasedAudit:

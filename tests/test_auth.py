@@ -61,7 +61,7 @@ def expired_token(mock_config: Any, valid_jwt_payload: Any) -> Any:
 def app_with_auth(mock_config: Any) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
-    app.add_middleware(AuthMiddleware, config=mock_config)
+    app.add_middleware(AuthMiddleware, config=mock_config)  # type: ignore[arg-type]
     
     @app.get("/protected")
     async def protected_endpoint(request: Request) -> Any:
@@ -118,11 +118,12 @@ class TestAuthMiddleware:
             "wrong-secret",
             algorithm="HS256",
         )
-        
+
         client = TestClient(app_with_auth)
+        token_str = invalid_token.decode() if isinstance(invalid_token, bytes) else invalid_token
         response = client.get(
             "/protected",
-            headers={"Authorization": f"Bearer {invalid_token}"},
+            headers={"Authorization": f"Bearer {token_str}"},
         )
         
         assert response.status_code == 401
@@ -138,11 +139,12 @@ class TestAuthMiddleware:
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
-        
+
         client = TestClient(app_with_auth)
+        token_str = token.decode() if isinstance(token, bytes) else token
         response = client.get(
             "/protected",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {token_str}"},
         )
         
         assert response.status_code == 401
@@ -271,17 +273,18 @@ class TestDependencies:
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
-        
+
         app = app_with_auth
-        
+
         @app.get("/admin")
         async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]) -> Any:
             return {"message": "admin access"}
-        
+
         client = TestClient(app)
+        token_str = token.decode() if isinstance(token, bytes) else token
         response = client.get(
             "/admin",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {token_str}"},
         )
         
         assert response.status_code == 403
@@ -320,17 +323,18 @@ class TestDependencies:
             "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
         }
         token = jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
-        
+
         app = app_with_auth
-        
+
         @app.get("/manager")
         async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]) -> Any:
             return {"message": "manager access"}
-        
+
         client = TestClient(app)
+        token_str = token.decode() if isinstance(token, bytes) else token
         response = client.get(
             "/manager",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": f"Bearer {token_str}"},
         )
         
         assert response.status_code == 403

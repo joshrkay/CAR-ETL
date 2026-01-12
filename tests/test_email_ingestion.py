@@ -122,7 +122,7 @@ class TestEmailParser:
         parser = EmailParser()
 
         assert parser._extract_address("") == ""
-        assert parser._extract_address(None) == ""
+        assert parser._extract_address(None) == ""  # type: ignore[arg-type]
 
     def test_extract_address_comma_separated(self) -> None:
         """Test extracting address from comma-separated list."""
@@ -405,17 +405,17 @@ class TestEmailIngestionService:
     def test_calculate_hash(self, mock_supabase: Any) -> None:
         """Test file hash calculation."""
         service = EmailIngestionService(mock_supabase)
-        
+
         content = b"test content"
-        hash1 = service._calculate_hash(content)
-        hash2 = service._calculate_hash(content)
-        
+        hash1 = service._calculate_hash(content)  # type: ignore[attr-defined]
+        hash2 = service._calculate_hash(content)  # type: ignore[attr-defined]
+
         # Same content should produce same hash
         assert hash1 == hash2
         assert len(hash1) == 64  # SHA-256 hex length
-        
+
         # Different content should produce different hash
-        hash3 = service._calculate_hash(b"different content")
+        hash3 = service._calculate_hash(b"different content")  # type: ignore[attr-defined]
         assert hash1 != hash3
 
 

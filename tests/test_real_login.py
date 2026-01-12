@@ -224,7 +224,7 @@ def test_real_login_flow() -> bool:
     print("\n6. Testing FastAPI middleware with real token...")
     try:
         app = FastAPI()
-        app.add_middleware(AuthMiddleware, config=config)
+        app.add_middleware(AuthMiddleware, config=config)  # type: ignore[arg-type]
         
         @app.get("/test")
         async def test_endpoint(request: Request) -> Any:

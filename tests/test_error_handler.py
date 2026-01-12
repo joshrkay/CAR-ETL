@@ -35,7 +35,7 @@ class TestErrorHandlerMiddleware:
     @pytest.mark.asyncio
     async def test_validation_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of custom ValidationError."""
-        exc = ValidationError("Invalid input", details=["field1", "field2"])
+        exc = ValidationError("Invalid input", details=[{"field": "field1"}, {"field": "field2"}])
 
         response = middleware._handle_car_exception(exc, "test-request-123")
 

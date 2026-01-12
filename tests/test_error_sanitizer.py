@@ -125,7 +125,7 @@ class TestSanitizeErrorMessage:
 
     def test_sanitize_none(self) -> None:
         """Test None handling."""
-        result = sanitize_error_message(None)
+        result = sanitize_error_message(None)  # type: ignore[arg-type]
         assert result is None
 
     def test_sanitize_no_pii(self) -> None:

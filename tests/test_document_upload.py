@@ -204,12 +204,12 @@ def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any, valid_jw
     # Update middleware instances' config (they're already instantiated)
     # Find AuthMiddleware instance in app's middleware stack
     for middleware in app.user_middleware:
-        if hasattr(middleware, 'cls') and middleware.cls.__name__ == 'AuthMiddleware':
+        if hasattr(middleware, 'cls') and middleware.cls.__name__ == 'AuthMiddleware':  # type: ignore[attr-defined]
             # The middleware is wrapped, we need to access it differently
             pass
     
     # Patch the middleware's _validate_token to bypass validation
-    async def mock_validate_token(self, request: Any) -> None:
+    async def mock_validate_token(self: Any, request: Any) -> None:
         # Set auth context directly
         request.state.auth = mock_auth_context
         request.state.supabase = mock_supabase_client
