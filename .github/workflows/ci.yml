@@ -38,6 +38,7 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python -m spacy download en_core_web_lg
       - run: pytest tests/ --cov=src --cov-report=xml
       - uses: codecov/codecov-action@v4
 

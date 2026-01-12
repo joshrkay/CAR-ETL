@@ -101,14 +101,14 @@ def test_middleware_creates_user_client(mock_config: Any, sample_token: Any) -> 
     # Mock call_next
     call_next = AsyncMock(return_value=Mock(status_code=200))
     
-    with patch("src.auth.middleware.create_user_client") as mock_create_client:
+    with patch("src.auth.client.create_user_client") as mock_create_client:
         mock_client = Mock()
         mock_create_client.return_value = mock_client
-        
+
         # Run middleware
         import asyncio
         asyncio.run(middleware.dispatch(request, call_next))
-        
+
         # Verify user client was created with token
         mock_create_client.assert_called_once()
         assert mock_create_client.call_args[0][0] == sample_token
