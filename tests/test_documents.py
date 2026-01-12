@@ -35,7 +35,7 @@ def user_id() -> Any:
 
 
 @pytest.fixture
-def document_data(tenant_id, user_id) -> Any:
+def document_data(tenant_id: Any, user_id: Any) -> Any:
     """Create sample document data."""
     return {
         "tenant_id": str(tenant_id),

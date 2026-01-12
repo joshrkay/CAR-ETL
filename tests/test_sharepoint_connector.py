@@ -95,7 +95,7 @@ def mock_supabase_client() -> Mock:
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client) -> Generator:
+def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any) -> Generator:
     """Create test client with mocked auth."""
     def override_get_current_user() -> Any:
         return mock_auth_context

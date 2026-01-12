@@ -24,7 +24,7 @@ class TestVectorSearchLatency:
         """Create a mock OpenAI client with realistic latency simulation."""
         client = AsyncMock()
         
-        async def mock_embedding_create(*args, **kwargs):
+        async def mock_embedding_create(*args: Any, **kwargs: Any) -> Any:
             # Simulate realistic API latency (50-200ms)
             await asyncio.sleep(0.1)  # 100ms average latency
             mock_response = Mock()
@@ -38,7 +38,7 @@ class TestVectorSearchLatency:
         return client
     
     @pytest.fixture
-    def embedding_service(self, mock_openai_client) -> Any:
+    def embedding_service(self, mock_openai_client: Any) -> Any:
         """Create EmbeddingService with mocked OpenAI client."""
         with patch('src.search.embeddings.AsyncOpenAI', return_value=mock_openai_client):
             service = EmbeddingService(api_key="test-key", batch_size=10)

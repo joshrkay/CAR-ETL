@@ -30,7 +30,7 @@ def tenant_id() -> Any:
 
 
 @pytest.fixture
-def flag_service(mock_supabase_client, tenant_id) -> Any:
+def flag_service(mock_supabase_client: Any, tenant_id: Any) -> Any:
     """Create a FeatureFlagService instance."""
     # Clear the shared cache before each test
     _shared_cache.clear()

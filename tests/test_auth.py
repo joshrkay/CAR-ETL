@@ -26,7 +26,7 @@ def mock_config() -> Any:
 
 
 @pytest.fixture
-def valid_jwt_payload(mock_config) -> Any:
+def valid_jwt_payload(mock_config: Any) -> Any:
     """Create a valid JWT payload for testing."""
     user_id = uuid4()
     tenant_id = uuid4()
@@ -45,31 +45,31 @@ def valid_jwt_payload(mock_config) -> Any:
 
 
 @pytest.fixture
-def valid_token(mock_config, valid_jwt_payload) -> Any:
+def valid_token(mock_config: Any, valid_jwt_payload: Any) -> Any:
     """Create a valid JWT token for testing."""
     return jwt.encode(valid_jwt_payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
 @pytest.fixture
-def expired_token(mock_config, valid_jwt_payload) -> Any:
+def expired_token(mock_config: Any, valid_jwt_payload: Any) -> Any:
     """Create an expired JWT token for testing."""
     valid_jwt_payload["exp"] = int((datetime.utcnow() - timedelta(hours=1)).timestamp())
     return jwt.encode(valid_jwt_payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
 @pytest.fixture
-def app_with_auth(mock_config) -> Any:
+def app_with_auth(mock_config: Any) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
     app.add_middleware(AuthMiddleware, config=mock_config)
     
     @app.get("/protected")
-    async def protected_endpoint(request: Request):
+    async def protected_endpoint(request: Request) -> Any:
         auth: AuthContext = request.state.auth
         return {"user_id": str(auth.user_id), "tenant_id": str(auth.tenant_id)}
     
     @app.get("/public")
-    async def public_endpoint():
+    async def public_endpoint() -> Any:
         return {"message": "public"}
     
     return app
@@ -209,7 +209,7 @@ class TestDependencies:
         app = app_with_auth
         
         @app.get("/user")
-        async def get_user(user: Annotated[AuthContext, Depends(get_current_user)]):
+        async def get_user(user: Annotated[AuthContext, Depends(get_current_user)]) -> Any:
             return {"user_id": str(user.user_id)}
         
         client = TestClient(app)
@@ -229,7 +229,7 @@ class TestDependencies:
         app = app_with_auth
         
         @app.get("/user")
-        async def get_user(user: Annotated[AuthContext, Depends(get_current_user)]):
+        async def get_user(user: Annotated[AuthContext, Depends(get_current_user)]) -> Any:
             return {"user_id": str(user.user_id)}
         
         client = TestClient(app)
@@ -245,7 +245,7 @@ class TestDependencies:
         app = app_with_auth
         
         @app.get("/admin")
-        async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]):
+        async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]) -> Any:
             return {"message": "admin access"}
         
         client = TestClient(app)
@@ -275,7 +275,7 @@ class TestDependencies:
         app = app_with_auth
         
         @app.get("/admin")
-        async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]):
+        async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]) -> Any:
             return {"message": "admin access"}
         
         client = TestClient(app)
@@ -294,7 +294,7 @@ class TestDependencies:
         app = app_with_auth
         
         @app.get("/manager")
-        async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]):
+        async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]) -> Any:
             return {"message": "manager access"}
         
         client = TestClient(app)
@@ -324,7 +324,7 @@ class TestDependencies:
         app = app_with_auth
         
         @app.get("/manager")
-        async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]):
+        async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]) -> Any:
             return {"message": "manager access"}
         
         client = TestClient(app)

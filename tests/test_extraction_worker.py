@@ -110,7 +110,7 @@ class TestExtractionWorkerLifecycle:
                     with patch.object(worker, "_cleanup_stale_extraction_locks", new_callable=AsyncMock):
                         with patch.object(worker, "_process_batch", new_callable=AsyncMock):
                             # Stop worker after first iteration
-                            async def stop_after_batch():
+                            async def stop_after_batch() -> None:
                                 await worker.stop()
 
                             worker._process_batch.side_effect = stop_after_batch
@@ -134,7 +134,7 @@ class TestExtractionWorkerLifecycle:
                     with patch.object(worker, "_cleanup_stale_extraction_locks", new_callable=AsyncMock):
                         with patch.object(worker, "_process_batch", new_callable=AsyncMock):
                             # Stop immediately
-                            async def stop_now():
+                            async def stop_now() -> None:
                                 await worker.stop()
 
                             worker._process_batch.side_effect = stop_now
@@ -157,7 +157,7 @@ class TestExtractionWorkerLifecycle:
                     with patch.object(worker, "_cleanup_stale_extraction_locks", new_callable=AsyncMock) as mock_cleanup:
                         with patch.object(worker, "_process_batch", new_callable=AsyncMock):
                             # Stop immediately
-                            async def stop_now():
+                            async def stop_now() -> None:
                                 await worker.stop()
 
                             worker._process_batch.side_effect = stop_now
@@ -758,7 +758,7 @@ class TestShutdown:
         worker.processing_ids = {"id1", "id2"}
 
         # Simulate items completing during shutdown
-        async def remove_items():
+        async def remove_items() -> None:
             await asyncio.sleep(0.1)
             worker.processing_ids.clear()
 
@@ -888,7 +888,7 @@ class TestConcurrencyControl:
 
         processing_ids_during_processing = None
 
-        async def capture_processing_ids(*args, **kwargs):
+        async def capture_processing_ids(*args: Any, **kwargs: Any) -> Any:
             nonlocal processing_ids_during_processing
             processing_ids_during_processing = worker.processing_ids.copy()
             return (False, "skip")

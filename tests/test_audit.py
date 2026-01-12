@@ -51,7 +51,7 @@ def user_id() -> Any:
 
 
 @pytest.fixture
-def audit_logger(mock_supabase_client, tenant_id, user_id) -> Any:
+def audit_logger(mock_supabase_client: Any, tenant_id: Any, user_id: Any) -> Any:
     """Create AuditLogger instance for testing."""
     return AuditLogger(
         supabase=mock_supabase_client,
@@ -224,21 +224,21 @@ class TestAuditMiddleware:
     """Test AuditMiddleware."""
     
     @pytest.fixture
-    def app_with_audit(self, mock_config) -> Any:
+    def app_with_audit(self, mock_config: Any) -> Any:
         """Create FastAPI app with audit middleware."""
         app = FastAPI()
         app.add_middleware(AuditMiddleware)
         app.add_middleware(AuthMiddleware, config=mock_config)
         
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             auth: AuthContext = request.state.auth
             return {"user_id": str(auth.user_id)}
         
         return app
     
     @pytest.fixture
-    def valid_token(self, mock_config) -> Any:
+    def valid_token(self, mock_config: Any) -> Any:
         """Create valid JWT token."""
         user_id = uuid4()
         tenant_id = uuid4()

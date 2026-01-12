@@ -123,7 +123,7 @@ def mock_auth_config() -> Any:
 
 
 @pytest.fixture
-def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
+def valid_jwt_token(mock_auth_context: Any, mock_auth_config: Any) -> Any:
     """Create a valid JWT token for testing."""
     exp = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
@@ -181,7 +181,7 @@ class AuthenticatedTestClient:
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config) -> Generator:
+def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any, valid_jwt_token: Any, mock_auth_config: Any) -> Generator:
     """Create test client with mocked auth middleware."""
     def override_get_current_user() -> Any:
         return mock_auth_context
@@ -209,7 +209,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
             pass
     
     # Patch the middleware's _validate_token to bypass validation
-    async def mock_validate_token(self, request):
+    async def mock_validate_token(self, request: Any) -> None:
         # Set auth context directly
         request.state.auth = mock_auth_context
         request.state.supabase = mock_supabase_client

@@ -75,7 +75,7 @@ def mock_auth_config() -> Any:
 
 
 @pytest.fixture
-def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
+def valid_jwt_token(mock_auth_context: Any, mock_auth_config: Any) -> Any:
     """Create a valid JWT token for testing."""
     exp = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
@@ -101,7 +101,7 @@ def mock_audit_logger() -> Generator:
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger) -> Generator:
+def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any, valid_jwt_token: Any, mock_auth_config: Any, mock_audit_logger: Any) -> Generator:
     """Create test client with mocked auth and dependencies."""
     from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
     
@@ -125,7 +125,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
     config_patcher2.start()
     
     # Patch the middleware's _validate_token to bypass validation
-    async def mock_validate_token(self, request):
+    async def mock_validate_token(self, request: Any) -> None:
         # Set auth context directly
         request.state.auth = mock_auth_context
         request.state.supabase = mock_supabase_client
@@ -289,7 +289,7 @@ class TestEntityMergeEndpoint:
         config_patcher2.start()
         
         # Patch the middleware's _validate_token to bypass validation
-        async def mock_validate_token(self, request):
+        async def mock_validate_token(self, request: Any) -> None:
             # Set auth context directly
             request.state.auth = auth_without_permission
             request.state.supabase = mock_supabase_client

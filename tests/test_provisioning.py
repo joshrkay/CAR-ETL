@@ -30,7 +30,7 @@ def mock_supabase_client() -> Any:
 
 
 @pytest.fixture
-def provisioning_service(mock_supabase_client) -> Any:
+def provisioning_service(mock_supabase_client: Any) -> Any:
     """Create a TenantProvisioningService instance."""
     with patch('src.services.tenant_provisioning.get_auth_config') as mock_config:
         mock_config.return_value = Mock(

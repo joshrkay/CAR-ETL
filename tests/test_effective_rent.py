@@ -20,7 +20,7 @@ class TestEffectiveRentService:
         return Mock()
 
     @pytest.fixture
-    def service(self, mock_supabase) -> Any:
+    def service(self, mock_supabase: Any) -> Any:
         """Create EffectiveRentService instance."""
         return EffectiveRentService(mock_supabase)
 

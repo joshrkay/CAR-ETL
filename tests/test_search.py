@@ -131,7 +131,7 @@ class TestHybridSearchService:
         return service
 
     @pytest.fixture
-    def hybrid_service(self, mock_supabase_client, mock_embedding_service) -> Any:
+    def hybrid_service(self, mock_supabase_client: Any, mock_embedding_service: Any) -> Any:
         """Create HybridSearchService with mocked dependencies."""
         return HybridSearchService(
             supabase_client=mock_supabase_client,

@@ -17,7 +17,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -39,7 +39,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -55,7 +55,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint():
+        async def test_endpoint() -> Any:
             return {"message": "success"}
 
         client = TestClient(app)
@@ -77,7 +77,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint():
+        async def test_endpoint() -> Any:
             return {"message": "success"}
 
         client = TestClient(app)
@@ -95,7 +95,7 @@ class TestRequestIDMiddleware:
         captured_request_id = None
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             nonlocal captured_request_id
             captured_request_id = request.state.request_id
             return {"message": "success"}
@@ -113,7 +113,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -132,7 +132,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint():
+        async def test_endpoint() -> Any:
             from fastapi import HTTPException
             raise HTTPException(status_code=500, detail="Test error")
 
@@ -149,7 +149,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.post("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -166,19 +166,19 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def get_endpoint(request: Request):
+        async def get_endpoint(request: Request) -> Any:
             return {"method": "GET", "request_id": request.state.request_id}
 
         @app.post("/test")
-        async def post_endpoint(request: Request):
+        async def post_endpoint(request: Request) -> Any:
             return {"method": "POST", "request_id": request.state.request_id}
 
         @app.put("/test")
-        async def put_endpoint(request: Request):
+        async def put_endpoint(request: Request) -> Any:
             return {"method": "PUT", "request_id": request.state.request_id}
 
         @app.delete("/test")
-        async def delete_endpoint(request: Request):
+        async def delete_endpoint(request: Request) -> Any:
             return {"method": "DELETE", "request_id": request.state.request_id}
 
         client = TestClient(app)
@@ -195,7 +195,7 @@ class TestRequestIDMiddleware:
         app.add_middleware(RequestIDMiddleware)
 
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             return {"request_id": request.state.request_id}
 
         client = TestClient(app)

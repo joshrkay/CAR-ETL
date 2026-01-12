@@ -27,7 +27,7 @@ def mock_config() -> Any:
 
 
 @pytest.fixture
-def sample_token(mock_config) -> Any:
+def sample_token(mock_config: Any) -> Any:
     """Create a sample JWT token."""
     tenant_id = uuid4()
     user_id = uuid4()

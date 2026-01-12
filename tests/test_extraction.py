@@ -281,7 +281,7 @@ class TestFieldExtractor:
         return client
     
     @pytest.fixture
-    def extractor(self, mock_openai_client) -> Any:
+    def extractor(self, mock_openai_client: Any) -> Any:
         """Create FieldExtractor with mocked OpenAI client."""
         with patch('src.extraction.extractor.AsyncOpenAI', return_value=mock_openai_client):
             with patch('src.extraction.extractor.presidio_redact', return_value="redacted"):

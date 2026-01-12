@@ -32,7 +32,7 @@ class TestEmbeddingService:
         return client
     
     @pytest.fixture
-    def embedding_service(self, mock_openai_client) -> Any:
+    def embedding_service(self, mock_openai_client: Any) -> Any:
         """Create EmbeddingService with mocked OpenAI client."""
         with patch('src.search.embeddings.AsyncOpenAI', return_value=mock_openai_client):
             service = EmbeddingService(api_key="test-key", batch_size=2)
@@ -66,7 +66,7 @@ class TestEmbeddingService:
         """Test that large lists are automatically batched."""
         # Create mock that returns different embeddings for each batch
         call_count = 0
-        async def mock_create(*args, **kwargs):
+        async def mock_create(*args: Any, **kwargs: Any) -> Any:
             nonlocal call_count
             call_count += 1
             mock_response = Mock()

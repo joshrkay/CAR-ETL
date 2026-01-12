@@ -28,7 +28,7 @@ def mock_config() -> Any:
 
 
 @pytest.fixture
-def create_jwt_token(mock_config) -> Any:
+def create_jwt_token(mock_config: Any) -> Any:
     """Factory to create JWT tokens with specified roles."""
     def _create_token(roles: list[str]) -> Any:
         user_id = uuid4()
@@ -52,7 +52,7 @@ def create_jwt_token(mock_config) -> Any:
 
 
 @pytest.fixture
-def app_with_auth(mock_config) -> Any:
+def app_with_auth(mock_config: Any) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
     app.add_middleware(AuthMiddleware, config=mock_config)
@@ -188,7 +188,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -208,7 +208,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -228,7 +228,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -251,7 +251,7 @@ class TestRequirePermission:
         async def list_documents(
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:read")),
-        ):
+        ) -> Any:
             return {"documents": []}
         
         client = TestClient(app_with_auth)
@@ -271,7 +271,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("extractions:override")),
-        ):
+        ) -> Any:
             return {"message": "overridden", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -291,7 +291,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("extractions:override")),
-        ):
+        ) -> Any:
             return {"message": "overridden", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -311,7 +311,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted"}
         
         with caplog.at_level(logging.WARNING):
@@ -352,7 +352,7 @@ class TestRoleShortcuts:
         async def admin_endpoint(
             request: Request,
             auth: AuthContext = Depends(RequireAdmin),
-        ):
+        ) -> Any:
             return {"message": "admin access"}
         
         client = TestClient(app_with_auth)
@@ -371,7 +371,7 @@ class TestRoleShortcuts:
         async def admin_endpoint(
             request: Request,
             auth: AuthContext = Depends(RequireAdmin),
-        ):
+        ) -> Any:
             return {"message": "admin access"}
         
         client = TestClient(app_with_auth)
@@ -390,7 +390,7 @@ class TestRoleShortcuts:
         async def create_document(
             request: Request,
             auth: AuthContext = Depends(RequireAnalyst),
-        ):
+        ) -> Any:
             return {"message": "created"}
         
         client = TestClient(app_with_auth)
@@ -409,7 +409,7 @@ class TestRoleShortcuts:
         async def create_document(
             request: Request,
             auth: AuthContext = Depends(RequireAnalyst),
-        ):
+        ) -> Any:
             return {"message": "created"}
         
         client = TestClient(app_with_auth)
@@ -428,7 +428,7 @@ class TestRoleShortcuts:
         async def create_document(
             request: Request,
             auth: AuthContext = Depends(RequireAnalyst),
-        ):
+        ) -> Any:
             return {"message": "created"}
         
         client = TestClient(app_with_auth)
@@ -448,7 +448,7 @@ class TestRoleShortcuts:
             async def list_documents(
                 request: Request,
                 auth: AuthContext = Depends(RequireViewer),
-            ):
+            ) -> Any:
                 return {"documents": []}
             
             client = TestClient(app_with_auth)

@@ -227,7 +227,7 @@ def test_real_login_flow() -> bool:
         app.add_middleware(AuthMiddleware, config=config)
         
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             auth = request.state.auth
             return {
                 "user_id": str(auth.user_id),
