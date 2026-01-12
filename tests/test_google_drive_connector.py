@@ -1,5 +1,4 @@
 """
-from typing import Any, Generator, Any
 End-to-End Tests for Google Drive Connector
 
 Tests cover:
@@ -12,6 +11,7 @@ Tests cover:
 - Folder selection
 - Changes API incremental sync
 """
+from typing import Any, Generator
 import os
 import sys
 from pathlib import Path
