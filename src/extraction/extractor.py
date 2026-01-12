@@ -17,13 +17,13 @@ from src.extraction.prompts import build_extraction_prompt, build_document_type_
 from src.extraction.normalizers import normalize_field_value
 from src.services.redaction import presidio_redact
 
-AsyncOpenAIClient: type[Any] | None
+AsyncOpenAI: type[Any] | None
 try:
-    from openai import AsyncOpenAI as _AsyncOpenAIClient
+    from openai import AsyncOpenAI as _AsyncOpenAI
 except ImportError:  # pragma: no cover - handled in runtime environments without openai
-    AsyncOpenAIClient = None
+    AsyncOpenAI = None
 else:
-    AsyncOpenAIClient = _AsyncOpenAIClient
+    AsyncOpenAI = _AsyncOpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -66,13 +66,13 @@ class FieldExtractor:
             api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
             model: LLM model to use (default: gpt-4o-mini)
         """
-        if AsyncOpenAIClient is None:
+        if AsyncOpenAI is None:
             raise ImportError("openai package is required for extraction. Please install openai>=1.0.0.")
         api_key = api_key or OPENAI_API_KEY
         if not api_key:
             raise ValueError("OpenAI API key is required. Set OPENAI_API_KEY environment variable.")
         
-        self.client = AsyncOpenAIClient(api_key=api_key)
+        self.client = AsyncOpenAI(api_key=api_key)
         self.model = model
     
     async def detect_document_type(
