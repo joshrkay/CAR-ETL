@@ -3,8 +3,6 @@ Unit Tests for File Validator Service
 
 Tests include:
 - Magic byte validation
-from typing import Any
-
 - Office document structural validation
 - Size limit enforcement
 - Malicious file detection
