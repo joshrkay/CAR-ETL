@@ -155,7 +155,7 @@ class TestDuplicateDetection:
 
     def test_deduplication_registry(self) -> None:
         """Test in-memory deduplication registry."""
-        registry = {}
+        registry: dict[str, dict[str, Any]] = {}
         
         # Upload same file twice
         content = b"%PDF-1.4\nDocument"

@@ -885,7 +885,7 @@ class TestConcurrencyControl:
             "attempts": 0,
         }
 
-        processing_ids_during_processing = None
+        processing_ids_during_processing: set[str] | None = None
 
         async def capture_processing_ids(*args: Any, **kwargs: Any) -> Any:
             nonlocal processing_ids_during_processing
@@ -899,6 +899,7 @@ class TestConcurrencyControl:
                 await worker._process_queue_item(item)
 
                 # Should have been in processing set during execution
+                assert processing_ids_during_processing is not None
                 assert item_id in processing_ids_during_processing
                 # Should be removed after completion
                 assert item_id not in worker.processing_ids

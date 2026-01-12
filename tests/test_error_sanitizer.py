@@ -3,6 +3,7 @@ Tests for error sanitizer - PII removal from error messages.
 
 Critical security component - must never leak PII into logs or database.
 """
+from typing import Any
 
 from src.services.error_sanitizer import (
     sanitize_error_message,
@@ -248,7 +249,7 @@ class TestGetLoggableError:
     def test_get_loggable_error_basic(self) -> None:
         """Test basic loggable error extraction."""
         ex = ValueError("Invalid email: test@example.com")
-        result = get_loggable_error(ex)
+        result: dict[str, Any] = get_loggable_error(ex)
 
         assert "sanitized_message" in result
         assert "[EMAIL]" in result["sanitized_message"]
@@ -261,7 +262,7 @@ class TestGetLoggableError:
         """Test that long errors are truncated."""
         long_message = "x" * 1000
         ex = ValueError(long_message)
-        result = get_loggable_error(ex, max_length=200)
+        result: dict[str, Any] = get_loggable_error(ex, max_length=200)
 
         assert "truncated" in result["sanitized_message"]
         assert result["message_length"] == 1000
@@ -269,7 +270,7 @@ class TestGetLoggableError:
     def test_get_loggable_error_no_context(self) -> None:
         """Test without context."""
         ex = ValueError("test")
-        result = get_loggable_error(ex, include_context=False)
+        result: dict[str, Any] = get_loggable_error(ex, include_context=False)
 
         assert "sanitized_message" in result
         assert "message_length" in result
@@ -281,7 +282,7 @@ class TestGetLoggableError:
             "Failed for user john@example.com at 192.168.1.1 "
             "with SSN 123-45-6789 and phone 555-123-4567"
         )
-        result = get_loggable_error(ex)
+        result: dict[str, Any] = get_loggable_error(ex)
 
         sanitized = result["sanitized_message"]
         assert "[EMAIL]" in sanitized
