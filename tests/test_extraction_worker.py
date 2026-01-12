@@ -3,8 +3,6 @@ Tests for extraction worker background processing.
 
 Comprehensive test coverage for ExtractionWorker class including:
 - Initialization and configuration
-from typing import Any, Any
-
 - Start/stop lifecycle
 - Batch processing and concurrency
 - Retry logic and dead letter queue
@@ -12,6 +10,7 @@ from typing import Any, Any
 - Graceful shutdown
 - Error handling and sanitization
 """
+from typing import Any
 
 import pytest
 import asyncio

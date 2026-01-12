@@ -3,9 +3,8 @@ Property-Based Tests for Extraction Pipeline - Critical Paths
 
 Uses hypothesis for fuzzing critical security paths (redaction, versioning).
 Required by .cursorrules for all critical paths.
-from typing import Any, Any
-
 """
+from typing import Any
 
 import pytest
 from hypothesis import given, strategies as st, settings, HealthCheck
