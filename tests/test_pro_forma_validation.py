@@ -1,5 +1,4 @@
 from src.extraction.pro_forma_validator import ProFormaValidator
-from typing import Any
 
 
 def test_validator_flags_aggressive_rent_growth() -> None:
