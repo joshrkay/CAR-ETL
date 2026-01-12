@@ -1,5 +1,4 @@
 """
-from typing import Any, Generator, Any
 End-to-End Tests for SharePoint Connector
 
 Tests cover:
@@ -9,6 +8,7 @@ Tests cover:
 - API endpoint integration
 - Sync functionality (mocked)
 """
+from typing import Any, Generator
 import os
 import sys
 from pathlib import Path
