@@ -16,7 +16,7 @@ class TestRAGIntegration:
     """Integration tests for RAG Q&A endpoint."""
 
     @pytest.fixture
-    def mock_auth(self):
+    def mock_auth(self) -> TestClient:
         """Mock authentication context."""
         return {
             "user_id": str(uuid4()),
@@ -26,11 +26,11 @@ class TestRAGIntegration:
         }
 
     @pytest.fixture
-    def client(self):
+    def client(self) -> TestClient:
         """Create test client."""
         return TestClient(app)
 
-    def test_ask_endpoint_success(self, client, mock_auth):
+    def test_ask_endpoint_success(self, client, mock_auth) -> None:
         """Test successful question answering with citations."""
         doc_id = uuid4()
         chunk_id = uuid4()
@@ -111,7 +111,7 @@ class TestRAGIntegration:
                     assert data["chunks_used"] == 1
                     assert data["confidence"] > 0
 
-    def test_ask_endpoint_no_context(self, client, mock_auth):
+    def test_ask_endpoint_no_context(self, client, mock_auth) -> None:
         """Test endpoint when no relevant context found."""
         with patch("src.api.routes.ask.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.ask.require_permission") as mock_auth_dep:
@@ -156,7 +156,7 @@ class TestRAGIntegration:
                     assert data["chunks_used"] == 0
                     assert data["suggestion"] is not None
 
-    def test_ask_endpoint_with_document_filter(self, client, mock_auth):
+    def test_ask_endpoint_with_document_filter(self, client, mock_auth) -> None:
         """Test endpoint with document_ids filter."""
         doc_id1 = uuid4()
         chunk_id = uuid4()
@@ -234,7 +234,7 @@ class TestRAGIntegration:
                         assert len(data["citations"]) == 1
                         assert data["citations"][0]["document_id"] == str(doc_id1)
 
-    def test_ask_endpoint_validation_error(self, client):
+    def test_ask_endpoint_validation_error(self, client) -> None:
         """Test endpoint with invalid request."""
         with patch("src.api.routes.ask.get_supabase_client"):
             with patch("src.api.routes.ask.require_permission"):
@@ -249,7 +249,7 @@ class TestRAGIntegration:
                 # Should return validation error
                 assert response.status_code == 422  # Unprocessable Entity
 
-    def test_ask_endpoint_max_chunks_validation(self, client):
+    def test_ask_endpoint_max_chunks_validation(self, client) -> None:
         """Test endpoint validates max_chunks range."""
         with patch("src.api.routes.ask.get_supabase_client"):
             with patch("src.api.routes.ask.require_permission"):

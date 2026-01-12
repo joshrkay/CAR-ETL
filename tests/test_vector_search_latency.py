@@ -9,8 +9,8 @@ import time
 import asyncio
 import statistics
 from unittest.mock import Mock, AsyncMock, patch
-from uuid import uuid4, UUID
-from typing import List
+from uuid import uuid4
+from typing import Any, List
 
 from src.search.embeddings import EmbeddingService
 from supabase import Client
@@ -20,7 +20,7 @@ class TestVectorSearchLatency:
     """Performance tests for vector search operations."""
     
     @pytest.fixture
-    def mock_openai_client(self):
+    def mock_openai_client(self) -> Any:
         """Create a mock OpenAI client with realistic latency simulation."""
         client = AsyncMock()
         
@@ -38,7 +38,7 @@ class TestVectorSearchLatency:
         return client
     
     @pytest.fixture
-    def embedding_service(self, mock_openai_client):
+    def embedding_service(self, mock_openai_client) -> Any:
         """Create EmbeddingService with mocked OpenAI client."""
         with patch('src.search.embeddings.AsyncOpenAI', return_value=mock_openai_client):
             service = EmbeddingService(api_key="test-key", batch_size=10)
@@ -46,7 +46,7 @@ class TestVectorSearchLatency:
             return service
     
     @pytest.fixture
-    def mock_supabase_client(self):
+    def mock_supabase_client(self) -> Any:
         """Create a mock Supabase client with latency simulation."""
         client = Mock(spec=Client)
         
@@ -70,7 +70,7 @@ class TestVectorSearchLatency:
         return client
     
     @pytest.mark.asyncio
-    async def test_embedding_generation_latency(self, embedding_service):
+    async def test_embedding_generation_latency(self, embedding_service) -> None:
         """Test latency of embedding generation for single text."""
         query_text = "What is the main topic of this document?"
         
@@ -85,7 +85,7 @@ class TestVectorSearchLatency:
         print(f"\nEmbedding generation latency: {latency_ms:.2f}ms")
     
     @pytest.mark.asyncio
-    async def test_embedding_batch_latency(self, embedding_service):
+    async def test_embedding_batch_latency(self, embedding_service) -> None:
         """Test latency of batch embedding generation."""
         texts = [f"Document chunk {i} with some content." for i in range(20)]
         
@@ -101,10 +101,10 @@ class TestVectorSearchLatency:
         print(f"\nBatch embedding latency: {latency_ms:.2f}ms total ({latency_per_text:.2f}ms per text)")
     
     @pytest.mark.asyncio
-    async def test_vector_search_query_latency(self, mock_supabase_client):
+    async def test_vector_search_query_latency(self, mock_supabase_client) -> None:
         """Test latency of vector search query (match_document_chunks function)."""
         query_embedding = [0.1] * 1536
-        tenant_id = uuid4()
+        uuid4()
         
         start_time = time.perf_counter()
         result = (
@@ -130,10 +130,10 @@ class TestVectorSearchLatency:
     @pytest.mark.asyncio
     async def test_end_to_end_search_latency(
         self, embedding_service, mock_supabase_client
-    ):
+    ) -> None:
         """Test end-to-end search latency (embedding + search)."""
         query_text = "What are the key findings in this research?"
-        tenant_id = uuid4()
+        uuid4()
         
         # Step 1: Generate embedding
         embed_start = time.perf_counter()
@@ -161,7 +161,7 @@ class TestVectorSearchLatency:
         total_latency_ms = embed_latency_ms + search_latency_ms
         
         assert len(result.data) == 10
-        print(f"\nEnd-to-end search latency breakdown:")
+        print("\nEnd-to-end search latency breakdown:")
         print(f"  Embedding: {embed_latency_ms:.2f}ms")
         print(f"  Search: {search_latency_ms:.2f}ms")
         print(f"  Total: {total_latency_ms:.2f}ms")
@@ -169,7 +169,7 @@ class TestVectorSearchLatency:
     @pytest.mark.asyncio
     async def test_search_latency_with_multiple_queries(
         self, embedding_service, mock_supabase_client
-    ):
+    ) -> None:
         """Test search latency across multiple queries to measure consistency."""
         queries = [
             "What is the main topic?",
@@ -179,7 +179,7 @@ class TestVectorSearchLatency:
             "What are the key findings?",
         ]
         
-        tenant_id = uuid4()
+        uuid4()
         latencies: List[float] = []
         
         for query in queries:
@@ -189,7 +189,7 @@ class TestVectorSearchLatency:
             query_embedding = await embedding_service.embed_single(query)
             
             # Execute search
-            result = (
+            (
                 mock_supabase_client
                 .rpc(
                     "match_document_chunks",
@@ -225,16 +225,16 @@ class TestVectorSearchLatency:
     @pytest.mark.asyncio
     async def test_search_latency_with_document_filter(
         self, embedding_service, mock_supabase_client
-    ):
+    ) -> None:
         """Test search latency when filtering by specific documents."""
         query_text = "What is discussed in these documents?"
-        tenant_id = uuid4()
+        uuid4()
         document_ids = [str(uuid4()) for _ in range(3)]
         
         query_embedding = await embedding_service.embed_single(query_text)
         
         start_time = time.perf_counter()
-        result = (
+        (
             mock_supabase_client
             .rpc(
                 "match_document_chunks",

@@ -1,4 +1,5 @@
 """
+from typing import Any, Generator
 End-to-End Tests for Google Drive Connector
 
 Tests cover:
@@ -31,19 +32,17 @@ except ImportError:
     pass
 
 import pytest
-from fastapi import status
 from fastapi.testclient import TestClient
-from supabase import Client
 
 from src.main import app
 from src.auth.models import AuthContext
-from src.connectors.google_drive.oauth import GoogleDriveOAuth, GoogleDriveOAuthError
-from src.connectors.google_drive.client import GoogleDriveClient, GoogleDriveClientError
+from src.connectors.google_drive.oauth import GoogleDriveOAuth
+from src.connectors.google_drive.client import GoogleDriveClient
 from src.utils.encryption import encrypt_value, decrypt_value
 
 
 @pytest.fixture
-def mock_auth_context():
+def mock_auth_context() -> AuthContext:
     """Create a mock authenticated user context."""
     auth = Mock(spec=AuthContext)
     auth.user_id = uuid4()
@@ -57,7 +56,7 @@ def mock_auth_context():
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Mock:
     """Create a mock Supabase client."""
     client = Mock()
     
@@ -112,7 +111,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client):
+def client_with_auth(mock_auth_context, mock_supabase_client) -> Generator:
     """Create test client with mocked auth."""
     def override_get_current_user():
         return mock_auth_context
@@ -134,7 +133,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client):
 class TestOAuthFlow:
     """Test OAuth flow components."""
     
-    def test_oauth_authorization_url_generation(self):
+    def test_oauth_authorization_url_generation(self) -> None:
         """Test OAuth authorization URL generation."""
         with patch.dict(os.environ, {
             "GOOGLE_CLIENT_ID": "test-client-id",
@@ -153,13 +152,13 @@ class TestOAuthFlow:
             assert "access_type=offline" in url
             assert "prompt=consent" in url
     
-    def test_oauth_missing_config(self):
+    def test_oauth_missing_config(self) -> None:
         """Test OAuth initialization with missing config."""
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValueError, match="Missing required environment variables"):
                 GoogleDriveOAuth.from_env()
     
-    def test_encryption_decryption(self):
+    def test_encryption_decryption(self) -> None:
         """Test token encryption and decryption."""
         import base64
         from cryptography.fernet import Fernet
@@ -177,7 +176,7 @@ class TestOAuthFlow:
             decrypted = decrypt_value(encrypted)
             assert decrypted == original_token
     
-    def test_encryption_empty_value(self):
+    def test_encryption_empty_value(self) -> None:
         """Test encryption with empty value."""
         encrypted = encrypt_value("")
         assert encrypted == ""
@@ -190,7 +189,7 @@ class TestGoogleDriveClient:
     """Test Google Drive API client."""
     
     @pytest.mark.asyncio
-    async def test_client_token_refresh(self):
+    async def test_client_token_refresh(self) -> None:
         """Test automatic token refresh on 401."""
         with patch("httpx.AsyncClient") as mock_client:
             # First request returns 401
@@ -230,7 +229,7 @@ class TestGoogleDriveClient:
             oauth_handler.refresh_access_token.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_list_drives(self):
+    async def test_list_drives(self) -> None:
         """Test listing drives including shared drives."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
@@ -257,7 +256,7 @@ class TestGoogleDriveClient:
             assert drives[1]["id"] == "drive2"
     
     @pytest.mark.asyncio
-    async def test_list_folders(self):
+    async def test_list_folders(self) -> None:
         """Test listing folders for folder selection."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
@@ -294,7 +293,7 @@ class TestGoogleDriveClient:
             assert folders[1]["id"] == "folder2"
     
     @pytest.mark.asyncio
-    async def test_get_changes(self):
+    async def test_get_changes(self) -> None:
         """Test Changes API for incremental sync."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
@@ -332,7 +331,7 @@ class TestGoogleDriveClient:
             assert result["start_page_token"] == "start-token"
     
     @pytest.mark.asyncio
-    async def test_get_start_page_token(self):
+    async def test_get_start_page_token(self) -> None:
         """Test getting start page token for initial sync."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
@@ -354,7 +353,7 @@ class TestGoogleDriveClient:
             assert token == "initial-token-123"
     
     @pytest.mark.asyncio
-    async def test_download_file(self):
+    async def test_download_file(self) -> None:
         """Test file download."""
         with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
@@ -378,7 +377,7 @@ class TestGoogleDriveSync:
     """Test Google Drive sync functionality."""
     
     @pytest.mark.asyncio
-    async def test_sync_drive_with_changes(self, mock_supabase_client):
+    async def test_sync_drive_with_changes(self, mock_supabase_client) -> None:
         """Test sync using Changes API."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -387,12 +386,6 @@ class TestGoogleDriveSync:
             SyncStateStore,
             IngestionEmitter,
         )
-        from src.connectors.google_drive.stores import (
-            SupabaseTokenStore,
-            SupabaseConnectorConfigStore,
-            SupabaseSyncStateStore,
-        )
-        from src.connectors.google_drive.emitter import SupabaseIngestionEmitter
         from uuid import uuid4
         
         tenant_id = uuid4()
@@ -457,7 +450,7 @@ class TestGoogleDriveSync:
         assert len(stats["errors"]) == 0
     
     @pytest.mark.asyncio
-    async def test_sync_handles_deleted_files(self, mock_supabase_client):
+    async def test_sync_handles_deleted_files(self, mock_supabase_client) -> None:
         """Test sync handles deleted files correctly."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -525,7 +518,7 @@ class TestGoogleDriveSync:
         assert len(stats["errors"]) == 0
     
     @pytest.mark.asyncio
-    async def test_sync_with_shared_drive(self, mock_supabase_client):
+    async def test_sync_with_shared_drive(self, mock_supabase_client) -> None:
         """Test sync with shared drive support."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -599,7 +592,7 @@ class TestGoogleDriveSync:
         assert call_args[1]["drive_id"] == drive_id
     
     @pytest.mark.asyncio
-    async def test_sync_filters_by_folder_id(self, mock_supabase_client):
+    async def test_sync_filters_by_folder_id(self, mock_supabase_client) -> None:
         """Test sync filters files by folder_id."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -689,7 +682,7 @@ class TestGoogleDriveSync:
 class TestStateStore:
     """Test OAuth state storage."""
     
-    def test_state_storage_and_retrieval(self, mock_supabase_client):
+    def test_state_storage_and_retrieval(self, mock_supabase_client) -> None:
         """Test storing and retrieving OAuth state."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta
@@ -736,7 +729,7 @@ class TestStateStore:
         retrieved_tenant_id = asyncio.run(state_store.get_tenant_id(state))
         assert retrieved_tenant_id == tenant_id
     
-    def test_state_expired(self, mock_supabase_client):
+    def test_state_expired(self, mock_supabase_client) -> None:
         """Test expired state retrieval."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta
@@ -766,7 +759,7 @@ class TestIdempotency:
     """Property-based tests for idempotency and cursor consistency."""
     
     @pytest.mark.asyncio
-    async def test_same_changes_replayed_no_duplicates(self):
+    async def test_same_changes_replayed_no_duplicates(self) -> None:
         """Test that replaying same change events in different orders doesn't duplicate outputs."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -867,7 +860,7 @@ class TestIdempotency:
         assert len(first_emitted) == 2
     
     @pytest.mark.asyncio
-    async def test_rapid_cursor_updates_consistent(self):
+    async def test_rapid_cursor_updates_consistent(self) -> None:
         """Test that rapid cursor updates under retries remain consistent."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (

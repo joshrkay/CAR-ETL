@@ -7,17 +7,15 @@ Tests include:
 - Upload session management and cleanup
 """
 
-import pytest
 import hashlib
-import time
 from datetime import datetime, timedelta
-from src.services.file_validator import FileValidator, ValidationResult
+from src.services.file_validator import FileValidator
 
 
 class Test100MBFileBoundary:
     """Test exact 100MB file size boundary."""
 
-    def test_exactly_100mb_file(self):
+    def test_exactly_100mb_file(self) -> None:
         """File exactly 100MB should pass validation."""
         size_100mb = 100 * 1024 * 1024
         content = b"A" * size_100mb
@@ -29,7 +27,7 @@ class Test100MBFileBoundary:
         assert result.file_size == size_100mb
         assert len(result.errors) == 0
 
-    def test_100mb_minus_one_byte(self):
+    def test_100mb_minus_one_byte(self) -> None:
         """File one byte under 100MB should pass."""
         size = (100 * 1024 * 1024) - 1
         content = b"A" * size
@@ -40,7 +38,7 @@ class Test100MBFileBoundary:
         assert result.valid is True
         assert result.file_size == size
 
-    def test_100mb_plus_one_byte(self):
+    def test_100mb_plus_one_byte(self) -> None:
         """File one byte over 100MB should fail."""
         size = (100 * 1024 * 1024) + 1
         content = b"A" * size
@@ -51,7 +49,7 @@ class Test100MBFileBoundary:
         assert result.valid is False
         assert any("exceeds maximum" in error for error in result.errors)
 
-    def test_100mb_pdf_file(self):
+    def test_100mb_pdf_file(self) -> None:
         """100MB PDF file should pass with correct magic bytes."""
         size_100mb = 100 * 1024 * 1024
         # Create 100MB PDF
@@ -63,7 +61,7 @@ class Test100MBFileBoundary:
         assert result.valid is True
         assert result.file_size == size_100mb
 
-    def test_100mb_image_handling(self):
+    def test_100mb_image_handling(self) -> None:
         """100MB PNG image should pass."""
         size_100mb = 100 * 1024 * 1024
         content = b"\x89PNG\r\n\x1a\n" + b"\x00" * (size_100mb - 8)
@@ -74,7 +72,7 @@ class Test100MBFileBoundary:
         assert result.valid is True
         assert result.file_size == size_100mb
 
-    def test_streaming_large_file_simulation(self):
+    def test_streaming_large_file_simulation(self) -> None:
         """Simulate streaming validation for large files."""
         # Generate 100MB in chunks to simulate streaming
         chunk_size = 10 * 1024 * 1024  # 10MB chunks
@@ -103,7 +101,7 @@ class Test100MBFileBoundary:
 class TestDuplicateDetection:
     """Test duplicate file detection via content hashing."""
 
-    def test_duplicate_file_detection_same_content(self):
+    def test_duplicate_file_detection_same_content(self) -> None:
         """Same content should produce same hash."""
         content1 = b"%PDF-1.4\nSame content"
         content2 = b"%PDF-1.4\nSame content"
@@ -113,7 +111,7 @@ class TestDuplicateDetection:
         
         assert hash1 == hash2
 
-    def test_duplicate_detection_different_content(self):
+    def test_duplicate_detection_different_content(self) -> None:
         """Different content should produce different hash."""
         content1 = b"%PDF-1.4\nContent A"
         content2 = b"%PDF-1.4\nContent B"
@@ -123,7 +121,7 @@ class TestDuplicateDetection:
         
         assert hash1 != hash2
 
-    def test_duplicate_detection_single_byte_difference(self):
+    def test_duplicate_detection_single_byte_difference(self) -> None:
         """Single byte difference should produce different hash."""
         content1 = b"%PDF-1.4\nContent"
         content2 = b"%PDF-1.4\ncontent"  # lowercase 'c'
@@ -133,7 +131,7 @@ class TestDuplicateDetection:
         
         assert hash1 != hash2
 
-    def test_duplicate_with_validation(self):
+    def test_duplicate_with_validation(self) -> None:
         """Validate and detect duplicate in single operation."""
         content = b"%PDF-1.4\nTest document"
         
@@ -144,7 +142,7 @@ class TestDuplicateDetection:
         assert result.valid is True
         assert len(file_hash) == 64  # SHA-256 hex digest length
 
-    def test_large_file_hash_consistency(self):
+    def test_large_file_hash_consistency(self) -> None:
         """Large file hashing should be consistent."""
         size_50mb = 50 * 1024 * 1024
         content = b"%PDF-1.4\n" + b"A" * size_50mb
@@ -154,7 +152,7 @@ class TestDuplicateDetection:
         
         assert hash1 == hash2
 
-    def test_deduplication_registry(self):
+    def test_deduplication_registry(self) -> None:
         """Test in-memory deduplication registry."""
         registry = {}
         
@@ -184,7 +182,7 @@ class TestDuplicateDetection:
         
         assert registry[file_hash]["count"] == 2
 
-    def test_hash_collision_resistance(self):
+    def test_hash_collision_resistance(self) -> None:
         """Different files should produce different hashes (collision resistance)."""
         test_files = [
             b"%PDF-1.4\nFile 1",
@@ -237,7 +235,7 @@ class UploadSession:
 class TestExpiredSessionCleanup:
     """Test upload session management and cleanup."""
 
-    def test_session_creation(self):
+    def test_session_creation(self) -> None:
         """Create upload session with expiration."""
         session_id = "session_123"
         tenant_id = "tenant_abc"
@@ -250,7 +248,7 @@ class TestExpiredSessionCleanup:
         assert session.is_active is True
         assert session.is_expired() is False
 
-    def test_session_expiration(self):
+    def test_session_expiration(self) -> None:
         """Session should expire after timeout."""
         session_id = "session_expired"
         tenant_id = "tenant_abc"
@@ -260,7 +258,7 @@ class TestExpiredSessionCleanup:
         
         assert session.is_expired() is True
 
-    def test_session_cleanup_on_expiration(self):
+    def test_session_cleanup_on_expiration(self) -> None:
         """Expired sessions should be cleaned up."""
         sessions = []
         
@@ -288,7 +286,7 @@ class TestExpiredSessionCleanup:
         assert active_session.is_active is True
         assert expired_session.is_active is False
 
-    def test_session_file_tracking(self):
+    def test_session_file_tracking(self) -> None:
         """Session should track uploaded files."""
         session = UploadSession(
             "session_123",
@@ -304,7 +302,7 @@ class TestExpiredSessionCleanup:
         assert session.files[0]["hash"] == "hash1"
         assert session.files[1]["hash"] == "hash2"
 
-    def test_session_timeout_configurations(self):
+    def test_session_timeout_configurations(self) -> None:
         """Test different timeout configurations."""
         test_cases = [
             (timedelta(hours=1), "1 hour"),
@@ -319,7 +317,7 @@ class TestExpiredSessionCleanup:
             
             assert session.is_expired() is False
 
-    def test_concurrent_session_cleanup(self):
+    def test_concurrent_session_cleanup(self) -> None:
         """Test cleanup of multiple sessions."""
         sessions_registry = {}
         
@@ -344,7 +342,7 @@ class TestExpiredSessionCleanup:
         
         assert expired_count == 5  # Half should be expired
 
-    def test_session_with_file_validation(self):
+    def test_session_with_file_validation(self) -> None:
         """Integration test: validate file and add to session."""
         # Create session
         session = UploadSession(
@@ -366,7 +364,7 @@ class TestExpiredSessionCleanup:
         assert len(session.files) == 1
         assert session.files[0]["mime_type"] == "application/pdf"
 
-    def test_session_duplicate_prevention(self):
+    def test_session_duplicate_prevention(self) -> None:
         """Prevent uploading same file twice in one session."""
         session = UploadSession(
             "session_dedup",
@@ -392,7 +390,7 @@ class TestExpiredSessionCleanup:
         
         assert len(session.files) == 1
 
-    def test_session_cleanup_removes_file_references(self):
+    def test_session_cleanup_removes_file_references(self) -> None:
         """Cleanup should remove file references."""
         session = UploadSession(
             "session_cleanup",
@@ -421,7 +419,7 @@ class TestExpiredSessionCleanup:
 class TestIntegrationScenarios:
     """End-to-end integration scenarios."""
 
-    def test_complete_upload_workflow(self):
+    def test_complete_upload_workflow(self) -> None:
         """Test complete file upload workflow with validation, dedup, and session."""
         # Step 1: Create upload session
         session = UploadSession(
@@ -451,7 +449,7 @@ class TestIntegrationScenarios:
         expected_size = len(pdf_header) + (50 * 1024 * 1024)
         assert session.files[0]["size"] == expected_size
 
-    def test_multi_tenant_isolation(self):
+    def test_multi_tenant_isolation(self) -> None:
         """Different tenants should have isolated sessions."""
         tenant_a_session = UploadSession(
             "session_a",
@@ -477,7 +475,7 @@ class TestIntegrationScenarios:
         assert len(tenant_b_session.files) == 1
         assert tenant_a_session.tenant_id != tenant_b_session.tenant_id
 
-    def test_batch_upload_validation(self):
+    def test_batch_upload_validation(self) -> None:
         """Validate multiple files in batch."""
         files = [
             (b"%PDF-1.4\nDoc1", "application/pdf"),
@@ -496,7 +494,7 @@ class TestIntegrationScenarios:
         assert all(r.valid for r in results)
         assert len(results) == 3
 
-    def test_error_recovery_on_invalid_file(self):
+    def test_error_recovery_on_invalid_file(self) -> None:
         """Session should handle validation failures gracefully."""
         session = UploadSession(
             "session_error_handling",

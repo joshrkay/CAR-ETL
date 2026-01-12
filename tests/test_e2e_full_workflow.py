@@ -15,22 +15,16 @@ Validates all architectural invariants and tenant isolation.
 """
 
 import pytest
-import asyncio
-from unittest.mock import Mock, AsyncMock, patch, MagicMock
+from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 from datetime import datetime, timezone
 from typing import Dict, Any, List
-from io import BytesIO
 
 from hypothesis import given, strategies as st, settings
 
-from src.services.tenant_provisioning import TenantProvisioningService, ProvisioningError
+from src.services.tenant_provisioning import TenantProvisioningService
 from src.services.email_ingestion import EmailIngestionService
-from src.services.email_parser import ParsedEmail, Attachment
-from src.connectors.sharepoint.sync import SharePointSync
-from src.connectors.google_drive.emitter import GoogleDriveEventEmitter
 from src.extraction.pipeline import process_document
-from src.workers.extraction_worker import ExtractionWorker
 
 
 # =============================================================================
@@ -398,7 +392,7 @@ class TestFullTenantWorkflow:
         self,
         lease_documents,
         offering_memo_documents
-    ):
+    ) -> None:
         """
         Test complete tenant workflow: provision → connect → ingest → extract.
 
@@ -480,7 +474,7 @@ class TestFullTenantWorkflow:
         # STEP 3: Register Email Address for Ingestion
         # =====================================================================
 
-        email_address = f"documents@testcompany.com"
+        email_address = "documents@testcompany.com"
         email_ingestion_id = uuid4()
 
         # Mock email_ingestions table
@@ -548,7 +542,7 @@ class TestFullTenantWorkflow:
 
         with patch('src.services.email_ingestion.FileStorageService'):
             with patch('src.services.email_ingestion.presidio_redact_bytes', side_effect=lambda x, y: x):
-                ingestion_service = EmailIngestionService(mock_client)
+                EmailIngestionService(mock_client)
 
                 for idx, (doc, doc_id) in enumerate(zip(lease_documents, lease_doc_ids)):
                     # Mock document insertion
@@ -736,7 +730,7 @@ class TestFullTenantWorkflow:
             lease_extractions_found += 1
 
         assert lease_extractions_found == 10
-        print(f"✓ Verified 10 lease extractions")
+        print("✓ Verified 10 lease extractions")
 
         # Verify all offering memos extracted correctly
         memo_extractions_found = 0
@@ -745,19 +739,19 @@ class TestFullTenantWorkflow:
             memo_extractions_found += 1
 
         assert memo_extractions_found == 5
-        print(f"✓ Verified 5 offering memo extractions")
+        print("✓ Verified 5 offering memo extractions")
 
         # =====================================================================
         # STEP 11: Verify Tenant Isolation
         # =====================================================================
 
         # Create a second tenant to verify isolation
-        tenant_2_id = uuid4()
+        uuid4()
 
         # Verify that tenant 2 cannot access tenant 1's documents
         # (This would be enforced by RLS policies in real database)
 
-        print(f"✓ Tenant isolation verified")
+        print("✓ Tenant isolation verified")
 
         # =====================================================================
         # FINAL VERIFICATION
@@ -768,12 +762,12 @@ class TestFullTenantWorkflow:
         print("="*70)
         print(f"Tenant ID: {tenant_id}")
         print(f"Users Created: {len(user_ids) + 1}")  # +1 for admin
-        print(f"Connectors Linked: 2 (Google Drive, SharePoint)")
+        print("Connectors Linked: 2 (Google Drive, SharePoint)")
         print(f"Documents Ingested: {len(all_document_ids)}")
         print(f"  - Leases: {len(lease_documents)}")
         print(f"  - Offering Memos: {len(offering_memo_documents)}")
         print(f"Extractions Completed: {len(extraction_ids)}")
-        print(f"Success Rate: 100%")
+        print("Success Rate: 100%")
         print("="*70)
 
         # Final assertions
@@ -801,7 +795,7 @@ class TestDocumentTypeFuzzing:
         self,
         tenant_count: int,
         doc_count_per_tenant: int,
-    ):
+    ) -> None:
         """
         Property test: Multiple tenants can process documents concurrently
         without cross-tenant data leakage.
@@ -815,7 +809,7 @@ class TestDocumentTypeFuzzing:
 
             # Each tenant processes documents
             for _ in range(doc_count_per_tenant):
-                doc_id = uuid4()
+                uuid4()
 
                 # Verify tenant_id is always preserved and isolated
                 # (In real system, RLS would enforce this)

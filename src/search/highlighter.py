@@ -6,7 +6,7 @@ Wraps matching terms in <mark> tags for UI rendering.
 """
 
 import re
-from typing import List
+from typing import List, Tuple
 
 
 class SearchHighlighter:

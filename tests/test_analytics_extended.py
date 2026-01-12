@@ -11,11 +11,11 @@ class TestExtendedAnalyticsAPI:
     """Integration tests for new analytics endpoints."""
 
     @pytest.fixture
-    def client(self):
+    def client(self) -> TestClient:
         """Create test client."""
         return TestClient(app)
 
-    def test_rent_by_property_success(self, client):
+    def test_rent_by_property_success(self, client) -> None:
         """Test rent grouped by property."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -55,7 +55,7 @@ class TestExtendedAnalyticsAPI:
                 assert "properties" in data
                 assert "total_properties" in data
 
-    def test_rent_concentration_success(self, client):
+    def test_rent_concentration_success(self, client) -> None:
         """Test rent concentration analysis."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -93,7 +93,7 @@ class TestExtendedAnalyticsAPI:
                 assert "top_tenants" in data
                 assert "top_10_concentration" in data
 
-    def test_rent_per_sf_success(self, client):
+    def test_rent_per_sf_success(self, client) -> None:
         """Test rent per SF analysis."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -133,7 +133,7 @@ class TestExtendedAnalyticsAPI:
                 assert "average_rent_per_sf_monthly" in data
                 assert "average_rent_per_sf_annual" in data
 
-    def test_portfolio_metrics_success(self, client):
+    def test_portfolio_metrics_success(self, client) -> None:
         """Test portfolio metrics dashboard."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
