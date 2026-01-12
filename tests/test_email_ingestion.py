@@ -329,7 +329,7 @@ class TestEmailIngestionService:
         
         return client
     
-    def test_ingest_email_basic(self, mock_supabase) -> None:
+    def test_ingest_email_basic(self, mock_supabase: Any) -> None:
         """Test ingesting email with body only."""
         service = EmailIngestionService(mock_supabase)
         
@@ -350,7 +350,7 @@ class TestEmailIngestionService:
         assert "attachment_document_ids" in result
         assert len(result["attachment_document_ids"]) == 0
     
-    def test_ingest_email_with_attachment(self, mock_supabase) -> None:
+    def test_ingest_email_with_attachment(self, mock_supabase: Any) -> None:
         """Test ingesting email with attachment."""
         service = EmailIngestionService(mock_supabase)
         
@@ -382,7 +382,7 @@ class TestEmailIngestionService:
             assert result["body_document_id"] is not None
             assert len(result["attachment_document_ids"]) == 1
     
-    def test_ingest_email_tenant_not_found(self, mock_supabase) -> None:
+    def test_ingest_email_tenant_not_found(self, mock_supabase: Any) -> None:
         """Test ingesting email with non-existent tenant."""
         service = EmailIngestionService(mock_supabase)
         
@@ -402,7 +402,7 @@ class TestEmailIngestionService:
         with pytest.raises(NotFoundError):
             service.ingest_email(parsed_email, tenant_id)
     
-    def test_calculate_hash(self, mock_supabase) -> None:
+    def test_calculate_hash(self, mock_supabase: Any) -> None:
         """Test file hash calculation."""
         service = EmailIngestionService(mock_supabase)
         
@@ -428,7 +428,7 @@ class TestEmailWebhookEndpoint:
         from src.main import app
         return TestClient(app)
     
-    def test_webhook_missing_signature(self, client) -> None:
+    def test_webhook_missing_signature(self, client: Any) -> None:
         """Test webhook without signature header."""
         response = client.post(
             "/api/v1/webhooks/email/inbound",
@@ -437,7 +437,7 @@ class TestEmailWebhookEndpoint:
         
         assert response.status_code == 401
     
-    def test_webhook_invalid_signature(self, client) -> None:
+    def test_webhook_invalid_signature(self, client: Any) -> None:
         """Test webhook with invalid signature."""
         response = client.post(
             "/api/v1/webhooks/email/inbound",
@@ -447,7 +447,7 @@ class TestEmailWebhookEndpoint:
         
         assert response.status_code == 401
     
-    def test_webhook_invalid_recipient(self, client) -> None:
+    def test_webhook_invalid_recipient(self, client: Any) -> None:
         """Test webhook with invalid recipient format."""
         # This test would require mocking the signature verification
         # For now, we'll skip the full integration test

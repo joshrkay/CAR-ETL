@@ -46,7 +46,7 @@ def sample_token(mock_config: Any) -> Any:
     return jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
-def test_create_user_client_uses_anon_key(mock_config) -> None:
+def test_create_user_client_uses_anon_key(mock_config: Any) -> None:
     """Test that create_user_client uses anon_key, not service_key."""
     token = "test-token"
     
@@ -70,7 +70,7 @@ def test_create_user_client_uses_anon_key(mock_config) -> None:
         assert mock_client.postgrest.session.headers["Authorization"] == f"Bearer {token}"
 
 
-def test_create_service_client_uses_service_key(mock_config) -> None:
+def test_create_service_client_uses_service_key(mock_config: Any) -> None:
     """Test that create_service_client uses service_key."""
     with patch("src.auth.client.create_client") as mock_create:
         create_service_client(mock_config)
@@ -82,7 +82,7 @@ def test_create_service_client_uses_service_key(mock_config) -> None:
         assert call_args[0][1] == mock_config.supabase_service_key
 
 
-def test_middleware_creates_user_client(mock_config, sample_token) -> None:
+def test_middleware_creates_user_client(mock_config: Any, sample_token: Any) -> None:
     """Test that middleware creates user client with JWT token."""
     middleware = AuthMiddleware(app, mock_config)
     
@@ -119,7 +119,7 @@ def test_middleware_creates_user_client(mock_config, sample_token) -> None:
         assert isinstance(request.state.auth, AuthContext)
 
 
-def test_middleware_skips_auth_for_public_paths(mock_config) -> None:
+def test_middleware_skips_auth_for_public_paths(mock_config: Any) -> None:
     """Test that middleware skips auth for public paths."""
     middleware = AuthMiddleware(app, mock_config)
     
@@ -169,7 +169,7 @@ def test_get_supabase_client_returns_user_client() -> None:
     assert client == mock_client
 
 
-def test_user_client_respects_rls(mock_config, sample_token) -> None:
+def test_user_client_respects_rls(mock_config: Any, sample_token: Any) -> None:
     """Test that user client uses anon_key which respects RLS."""
     with patch("src.auth.client.create_client") as mock_create:
         mock_client = Mock()
@@ -189,7 +189,7 @@ def test_user_client_respects_rls(mock_config, sample_token) -> None:
         assert mock_client.postgrest.session.headers["Authorization"] == f"Bearer {sample_token}"
 
 
-def test_service_client_bypasses_rls(mock_config) -> None:
+def test_service_client_bypasses_rls(mock_config: Any) -> None:
     """Test that service client uses service_key which bypasses RLS."""
     with patch("src.auth.client.create_client") as mock_create:
         mock_client = Mock()

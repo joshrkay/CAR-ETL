@@ -377,7 +377,7 @@ class TestGoogleDriveSync:
     """Test Google Drive sync functionality."""
     
     @pytest.mark.asyncio
-    async def test_sync_drive_with_changes(self, mock_supabase_client) -> None:
+    async def test_sync_drive_with_changes(self, mock_supabase_client: Any) -> None:
         """Test sync using Changes API."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -450,7 +450,7 @@ class TestGoogleDriveSync:
         assert len(stats["errors"]) == 0
     
     @pytest.mark.asyncio
-    async def test_sync_handles_deleted_files(self, mock_supabase_client) -> None:
+    async def test_sync_handles_deleted_files(self, mock_supabase_client: Any) -> None:
         """Test sync handles deleted files correctly."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -518,7 +518,7 @@ class TestGoogleDriveSync:
         assert len(stats["errors"]) == 0
     
     @pytest.mark.asyncio
-    async def test_sync_with_shared_drive(self, mock_supabase_client) -> None:
+    async def test_sync_with_shared_drive(self, mock_supabase_client: Any) -> None:
         """Test sync with shared drive support."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -592,7 +592,7 @@ class TestGoogleDriveSync:
         assert call_args[1]["drive_id"] == drive_id
     
     @pytest.mark.asyncio
-    async def test_sync_filters_by_folder_id(self, mock_supabase_client) -> None:
+    async def test_sync_filters_by_folder_id(self, mock_supabase_client: Any) -> None:
         """Test sync filters files by folder_id."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -682,7 +682,7 @@ class TestGoogleDriveSync:
 class TestStateStore:
     """Test OAuth state storage."""
     
-    def test_state_storage_and_retrieval(self, mock_supabase_client) -> None:
+    def test_state_storage_and_retrieval(self, mock_supabase_client: Any) -> None:
         """Test storing and retrieving OAuth state."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta
@@ -729,7 +729,7 @@ class TestStateStore:
         retrieved_tenant_id = asyncio.run(state_store.get_tenant_id(state))
         assert retrieved_tenant_id == tenant_id
     
-    def test_state_expired(self, mock_supabase_client) -> None:
+    def test_state_expired(self, mock_supabase_client: Any) -> None:
         """Test expired state retrieval."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta

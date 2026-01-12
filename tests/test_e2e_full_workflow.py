@@ -390,8 +390,8 @@ class TestFullTenantWorkflow:
     @pytest.mark.asyncio
     async def test_complete_tenant_workflow(
         self,
-        lease_documents,
-        offering_memo_documents
+        lease_documents: Any,
+        offering_memo_documents: Any
     ) -> None:
         """
         Test complete tenant workflow: provision → connect → ingest → extract.

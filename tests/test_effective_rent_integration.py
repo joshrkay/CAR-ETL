@@ -21,7 +21,7 @@ class TestEffectiveRentAPIIntegration:
         """Create test client."""
         return TestClient(app)
 
-    def test_list_effective_rents_success(self, client) -> None:
+    def test_list_effective_rents_success(self, client: Any) -> None:
         """Test listing all effective rents."""
         tenant_id = uuid4()
         doc_id = uuid4()
@@ -84,7 +84,7 @@ class TestEffectiveRentAPIIntegration:
                 assert tenant["effective_monthly_rent"] == 11000.0  # 10000 + 1000
                 assert tenant["effective_annual_rent"] == 132000.0  # 11000 * 12
 
-    def test_list_effective_rents_with_limit(self, client) -> None:
+    def test_list_effective_rents_with_limit(self, client: Any) -> None:
         """Test listing with limit parameter."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -135,7 +135,7 @@ class TestEffectiveRentAPIIntegration:
                 data = response.json()
                 assert len(data["tenants"]) == 5
 
-    def test_list_effective_rents_with_sort(self, client) -> None:
+    def test_list_effective_rents_with_sort(self, client: Any) -> None:
         """Test listing with different sort orders."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -183,7 +183,7 @@ class TestEffectiveRentAPIIntegration:
                 rents_list = [t["effective_monthly_rent"] for t in data["tenants"]]
                 assert rents_list == sorted(rents_list)
 
-    def test_get_highest_effective_rent_success(self, client) -> None:
+    def test_get_highest_effective_rent_success(self, client: Any) -> None:
         """Test getting tenant with highest rent."""
         doc_id = uuid4()
         extraction_id = uuid4()
@@ -234,7 +234,7 @@ class TestEffectiveRentAPIIntegration:
                 assert data["effective_monthly_rent"] == 27000.0
                 assert data["document_name"] == "Premium_Lease.pdf"
 
-    def test_get_highest_effective_rent_no_data(self, client) -> None:
+    def test_get_highest_effective_rent_no_data(self, client: Any) -> None:
         """Test getting highest rent when no data exists."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -256,7 +256,7 @@ class TestEffectiveRentAPIIntegration:
                 assert response.status_code == 404
                 assert "No rent data found" in response.json()["detail"]
 
-    def test_get_summary_success(self, client) -> None:
+    def test_get_summary_success(self, client: Any) -> None:
         """Test getting portfolio summary."""
         with patch("src.api.routes.effective_rent.get_supabase_client") as mock_get_supabase:
             with patch("src.api.routes.effective_rent.require_permission") as mock_auth_dep:
@@ -314,7 +314,7 @@ class TestEffectiveRentAPIIntegration:
                 assert data["highest_effective_rent"]["effective_monthly_rent"] == 10000.0
                 assert data["lowest_effective_rent"]["effective_monthly_rent"] == 5000.0
 
-    def test_validation_error_invalid_limit(self, client) -> None:
+    def test_validation_error_invalid_limit(self, client: Any) -> None:
         """Test validation error for invalid limit."""
         with patch("src.api.routes.effective_rent.get_supabase_client"):
             with patch("src.api.routes.effective_rent.require_permission"):
@@ -324,7 +324,7 @@ class TestEffectiveRentAPIIntegration:
                 # Should return validation error
                 assert response.status_code == 422
 
-    def test_validation_error_invalid_sort(self, client) -> None:
+    def test_validation_error_invalid_sort(self, client: Any) -> None:
         """Test validation error for invalid sort parameter."""
         with patch("src.api.routes.effective_rent.get_supabase_client"):
             with patch("src.api.routes.effective_rent.require_permission"):

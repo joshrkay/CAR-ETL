@@ -105,7 +105,7 @@ def fix_nested_and_route_functions(content: str) -> Tuple[str, int]:
             # Only check for multi-line if this line contains 'def ' and is incomplete
             # A complete single-line has both ')' and ':' even if separated by '-> Type'
             if 'def ' in func_line and '(' in func_line and not (')' in func_line and ':' in func_line):
-                # Multi-line function definition - collect all lines until closing ):
+                # Multi-line function definition - collect all lines until closing ): or ->
                 func_lines = [func_line]
                 k = j + 1
                 while k < len(lines) and '):' not in lines[k] and '->' not in lines[k]:
@@ -114,16 +114,89 @@ def fix_nested_and_route_functions(content: str) -> Tuple[str, int]:
                 if k < len(lines):
                     func_lines.append(lines[k])  # Line with closing ): or ->
 
-                # Check if return type annotation is present on last line
-                last_line = func_lines[-1]
+                # Process multi-line function parameters by adding types inline
+                # Handle lines with multiple comma-separated parameters
+                made_changes = False
+                for line_idx in range(len(func_lines)):
+                    line = func_lines[line_idx]
+                    # Skip the first line (has function name) and last line (has ): or ->)
+                    if line_idx == 0 or line_idx == len(func_lines) - 1:
+                        continue
 
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith('#'):
+                        continue
+
+                    # Split by comma to handle multiple parameters per line
+                    indent_match = re.match(r'^(\s*)', line)
+                    indent = indent_match.group(1) if indent_match else '    '
+
+                    # Handle multiple params on one line: "param1, param2, param3: Type"
+                    if ',' in stripped:
+                        # Check if original line has trailing comma
+                        has_trailing_comma = stripped.endswith(',')
+
+                        # Split carefully
+                        params_on_line = split_params(stripped)
+                        new_params = []
+                        line_modified = False
+
+                        for param in params_on_line:
+                            param = param.strip()
+                            if not param or param == 'self':
+                                if param:  # Only add non-empty
+                                    new_params.append(param)
+                            elif ':' in param:
+                                new_params.append(param)
+                            elif '=' in param and ':' not in param:
+                                # Has default but no type
+                                param_name = param.split('=')[0].strip()
+                                default_part = param.split('=', 1)[1].strip()
+                                new_params.append(f'{param_name}: Any = {default_part}')
+                                line_modified = True
+                            else:
+                                # No type, no default
+                                new_params.append(f'{param}: Any')
+                                line_modified = True
+
+                        if line_modified:
+                            # Reconstruct the line, preserving trailing comma
+                            new_line = f'{indent}{", ".join(new_params)}'
+                            if has_trailing_comma:
+                                new_line += ','
+                            if line.endswith('\n'):
+                                new_line += '\n'
+                            func_lines[line_idx] = new_line
+                            made_changes = True
+                    else:
+                        # Single parameter on this line
+                        # Check for comma BEFORE stripping it
+                        has_comma = stripped.endswith(',')
+                        param_text = stripped.rstrip(',').strip()
+
+                        if param_text and param_text != 'self':
+                            if ':' not in param_text and '=' not in param_text:
+                                # Simple parameter without type - add : Any
+                                func_lines[line_idx] = f'{indent}{param_text}: Any{"," if has_comma else ""}\n' if line.endswith('\n') else f'{indent}{param_text}: Any{"," if has_comma else ""}'
+                                made_changes = True
+                            elif '=' in param_text and ':' not in param_text:
+                                # Parameter with default but no type - add : Any before =
+                                param_name = param_text.split('=')[0].strip()
+                                default_part = param_text.split('=', 1)[1]
+                                func_lines[line_idx] = f'{indent}{param_name}: Any = {default_part}{"," if has_comma else ""}\n' if line.endswith('\n') else f'{indent}{param_name}: Any = {default_part}{"," if has_comma else ""}'
+                                made_changes = True
+
+                if made_changes:
+                    # Write back the modified lines
+                    for idx, updated_line in enumerate(func_lines):
+                        lines[j + idx] = updated_line
+                    changes += 1
+
+                # Check if return type needs to be added (route handlers)
+                last_line = func_lines[-1]
                 if '->' not in last_line and is_route:
-                    # Add return type to the last line (which has the closing paren)
-                    # Pattern: "        ):"  or "        ):"
                     if last_line.strip() == '):':
-                        # Replace with return type
                         func_lines[-1] = last_line.replace('):', ') -> Any:')
-                        # Write back the lines
                         for idx, updated_line in enumerate(func_lines):
                             lines[j + idx] = updated_line
                         changes += 1
@@ -147,12 +220,21 @@ def fix_nested_and_route_functions(content: str) -> Tuple[str, int]:
                 needs_return_type = existing_return is None or existing_return.strip() == '->'
                 needs_param_types = False
 
-                # Skip test_ functions at class/module level (already handled)
+                # Detect function context
                 is_nested = len(indent) > 4  # More than class method indent
                 is_test_method = func_name.startswith('test_')
 
-                # Check if we should process this function
-                should_process = is_route or is_nested or not is_test_method
+                # Pre-check parameters to see if any lack type annotations
+                if params.strip():
+                    param_list = split_params(params)
+                    for param in param_list:
+                        if ':' not in param and param != 'self':
+                            needs_param_types = True
+                            break
+
+                # Process if: route handler, nested function, OR has untyped params/return
+                # This includes test methods with untyped fixture parameters
+                should_process = is_route or is_nested or needs_param_types or needs_return_type
 
                 if should_process:
                     # Collect function body for analysis

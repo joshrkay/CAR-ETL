@@ -53,7 +53,7 @@ def document_data(tenant_id: Any, user_id: Any) -> Any:
 class TestDocumentConstraints:
     """Test document table constraints."""
 
-    def test_document_insert_success(self, mock_supabase_client, document_data) -> None:
+    def test_document_insert_success(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test successful document insertion."""
         document_id = uuid4()
         
@@ -74,7 +74,7 @@ class TestDocumentConstraints:
         assert result.data[0]["file_hash"] == document_data["file_hash"]
         assert result.data[0]["tenant_id"] == document_data["tenant_id"]
 
-    def test_document_duplicate_file_hash_same_tenant(self, mock_supabase_client, document_data) -> None:
+    def test_document_duplicate_file_hash_same_tenant(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that duplicate file_hash in same tenant is rejected."""
         # Mock unique constraint violation
         mock_supabase_client.execute.side_effect = Exception(
@@ -86,7 +86,7 @@ class TestDocumentConstraints:
         
         assert "unique constraint" in str(exc_info.value).lower()
 
-    def test_document_different_tenant_same_hash_allowed(self, mock_supabase_client, document_data) -> None:
+    def test_document_different_tenant_same_hash_allowed(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that same file_hash in different tenants is allowed."""
         tenant_1_id = uuid4()
         tenant_2_id = uuid4()
@@ -130,7 +130,7 @@ class TestDocumentConstraints:
         assert result2.data[0]["tenant_id"] == str(tenant_2_id)
         assert result1.data[0]["file_hash"] == result2.data[0]["file_hash"]
 
-    def test_document_invalid_mime_type(self, mock_supabase_client, document_data) -> None:
+    def test_document_invalid_mime_type(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that invalid mime_type is rejected."""
         invalid_data = {**document_data, "mime_type": "invalid/type"}
         
@@ -144,7 +144,7 @@ class TestDocumentConstraints:
         
         assert "check constraint" in str(exc_info.value).lower()
 
-    def test_document_invalid_file_size(self, mock_supabase_client, document_data) -> None:
+    def test_document_invalid_file_size(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that zero or negative file_size_bytes is rejected."""
         invalid_data = {**document_data, "file_size_bytes": 0}
         
@@ -158,7 +158,7 @@ class TestDocumentConstraints:
         
         assert "check constraint" in str(exc_info.value).lower()
 
-    def test_document_invalid_status(self, mock_supabase_client, document_data) -> None:
+    def test_document_invalid_status(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that invalid status is rejected."""
         invalid_data = {**document_data, "status": "invalid_status"}
         
@@ -172,7 +172,7 @@ class TestDocumentConstraints:
         
         assert "check constraint" in str(exc_info.value).lower()
 
-    def test_document_parent_id_self_reference(self, mock_supabase_client, document_data) -> None:
+    def test_document_parent_id_self_reference(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test document with parent_id (email attachment)."""
         parent_id = uuid4()
         child_data = {
@@ -196,7 +196,7 @@ class TestDocumentConstraints:
 class TestProcessingQueue:
     """Test processing queue table."""
 
-    def test_queue_item_insert_on_document_insert(self, mock_supabase_client, document_data) -> None:
+    def test_queue_item_insert_on_document_insert(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that queue item is automatically created when document is inserted."""
         document_id = uuid4()
         uuid4()
@@ -222,7 +222,7 @@ class TestProcessingQueue:
         # In real scenario, trigger would fire automatically
         # Here we verify the pattern
 
-    def test_queue_retry_logic(self, mock_supabase_client, tenant_id) -> None:
+    def test_queue_retry_logic(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test queue retry logic with attempts and max_attempts."""
         document_id = uuid4()
         queue_id = uuid4()
@@ -254,7 +254,7 @@ class TestProcessingQueue:
         assert result.data[0]["attempts"] == 3
         assert result.data[0]["status"] == "pending"
 
-    def test_queue_invalid_status(self, mock_supabase_client, tenant_id) -> None:
+    def test_queue_invalid_status(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that invalid queue status is rejected."""
         document_id = uuid4()
         queue_data = {
@@ -273,7 +273,7 @@ class TestProcessingQueue:
         
         assert "check constraint" in str(exc_info.value).lower()
 
-    def test_queue_negative_attempts(self, mock_supabase_client, tenant_id) -> None:
+    def test_queue_negative_attempts(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that negative attempts is rejected."""
         document_id = uuid4()
         queue_data = {
@@ -296,7 +296,7 @@ class TestProcessingQueue:
 class TestDocumentRLS:
     """Test document RLS policies."""
 
-    def test_user_can_select_own_tenant_documents(self, mock_supabase_client, tenant_id) -> None:
+    def test_user_can_select_own_tenant_documents(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that user can SELECT documents from their own tenant."""
         document_id = uuid4()
         mock_documents = [{
@@ -316,7 +316,7 @@ class TestDocumentRLS:
         assert len(result.data) == 1
         assert result.data[0]["tenant_id"] == str(tenant_id)
 
-    def test_user_cannot_select_other_tenant_documents(self, mock_supabase_client) -> None:
+    def test_user_cannot_select_other_tenant_documents(self, mock_supabase_client: Any) -> None:
         """Test that user cannot SELECT documents from other tenant."""
         uuid4()
         tenant_b_id = uuid4()
@@ -333,7 +333,7 @@ class TestDocumentRLS:
         # RLS should filter out tenant_b documents
         assert len(result.data) == 0
 
-    def test_user_can_insert_own_tenant_document(self, mock_supabase_client, document_data) -> None:
+    def test_user_can_insert_own_tenant_document(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that user can INSERT documents for their own tenant."""
         document_id = uuid4()
         
@@ -348,7 +348,7 @@ class TestDocumentRLS:
         assert result.data[0]["id"] == str(document_id)
         assert result.data[0]["tenant_id"] == document_data["tenant_id"]
 
-    def test_user_cannot_insert_other_tenant_document(self, mock_supabase_client, document_data) -> None:
+    def test_user_cannot_insert_other_tenant_document(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that user cannot INSERT documents for other tenant."""
         other_tenant_id = uuid4()
         invalid_data = {**document_data, "tenant_id": str(other_tenant_id)}
@@ -367,7 +367,7 @@ class TestDocumentRLS:
 class TestProcessingQueueRLS:
     """Test processing queue RLS policies."""
 
-    def test_user_can_select_own_tenant_queue(self, mock_supabase_client, tenant_id) -> None:
+    def test_user_can_select_own_tenant_queue(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that user can SELECT queue items from their own tenant."""
         queue_id = uuid4()
         document_id = uuid4()
@@ -389,7 +389,7 @@ class TestProcessingQueueRLS:
         assert len(result.data) == 1
         assert result.data[0]["tenant_id"] == str(tenant_id)
 
-    def test_user_cannot_insert_queue_item(self, mock_supabase_client, tenant_id) -> None:
+    def test_user_cannot_insert_queue_item(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that regular user cannot INSERT queue items (service_role only)."""
         document_id = uuid4()
         queue_data = {
@@ -408,7 +408,7 @@ class TestProcessingQueueRLS:
         
         assert "row-level security" in str(exc_info.value).lower()
 
-    def test_user_cannot_update_queue_item(self, mock_supabase_client, tenant_id) -> None:
+    def test_user_cannot_update_queue_item(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that regular user cannot UPDATE queue items (service_role only)."""
         queue_id = uuid4()
         
@@ -428,7 +428,7 @@ class TestProcessingQueueRLS:
 class TestDocumentTrigger:
     """Test document processing trigger."""
 
-    def test_trigger_enqueues_on_insert(self, mock_supabase_client, document_data) -> None:
+    def test_trigger_enqueues_on_insert(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that trigger automatically enqueues document on insert."""
         document_id = uuid4()
         uuid4()
@@ -453,7 +453,7 @@ class TestDocumentTrigger:
         # In real scenario, trigger would automatically create queue item
         # This test verifies the expected behavior pattern
 
-    def test_trigger_uses_security_definer(self, mock_supabase_client, document_data) -> None:
+    def test_trigger_uses_security_definer(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that trigger function uses SECURITY DEFINER to bypass RLS."""
         document_id = uuid4()
         
@@ -477,7 +477,7 @@ class TestDocumentTrigger:
 class TestDocumentForeignKeys:
     """Test document foreign key constraints."""
 
-    def test_document_requires_valid_tenant_id(self, mock_supabase_client, document_data) -> None:
+    def test_document_requires_valid_tenant_id(self, mock_supabase_client: Any, document_data: Any) -> None:
         """Test that document requires valid tenant_id foreign key."""
         invalid_tenant_id = uuid4()
         invalid_data = {**document_data, "tenant_id": str(invalid_tenant_id)}
@@ -492,7 +492,7 @@ class TestDocumentForeignKeys:
         
         assert "foreign key constraint" in str(exc_info.value).lower()
 
-    def test_queue_requires_valid_document_id(self, mock_supabase_client, tenant_id) -> None:
+    def test_queue_requires_valid_document_id(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that queue requires valid document_id foreign key."""
         invalid_document_id = uuid4()
         queue_data = {
@@ -511,7 +511,7 @@ class TestDocumentForeignKeys:
         
         assert "foreign key constraint" in str(exc_info.value).lower()
 
-    def test_document_cascade_delete(self, mock_supabase_client, tenant_id) -> None:
+    def test_document_cascade_delete(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test that deleting document cascades to queue items."""
         document_id = uuid4()
         uuid4()
