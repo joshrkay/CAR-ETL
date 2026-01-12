@@ -231,11 +231,12 @@ class TestHealthChecker:
             mock_http_client.get.return_value = mock_response
             
             results = await health_checker.check_all()
-            
+
             assert "database" in results
             assert "storage" in results
             assert "auth" in results
-            assert len(results) == 3
+            assert "presidio" in results
+            assert len(results) == 4
     
     def test_get_overall_status_healthy(self, health_checker: Any) -> None:
         """Test overall status when all checks pass."""

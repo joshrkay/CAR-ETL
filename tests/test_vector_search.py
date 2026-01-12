@@ -96,9 +96,10 @@ class TestEmbeddingService:
     
     def test_embed_invalid_input(self, embedding_service: Any) -> None:
         """Test that invalid inputs raise ValueError."""
+        import asyncio
         with pytest.raises(ValueError, match="non-empty strings"):
             # This will fail at validation, not API call
-            pass  # Will be caught by embed() validation
+            asyncio.run(embedding_service.embed(["valid text", "", "another text"]))
     
     def test_init_missing_api_key(self) -> None:
         """Test that missing API key raises ValueError."""

@@ -73,8 +73,8 @@ class TestSearchHighlighter:
 
     def test_highlight_snippet_length(self, highlighter: Any) -> None:
         """Test that snippets are limited to configured length."""
-        content = "a " * 500  # Very long content
-        query = "a"
+        content = "rent " * 500  # Very long content
+        query = "rent"
 
         highlights = highlighter.highlight(content, query)
 
@@ -283,7 +283,7 @@ class TestHybridSearchService:
         assert len(results) == 1
         # Verify filter was passed to RPC call
         call_args = mock_supabase_client.rpc.call_args
-        assert call_args[1]["filter_document_ids"] == [str(doc_id)]
+        assert call_args[0][1]["filter_document_ids"] == [str(doc_id)]
 
     @pytest.mark.asyncio
     async def test_search_invalid_query(self, hybrid_service: Any) -> None:
