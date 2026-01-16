@@ -1,6 +1,7 @@
 """FastAPI dependencies for RBAC permission enforcement."""
+import inspect
 import logging
-from typing import Awaitable, Callable
+from typing import Any, Awaitable, Callable
 from fastapi import Depends, HTTPException, Request, status
 
 from src.auth.models import AuthContext
@@ -87,6 +88,32 @@ def require_permission(
         return auth
     
     return checker
+
+
+def require_permission_dependency(permission: str) -> Callable[[Request], Awaitable[AuthContext]]:
+    """
+    Resolve permission checks at request time for easier patching in tests.
+
+    This helper defers the call to require_permission until the dependency
+    is executed, allowing test suites to patch require_permission reliably.
+    """
+    async def dependency(
+        request: Request,
+        auth: AuthContext = Depends(get_current_user),
+    ) -> AuthContext:
+        checker = require_permission(permission)
+        parameters = inspect.signature(checker).parameters
+        if len(parameters) >= 2:
+            result = checker(request, auth)
+        elif len(parameters) == 1:
+            result = checker(request)
+        else:
+            result = checker()
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
+    return dependency
 
 
 # Role shortcuts for convenience

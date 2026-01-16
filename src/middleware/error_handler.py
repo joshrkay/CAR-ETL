@@ -97,7 +97,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
         )
         
         return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content=error_response,
         )
     

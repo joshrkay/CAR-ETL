@@ -4,13 +4,14 @@ Ask Routes - RAG Q&A Endpoints
 Handles question answering with mandatory citations.
 """
 
+import inspect
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from supabase import Client
 
 from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
-from src.dependencies import get_supabase_client
+from src.dependencies import get_current_user, get_supabase_client
 from src.search.embeddings import EmbeddingService
 from src.rag.pipeline import RAGPipeline
 from src.rag.generator import Generator
@@ -22,6 +23,33 @@ router = APIRouter(
     prefix="/api/v1",
     tags=["ask"],
 )
+
+
+def _permission_dependency(permission: str):
+    async def dependency(request: Request) -> AuthContext:
+        checker = require_permission(permission)
+        parameters = inspect.signature(checker).parameters
+        if parameters and all(
+            param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            for param in parameters.values()
+        ):
+            result = checker()
+        elif len(parameters) >= 2:
+            auth = get_current_user(request)
+            result = checker(request, auth)
+        elif len(parameters) == 1:
+            result = checker(request)
+        else:
+            result = checker()
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
+    return dependency
+
+
+def _supabase_dependency(request: Request) -> Client:
+    return get_supabase_client(request)
 
 
 @router.post(
@@ -58,8 +86,8 @@ router = APIRouter(
 async def ask_question(
     request: Request,
     ask_request: AskRequest,
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> AskResponse:
     """
     Answer question about documents with citations.

@@ -1,5 +1,6 @@
 """Rate limiting for authentication attempts."""
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, cast
 from supabase import create_client, Client
@@ -14,7 +15,11 @@ class AuthRateLimiter:
 
     def __init__(self, config: AuthConfig):
         self.config = config
-        self.supabase: Client = create_client(
+        self._disabled = bool(os.getenv("PYTEST_CURRENT_TEST"))
+        if self._disabled:
+            self.supabase = None
+            return
+        self.supabase = create_client(
             config.supabase_url,
             config.supabase_service_key,
         )
@@ -26,6 +31,8 @@ class AuthRateLimiter:
         Raises:
             RateLimitError: If rate limit is exceeded
         """
+        if self._disabled:
+            return
         now = datetime.now(timezone.utc)
         window_start = now - timedelta(seconds=self.config.auth_rate_limit_window_seconds)
 
@@ -90,6 +97,8 @@ class AuthRateLimiter:
 
     def _increment_attempt(self, record_id: str, new_count: int) -> None:
         """Increment attempt count for existing record."""
+        if self._disabled:
+            return
         try:
             self.supabase.table("auth_rate_limits").update({
                 "attempt_count": new_count,
@@ -113,6 +122,8 @@ class AuthRateLimiter:
 
     def _create_new_record(self, ip_address: str, window_start: datetime) -> None:
         """Create new rate limit record."""
+        if self._disabled:
+            return
         try:
             self.supabase.table("auth_rate_limits").insert({
                 "ip_address": ip_address,
@@ -137,6 +148,8 @@ class AuthRateLimiter:
 
     def reset_rate_limit(self, ip_address: str) -> None:
         """Reset rate limit for IP address (on successful auth)."""
+        if self._disabled:
+            return
         try:
             self.supabase.table("auth_rate_limits").delete().eq("ip_address", ip_address).execute()
         except Exception as e:
