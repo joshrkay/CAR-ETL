@@ -2,7 +2,7 @@
 import signal
 import sys
 import logging
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from typing import Annotated, Any, Dict
@@ -240,7 +240,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     }
     
     return JSONResponse(
-        status_code=400,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content=error_response,
     )
 

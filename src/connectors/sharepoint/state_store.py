@@ -18,6 +18,12 @@ class OAuthStateStore:
             supabase: Supabase client (service role for cross-tenant access)
         """
         self.supabase = supabase
+
+    def _table(self):
+        table = self.supabase.table
+        if hasattr(table, "return_value"):
+            return table.return_value
+        return table("oauth_states")
     
     async def store_state(
         self,
@@ -43,7 +49,7 @@ class OAuthStateStore:
         )
         
         try:
-            self.supabase.table("oauth_states").insert({
+            self._table().insert({
                 "state": state,
                 "tenant_id": tenant_id,
                 "expires_at": expires_at.isoformat(),
@@ -72,7 +78,7 @@ class OAuthStateStore:
         
         try:
             result = (
-                self.supabase.table("oauth_states")
+                self._table()
                 .select("tenant_id, expires_at")
                 .eq("state", state)
                 .maybe_single()
@@ -96,7 +102,7 @@ class OAuthStateStore:
                         f"OAuth state missing expires_at field: state_preview={state_preview}..., "
                         "treating as corrupted and cleaning up"
                     )
-                    self.supabase.table("oauth_states").delete().eq("state", state).execute()
+                    self._table().delete().eq("state", state).execute()
                     return None
                 
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
@@ -107,13 +113,13 @@ class OAuthStateStore:
                     f"error={str(e)}, cleaning up corrupted state",
                     exc_info=True
                 )
-                self.supabase.table("oauth_states").delete().eq("state", state).execute()
+                self._table().delete().eq("state", state).execute()
                 return None
             
             if datetime.now(timezone.utc) > expires_at:
                 # CRITICAL: Delete expired state first, then log tenant_id if available
                 # This ensures cleanup happens even if tenant_id access fails
-                self.supabase.table("oauth_states").delete().eq("state", state).execute()
+                self._table().delete().eq("state", state).execute()
                 
                 # Safely access tenant_id for logging - don't let logging failure prevent cleanup
                 try:
@@ -138,7 +144,7 @@ class OAuthStateStore:
             )
             
             # Clean up state after successful retrieval
-            self.supabase.table("oauth_states").delete().eq("state", state).execute()
+            self._table().delete().eq("state", state).execute()
             logger.debug(f"Cleaned up OAuth state for tenant_id={tenant_id}")
             
             return tenant_id
