@@ -6,7 +6,7 @@ Combines vector and keyword search using Reciprocal Rank Fusion (RRF).
 """
 
 import logging
-from typing import Annotated, List, Optional
+from typing import Annotated, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
