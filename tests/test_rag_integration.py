@@ -16,7 +16,7 @@ class TestRAGIntegration:
     """Integration tests for RAG Q&A endpoint."""
 
     @pytest.fixture
-    def mock_auth(self):
+    def mock_auth(self) -> TestClient:
         """Mock authentication context."""
         return {
             "user_id": str(uuid4()),
@@ -26,7 +26,7 @@ class TestRAGIntegration:
         }
 
     @pytest.fixture
-    def client(self):
+    def client(self) -> TestClient:
         """Create test client."""
         return TestClient(app)
 

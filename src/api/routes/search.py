@@ -6,7 +6,7 @@ Combines vector and keyword search using Reciprocal Rank Fusion (RRF).
 """
 
 import logging
-from typing import Annotated, List, Optional
+from typing import Annotated, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, status
@@ -39,7 +39,7 @@ class SearchFilters(BaseModel):
         None,
         description="Filter by document types (e.g., 'lease', 'rent_roll')",
     )
-    date_range: dict[str, str] | None = Field(
+    date_range: Optional[Dict[str, str]] = Field(
         None,
         description="Filter by date range (e.g., {'start': '2024-01-01', 'end': '2024-12-31'})",
     )

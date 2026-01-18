@@ -11,20 +11,19 @@ from unittest.mock import Mock, AsyncMock, patch
 from typing import Dict, Any
 
 from src.extraction.extractor import FieldExtractor, ExtractionResult
-from src.extraction.cre_fields import get_cre_lease_fields
 
 
 class TestLeaseExtractionIntegration:
     """Integration tests for lease extraction with various document complexities."""
     
     @pytest.fixture
-    def mock_openai_client(self):
+    def mock_openai_client(self) -> Any:
         """Create mock OpenAI client."""
         client = AsyncMock()
         return client
     
     @pytest.fixture
-    def extractor(self, mock_openai_client):
+    def extractor(self, mock_openai_client) -> Any:
         """Create FieldExtractor with mocked OpenAI client."""
         with patch('src.extraction.extractor.AsyncOpenAI', return_value=mock_openai_client):
             with patch('src.extraction.extractor.presidio_redact', return_value=lambda x: x):

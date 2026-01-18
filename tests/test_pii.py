@@ -1,5 +1,4 @@
 """Tests for PII detection and redaction."""
-import pytest
 from hypothesis import given, strategies as st, settings
 from src.extraction.pii_detector import detect_pii
 from src.extraction.redactor import redact_pii, RedactionMode, RedactedEntity
@@ -8,7 +7,7 @@ from src.extraction.redactor import redact_pii, RedactionMode, RedactedEntity
 class TestPIIDetection:
     """Tests for PII detection with CRE exceptions."""
     
-    def test_detect_ssn(self):
+    def test_detect_ssn(self) -> None:
         """Test SSN detection."""
         # Presidio may not detect SSN in all formats, test with email/phone instead
         text = "Contact john.doe@example.com"
@@ -17,7 +16,7 @@ class TestPIIDetection:
         assert len(results) > 0
         assert any(r.entity_type == "EMAIL_ADDRESS" for r in results)
     
-    def test_detect_email(self):
+    def test_detect_email(self) -> None:
         """Test email detection."""
         text = "Contact john.doe@example.com for support."
         results = detect_pii(text)
@@ -25,7 +24,7 @@ class TestPIIDetection:
         assert len(results) > 0
         assert any(r.entity_type == "EMAIL_ADDRESS" for r in results)
     
-    def test_detect_phone(self):
+    def test_detect_phone(self) -> None:
         """Test phone number detection."""
         text = "Call us at (555) 123-4567."
         results = detect_pii(text)
@@ -33,7 +32,7 @@ class TestPIIDetection:
         assert len(results) > 0
         assert any(r.entity_type == "PHONE_NUMBER" for r in results)
     
-    def test_detect_credit_card(self):
+    def test_detect_credit_card(self) -> None:
         """Test credit card detection."""
         # Presidio credit card detection may not work for all formats
         # Test with email instead which is more reliably detected
@@ -43,7 +42,7 @@ class TestPIIDetection:
         assert len(results) > 0
         assert any(r.entity_type == "EMAIL_ADDRESS" for r in results)
     
-    def test_cre_exception_property_address(self):
+    def test_cre_exception_property_address(self) -> None:
         """Test that property addresses are NOT detected as PII."""
         text = "Property address: 123 Main Street, New York, NY 10001"
         results = detect_pii(text)
@@ -52,27 +51,27 @@ class TestPIIDetection:
         location_results = [r for r in results if r.entity_type == "LOCATION"]
         assert len(location_results) == 0, "Property address should not be redacted"
     
-    def test_cre_exception_company_name(self):
+    def test_cre_exception_company_name(self) -> None:
         """Test that company names are NOT detected as PII."""
         text = "Tenant name: ABC Corporation LLC"
         results = detect_pii(text)
         
         # Company names should be filtered out
-        person_results = [r for r in results if r.entity_type == "PERSON"]
+        [r for r in results if r.entity_type == "PERSON"]
         # May have some results, but company context should filter them
         # This is context-dependent, so we just verify it doesn't break
     
-    def test_cre_exception_business_email(self):
+    def test_cre_exception_business_email(self) -> None:
         """Test that business emails are NOT detected as PII."""
         text = "Contact leasing office at info@cbre.com"
         results = detect_pii(text)
         
         # Business emails should be filtered out
-        email_results = [r for r in results if r.entity_type == "EMAIL_ADDRESS"]
+        [r for r in results if r.entity_type == "EMAIL_ADDRESS"]
         # Business domain emails should be filtered
         # This is context-dependent
     
-    def test_detect_multiple_pii(self):
+    def test_detect_multiple_pii(self) -> None:
         """Test detection of multiple PII types."""
         text = "Contact John Doe at john.doe@example.com or call (555) 123-4567. SSN: 123-45-6789"
         results = detect_pii(text)
@@ -85,7 +84,7 @@ class TestPIIDetection:
 class TestRedaction:
     """Tests for PII redaction."""
     
-    def test_redact_mask_mode(self):
+    def test_redact_mask_mode(self) -> None:
         """Test redaction in mask mode."""
         text = "Contact john.doe@example.com"
         redacted, entities = redact_pii(text, mode=RedactionMode.MASK)
@@ -94,7 +93,7 @@ class TestRedaction:
         assert "[REDACTED]" in redacted
         assert len(entities) > 0
     
-    def test_redact_hash_mode(self):
+    def test_redact_hash_mode(self) -> None:
         """Test redaction in hash mode."""
         text = "Contact john.doe@example.com"
         redacted, entities = redact_pii(text, mode=RedactionMode.HASH)
@@ -104,7 +103,7 @@ class TestRedaction:
         # Hashed text should be different from original
         assert entities[0].redacted_text != entities[0].original_text
     
-    def test_redact_none_mode(self):
+    def test_redact_none_mode(self) -> None:
         """Test redaction in none mode (no redaction)."""
         text = "Contact john.doe@example.com"
         redacted, entities = redact_pii(text, mode=RedactionMode.NONE)
@@ -112,13 +111,13 @@ class TestRedaction:
         assert text == redacted
         assert len(entities) == 0
     
-    def test_redact_empty_text(self):
+    def test_redact_empty_text(self) -> None:
         """Test redaction of empty text."""
         redacted, entities = redact_pii("", mode=RedactionMode.MASK)
         assert redacted == ""
         assert len(entities) == 0
     
-    def test_redact_no_pii(self):
+    def test_redact_no_pii(self) -> None:
         """Test redaction of text with no PII."""
         text = "This is a simple text with no personal information."
         redacted, entities = redact_pii(text, mode=RedactionMode.MASK)
@@ -126,7 +125,7 @@ class TestRedaction:
         assert text == redacted
         assert len(entities) == 0
     
-    def test_redact_multiple_entities(self):
+    def test_redact_multiple_entities(self) -> None:
         """Test redaction of multiple PII entities."""
         # Use entities that Presidio reliably detects
         text = "Contact John Doe at john.doe@example.com or call (555) 123-4567"
@@ -218,7 +217,7 @@ class TestRedactionPropertyBased:
 class TestRedactedEntity:
     """Tests for RedactedEntity class."""
     
-    def test_redacted_entity_to_dict(self):
+    def test_redacted_entity_to_dict(self) -> None:
         """Test RedactedEntity to_dict conversion."""
         entity = RedactedEntity(
             entity_type="EMAIL_ADDRESS",

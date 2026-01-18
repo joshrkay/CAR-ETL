@@ -4,6 +4,7 @@ Tests for hybrid search functionality.
 Tests RRF algorithm, search modes, highlighting, and API endpoint.
 """
 
+from typing import Any, Generator
 import pytest
 from unittest.mock import Mock, AsyncMock
 from uuid import uuid4, UUID
@@ -19,7 +20,7 @@ class TestSearchHighlighter:
     """Unit tests for SearchHighlighter."""
 
     @pytest.fixture
-    def highlighter(self):
+    def highlighter(self) -> Any:
         """Create SearchHighlighter instance."""
         return SearchHighlighter(snippet_length=100, max_highlights=3)
 
@@ -115,7 +116,7 @@ class TestHybridSearchService:
     """Unit tests for HybridSearchService."""
 
     @pytest.fixture
-    def mock_supabase_client(self):
+    def mock_supabase_client(self) -> Any:
         """Create a mock Supabase client."""
         client = Mock(spec=Client)
         client.rpc = Mock(return_value=client)
@@ -123,14 +124,14 @@ class TestHybridSearchService:
         return client
 
     @pytest.fixture
-    def mock_embedding_service(self):
+    def mock_embedding_service(self) -> Any:
         """Create a mock EmbeddingService."""
         service = AsyncMock()
         service.embed_single = AsyncMock(return_value=[0.1] * 1536)
         return service
 
     @pytest.fixture
-    def hybrid_service(self, mock_supabase_client, mock_embedding_service):
+    def hybrid_service(self, mock_supabase_client, mock_embedding_service) -> Any:
         """Create HybridSearchService with mocked dependencies."""
         return HybridSearchService(
             supabase_client=mock_supabase_client,
@@ -419,7 +420,7 @@ class TestSearchAPI:
     """Integration tests for search API endpoint."""
 
     @pytest.fixture
-    def mock_supabase_client(self):
+    def mock_supabase_client(self) -> Any:
         """Create a mock Supabase client."""
         client = Mock(spec=Client)
         client.rpc = Mock(return_value=client)
@@ -469,7 +470,7 @@ class TestSearchPropertyBased:
     """
 
     @pytest.fixture
-    def highlighter(self):
+    def highlighter(self) -> Any:
         """Create SearchHighlighter for property tests."""
         return SearchHighlighter()
 
@@ -503,7 +504,6 @@ class TestSearchPropertyBased:
     def test_rrf_algorithm_properties(self) -> None:
         """Test mathematical properties of RRF algorithm."""
         from src.search.hybrid import HybridSearchService
-        from src.search.embeddings import EmbeddingService
 
         mock_client = Mock()
         mock_embedding = Mock()

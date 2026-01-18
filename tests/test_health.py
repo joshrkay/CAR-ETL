@@ -8,8 +8,9 @@ from src.api.routes import health as health_routes
 from src.services.health_checker import HealthChecker, HealthCheckResult
 
 
+from typing import Any, Generator
 @pytest.fixture
-def app():
+def app() -> TestClient:
     """Create FastAPI app with health routes."""
     app = FastAPI()
     app.include_router(health_routes.router)
@@ -17,7 +18,7 @@ def app():
 
 
 @pytest.fixture
-def client(app):
+def client(app) -> TestClient:
     """Create test client."""
     return TestClient(app)
 
@@ -25,7 +26,7 @@ def client(app):
 class TestHealthLiveness:
     """Test liveness endpoint."""
     
-    def test_health_liveness_returns_200(self, client):
+    def test_health_liveness_returns_200(self, client) -> None:
         """Test that /health returns 200 OK."""
         response = client.get("/health")
         
@@ -113,7 +114,7 @@ class TestHealthChecker:
     """Test HealthChecker service."""
     
     @pytest.fixture
-    def health_checker(self):
+    def health_checker(self) -> Any:
         """Create HealthChecker instance."""
         with patch("src.services.health_checker.get_auth_config"):
             with patch("src.services.health_checker.create_service_client"):
@@ -174,7 +175,6 @@ class TestHealthChecker:
     @pytest.mark.asyncio
     async def test_check_auth_success(self, health_checker) -> None:
         """Test auth check succeeds."""
-        import httpx
         
         health_checker.config = MagicMock()
         health_checker.config.supabase_url = "https://test.supabase.co"
@@ -222,7 +222,6 @@ class TestHealthChecker:
         health_checker.config = MagicMock()
         health_checker.config.supabase_url = "https://test.supabase.co"
         
-        import httpx
         mock_response = MagicMock()
         mock_response.status_code = 200
         
@@ -238,7 +237,7 @@ class TestHealthChecker:
             assert "auth" in results
             assert len(results) == 3
     
-    def test_get_overall_status_healthy(self, health_checker):
+    def test_get_overall_status_healthy(self, health_checker) -> None:
         """Test overall status when all checks pass."""
         checks = {
             "database": HealthCheckResult(status="up", latency_ms=5),
@@ -249,7 +248,7 @@ class TestHealthChecker:
         status = health_checker.get_overall_status(checks)
         assert status == "healthy"
     
-    def test_get_overall_status_unhealthy(self, health_checker):
+    def test_get_overall_status_unhealthy(self, health_checker) -> None:
         """Test overall status when any check fails."""
         checks = {
             "database": HealthCheckResult(status="down", latency_ms=5000, error="Timeout"),
@@ -264,7 +263,7 @@ class TestHealthChecker:
 class TestHealthCheckResult:
     """Test HealthCheckResult model."""
     
-    def test_to_dict_without_error(self):
+    def test_to_dict_without_error(self) -> None:
         """Test converting result to dict without error."""
         result = HealthCheckResult(status="up", latency_ms=5)
         data = result.to_dict()
@@ -273,7 +272,7 @@ class TestHealthCheckResult:
         assert data["latency_ms"] == 5
         assert "error" not in data
     
-    def test_to_dict_with_error(self):
+    def test_to_dict_with_error(self) -> None:
         """Test converting result to dict with error."""
         result = HealthCheckResult(status="down", latency_ms=5000, error="Connection failed")
         data = result.to_dict()

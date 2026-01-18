@@ -7,8 +7,9 @@ from src.auth.config import AuthConfig
 from src.exceptions import RateLimitError
 
 
+from typing import Any, Generator
 @pytest.fixture
-def mock_config():
+def mock_config() -> Any:
     """Create mock auth config."""
     config = Mock(spec=AuthConfig)
     config.supabase_url = "https://test.supabase.co"
@@ -20,7 +21,7 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_supabase():
+def mock_supabase() -> Any:
     """Create mock Supabase client."""
     mock_client = MagicMock()
     mock_table = MagicMock()

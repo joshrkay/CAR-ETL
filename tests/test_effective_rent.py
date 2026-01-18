@@ -1,13 +1,11 @@
 """Tests for effective rent calculation service and API."""
 import pytest
+from typing import Any, Generator
 from uuid import uuid4
 from unittest.mock import Mock
-from datetime import datetime
 
 from src.services.effective_rent import EffectiveRentService
 from src.db.models.effective_rent import (
-    TenantEffectiveRent,
-    RentComponents,
     EffectiveRentListResponse,
     EffectiveRentSummary,
 )
@@ -17,12 +15,12 @@ class TestEffectiveRentService:
     """Unit tests for EffectiveRentService."""
 
     @pytest.fixture
-    def mock_supabase(self):
+    def mock_supabase(self) -> Mock:
         """Create mock Supabase client."""
         return Mock()
 
     @pytest.fixture
-    def service(self, mock_supabase):
+    def service(self, mock_supabase) -> Any:
         """Create EffectiveRentService instance."""
         return EffectiveRentService(mock_supabase)
 

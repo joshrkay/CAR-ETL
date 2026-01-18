@@ -10,6 +10,7 @@ Tests cover:
 - General exception handling
 """
 
+from typing import Any, Generator
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, AsyncMock
 from uuid import uuid4
@@ -26,7 +27,7 @@ from src.exceptions import NotFoundError
 
 
 @pytest.fixture
-def mock_auth_context():
+def mock_auth_context() -> AuthContext:
     """Create a mock authenticated user context."""
     auth = Mock(spec=AuthContext)
     auth.user_id = uuid4()
@@ -39,7 +40,7 @@ def mock_auth_context():
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock()
     
@@ -62,7 +63,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def mock_auth_config():
+def mock_auth_config() -> Any:
     """Create mock auth config for testing."""
     return AuthConfig(
         supabase_url="https://test.supabase.co",
@@ -74,7 +75,7 @@ def mock_auth_config():
 
 
 @pytest.fixture
-def valid_jwt_token(mock_auth_context, mock_auth_config):
+def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
     """Create a valid JWT token for testing."""
     exp = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
@@ -92,7 +93,7 @@ def valid_jwt_token(mock_auth_context, mock_auth_config):
 
 
 @pytest.fixture
-def mock_audit_logger():
+def mock_audit_logger() -> Generator:
     """Create a mock audit logger."""
     logger = Mock()
     logger.log_entity_merge = AsyncMock()
@@ -100,7 +101,7 @@ def mock_audit_logger():
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger):
+def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger) -> Generator:
     """Create test client with mocked auth and dependencies."""
     from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
     

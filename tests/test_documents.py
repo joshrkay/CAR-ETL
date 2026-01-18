@@ -6,8 +6,9 @@ from supabase import Client
 from datetime import datetime
 
 
+from typing import Any, Generator
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create a mock Supabase client."""
     client = Mock(spec=Client)
     client.table = Mock(return_value=client)
@@ -22,19 +23,19 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def tenant_id():
+def tenant_id() -> Any:
     """Create a test tenant ID."""
     return uuid4()
 
 
 @pytest.fixture
-def user_id():
+def user_id() -> Any:
     """Create a test user ID."""
     return uuid4()
 
 
 @pytest.fixture
-def document_data(tenant_id, user_id):
+def document_data(tenant_id, user_id) -> Any:
     """Create sample document data."""
     return {
         "tenant_id": str(tenant_id),
@@ -198,7 +199,7 @@ class TestProcessingQueue:
     def test_queue_item_insert_on_document_insert(self, mock_supabase_client, document_data) -> None:
         """Test that queue item is automatically created when document is inserted."""
         document_id = uuid4()
-        queue_id = uuid4()
+        uuid4()
         
         # Mock document insert - set up the chain properly
         mock_execute = Mock(return_value=Mock(data=[{
@@ -317,7 +318,7 @@ class TestDocumentRLS:
 
     def test_user_cannot_select_other_tenant_documents(self, mock_supabase_client) -> None:
         """Test that user cannot SELECT documents from other tenant."""
-        tenant_a_id = uuid4()
+        uuid4()
         tenant_b_id = uuid4()
         
         # Mock RLS filtering (user can only see tenant_a)
@@ -430,7 +431,7 @@ class TestDocumentTrigger:
     def test_trigger_enqueues_on_insert(self, mock_supabase_client, document_data) -> None:
         """Test that trigger automatically enqueues document on insert."""
         document_id = uuid4()
-        queue_id = uuid4()
+        uuid4()
         
         # Mock document insert - set up the chain properly
         mock_execute = Mock(return_value=Mock(data=[{
@@ -513,14 +514,14 @@ class TestDocumentForeignKeys:
     def test_document_cascade_delete(self, mock_supabase_client, tenant_id) -> None:
         """Test that deleting document cascades to queue items."""
         document_id = uuid4()
-        queue_id = uuid4()
+        uuid4()
         
         # Mock cascade delete
         # When document is deleted, queue items should be deleted automatically
         mock_supabase_client.execute.return_value = Mock(data=[])
         
         # Delete document (should cascade to queue)
-        result = mock_supabase_client.table("documents").delete().eq(
+        mock_supabase_client.table("documents").delete().eq(
             "id", str(document_id)
         ).execute()
         

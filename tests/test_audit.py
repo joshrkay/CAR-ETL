@@ -17,8 +17,9 @@ from src.auth.models import AuthContext
 from src.middleware.audit import AuditMiddleware
 
 
+from typing import Any, Generator
 @pytest.fixture
-def mock_config():
+def mock_config() -> Any:
     """Create mock auth config for testing."""
     return AuthConfig(
         supabase_url="https://test.supabase.co",
@@ -30,7 +31,7 @@ def mock_config():
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Any:
     """Create mock Supabase client."""
     client = MagicMock()
     client.table.return_value.insert.return_value.execute = MagicMock(return_value=MagicMock())
@@ -38,19 +39,19 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def tenant_id():
+def tenant_id() -> Any:
     """Create test tenant ID."""
     return uuid4()
 
 
 @pytest.fixture
-def user_id():
+def user_id() -> Any:
     """Create test user ID."""
     return uuid4()
 
 
 @pytest.fixture
-def audit_logger(mock_supabase_client, tenant_id, user_id):
+def audit_logger(mock_supabase_client, tenant_id, user_id) -> Any:
     """Create AuditLogger instance for testing."""
     return AuditLogger(
         supabase=mock_supabase_client,
@@ -184,7 +185,7 @@ class TestAuditLogger:
 class TestAuditEvent:
     """Test AuditEvent model."""
     
-    def test_to_dict(self, tenant_id, user_id):
+    def test_to_dict(self, tenant_id, user_id) -> None:
         """Test converting AuditEvent to dictionary."""
         event = AuditEvent(
             tenant_id=tenant_id,
@@ -204,7 +205,7 @@ class TestAuditEvent:
         assert data["metadata"] == {"test": "data"}
         assert data["ip_address"] == "127.0.0.1"
     
-    def test_to_dict_with_nulls(self, tenant_id):
+    def test_to_dict_with_nulls(self, tenant_id) -> None:
         """Test converting AuditEvent with null user_id."""
         event = AuditEvent(
             tenant_id=tenant_id,
@@ -223,7 +224,7 @@ class TestAuditMiddleware:
     """Test AuditMiddleware."""
     
     @pytest.fixture
-    def app_with_audit(self, mock_config):
+    def app_with_audit(self, mock_config) -> Any:
         """Create FastAPI app with audit middleware."""
         app = FastAPI()
         app.add_middleware(AuditMiddleware)
@@ -237,7 +238,7 @@ class TestAuditMiddleware:
         return app
     
     @pytest.fixture
-    def valid_token(self, mock_config):
+    def valid_token(self, mock_config) -> Any:
         """Create valid JWT token."""
         user_id = uuid4()
         tenant_id = uuid4()
@@ -255,7 +256,7 @@ class TestAuditMiddleware:
         
         return jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
     
-    def test_skip_health_endpoint(self, app_with_audit):
+    def test_skip_health_endpoint(self, app_with_audit) -> None:
         """Test that health endpoint is skipped."""
         client = TestClient(app_with_audit)
         response = client.get("/health")
@@ -282,7 +283,7 @@ class TestAuditMiddleware:
             # Audit should have been logged (async, so may need to wait)
             # In real scenario, flush happens in middleware
     
-    def test_map_method_to_action(self):
+    def test_map_method_to_action(self) -> None:
         """Test HTTP method to action mapping."""
         middleware = AuditMiddleware(app=MagicMock())
         
@@ -292,7 +293,7 @@ class TestAuditMiddleware:
         assert middleware._map_method_to_action("PATCH") == ActionType.UPDATE
         assert middleware._map_method_to_action("DELETE") == ActionType.DELETE
     
-    def test_get_client_ip(self):
+    def test_get_client_ip(self) -> None:
         """Test client IP extraction."""
         middleware = AuditMiddleware(app=MagicMock())
         
@@ -321,21 +322,21 @@ class TestAuditMiddleware:
 class TestEventTypes:
     """Test event type enums."""
     
-    def test_event_type_values(self):
+    def test_event_type_values(self) -> None:
         """Test all event types are defined."""
         assert EventType.AUTH_LOGIN == "auth.login"
         assert EventType.DOCUMENT_UPLOAD == "document.upload"
         assert EventType.EXTRACTION_COMPLETE == "extraction.complete"
         assert EventType.API_REQUEST == "api.request"
     
-    def test_action_type_values(self):
+    def test_action_type_values(self) -> None:
         """Test all action types are defined."""
         assert ActionType.CREATE == "create"
         assert ActionType.READ == "read"
         assert ActionType.UPDATE == "update"
         assert ActionType.DELETE == "delete"
     
-    def test_resource_type_values(self):
+    def test_resource_type_values(self) -> None:
         """Test all resource types are defined."""
         assert ResourceType.DOCUMENT == "document"
         assert ResourceType.USER == "user"
@@ -579,7 +580,7 @@ class TestSensitiveDataProtection:
         assert "token" not in str(logger._buffer[0]).lower()
         assert "secret" not in str(logger._buffer[0]).lower()
     
-    def test_middleware_metadata_fields_are_safe(self):
+    def test_middleware_metadata_fields_are_safe(self) -> None:
         """Test that middleware only logs safe metadata fields."""
         middleware = AuditMiddleware(app=MagicMock())
         

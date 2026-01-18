@@ -6,7 +6,7 @@ Required by .cursorrules for all critical paths.
 """
 
 import pytest
-from hypothesis import given, strategies as st, settings, assume, HealthCheck
+from hypothesis import given, strategies as st, settings, HealthCheck
 from unittest.mock import Mock, AsyncMock, patch
 from uuid import UUID, uuid4
 

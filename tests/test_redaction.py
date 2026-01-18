@@ -1,7 +1,7 @@
 """Tests for Presidio redaction service."""
 import pytest
 import re
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from hypothesis import given, strategies as st
 from src.services.redaction import presidio_redact, presidio_redact_bytes
 
@@ -158,7 +158,7 @@ class TestRedactionPropertyBased:
         
         # Email pattern (common formats)
         email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        matches = re.findall(email_pattern, redacted)
+        re.findall(email_pattern, redacted)
         
         # If emails were detected in original, they should be redacted
         original_emails = re.findall(email_pattern, text)

@@ -9,14 +9,12 @@ Tests include:
 - Property-based fuzzing tests
 """
 
-import pytest
 import zipfile
 from io import BytesIO
 from src.services.file_validator import (
     FileValidator,
     ValidationResult,
     validate_file_with_tenant_config,
-    DEFAULT_MAX_FILE_SIZE,
 )
 
 

@@ -11,7 +11,7 @@ class TestExtendedAnalyticsAPI:
     """Integration tests for new analytics endpoints."""
 
     @pytest.fixture
-    def client(self):
+    def client(self) -> TestClient:
         """Create test client."""
         return TestClient(app)
 

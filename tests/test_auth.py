@@ -1,6 +1,7 @@
 """Unit tests for authentication middleware and dependencies."""
 import pytest
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import uuid4, UUID
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
@@ -8,12 +9,12 @@ import jwt
 
 from src.auth.config import AuthConfig
 from src.auth.middleware import AuthMiddleware
-from src.auth.models import AuthContext, AuthError
+from src.auth.models import AuthContext
 from src.dependencies import get_current_user, require_role, require_any_role
 
 
 @pytest.fixture
-def mock_config():
+def mock_config() -> Any:
     """Create mock auth config for testing."""
     return AuthConfig(
         supabase_url="https://test.supabase.co",
@@ -25,7 +26,7 @@ def mock_config():
 
 
 @pytest.fixture
-def valid_jwt_payload(mock_config):
+def valid_jwt_payload(mock_config) -> Any:
     """Create a valid JWT payload for testing."""
     user_id = uuid4()
     tenant_id = uuid4()
@@ -44,20 +45,20 @@ def valid_jwt_payload(mock_config):
 
 
 @pytest.fixture
-def valid_token(mock_config, valid_jwt_payload):
+def valid_token(mock_config, valid_jwt_payload) -> Any:
     """Create a valid JWT token for testing."""
     return jwt.encode(valid_jwt_payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
 @pytest.fixture
-def expired_token(mock_config, valid_jwt_payload):
+def expired_token(mock_config, valid_jwt_payload) -> Any:
     """Create an expired JWT token for testing."""
     valid_jwt_payload["exp"] = int((datetime.utcnow() - timedelta(hours=1)).timestamp())
     return jwt.encode(valid_jwt_payload, mock_config.supabase_jwt_secret, algorithm="HS256")
 
 
 @pytest.fixture
-def app_with_auth(mock_config):
+def app_with_auth(mock_config) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
     app.add_middleware(AuthMiddleware, config=mock_config)

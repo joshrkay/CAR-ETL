@@ -1,4 +1,5 @@
 """
+from typing import Any, Generator
 End-to-End Tests for SharePoint Connector
 
 Tests cover:
@@ -30,17 +31,16 @@ except ImportError:
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from supabase import create_client, Client
 
 from src.main import app
 from src.auth.models import AuthContext
-from src.connectors.sharepoint.oauth import SharePointOAuth, SharePointOAuthError
-from src.connectors.sharepoint.client import SharePointClient, SharePointClientError
+from src.connectors.sharepoint.oauth import SharePointOAuth
+from src.connectors.sharepoint.client import SharePointClient
 from src.utils.encryption import encrypt_value, decrypt_value
 
 
 @pytest.fixture
-def mock_auth_context():
+def mock_auth_context() -> Mock:
     """Create a mock authenticated user context."""
     auth = Mock(spec=AuthContext)
     auth.user_id = uuid4()
@@ -54,7 +54,7 @@ def mock_auth_context():
 
 
 @pytest.fixture
-def mock_supabase_client():
+def mock_supabase_client() -> Mock:
     """Create a mock Supabase client."""
     client = Mock()
     
@@ -95,7 +95,7 @@ def mock_supabase_client():
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client):
+def client_with_auth(mock_auth_context, mock_supabase_client) -> Generator:
     """Create test client with mocked auth."""
     def override_get_current_user():
         return mock_auth_context
@@ -117,7 +117,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client):
 class TestOAuthFlow:
     """Test OAuth flow components."""
     
-    def test_oauth_authorization_url_generation(self):
+    def test_oauth_authorization_url_generation(self) -> None:
         """Test OAuth authorization URL generation."""
         with patch.dict(os.environ, {
             "SHAREPOINT_CLIENT_ID": "test-client-id",
@@ -134,13 +134,13 @@ class TestOAuthFlow:
             assert "Files.Read.All" in url
             assert "Sites.Read.All" in url
     
-    def test_oauth_missing_config(self):
+    def test_oauth_missing_config(self) -> None:
         """Test OAuth initialization with missing config."""
         with patch.dict(os.environ, {}, clear=True):
             with pytest.raises(ValueError, match="Missing required environment variables"):
                 SharePointOAuth.from_env()
     
-    def test_encryption_decryption(self):
+    def test_encryption_decryption(self) -> None:
         """Test token encryption and decryption."""
         # Set up encryption key for test
         import base64
@@ -159,7 +159,7 @@ class TestOAuthFlow:
             decrypted = decrypt_value(encrypted)
             assert decrypted == original_token
     
-    def test_encryption_empty_value(self):
+    def test_encryption_empty_value(self) -> None:
         """Test encryption with empty value."""
         encrypted = encrypt_value("")
         assert encrypted == ""
@@ -171,7 +171,7 @@ class TestOAuthFlow:
 class TestAPIRoutes:
     """Test API route endpoints."""
     
-    def test_start_oauth_requires_auth(self, client_with_auth):
+    def test_start_oauth_requires_auth(self, client_with_auth) -> None:
         """Test that OAuth start requires authentication."""
         # Remove auth override to test unauthenticated access
         app.dependency_overrides.clear()
@@ -180,7 +180,7 @@ class TestAPIRoutes:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
         
         # Restore auth
-        from src.dependencies import get_current_user, get_supabase_client
+        from src.dependencies import get_current_user
         from unittest.mock import Mock
         auth = Mock(spec=AuthContext)
         auth.user_id = uuid4()
@@ -188,7 +188,7 @@ class TestAPIRoutes:
         auth.roles = ["Analyst"]
         app.dependency_overrides[get_current_user] = lambda: auth
     
-    def test_start_oauth_success(self, client_with_auth, mock_supabase_client):
+    def test_start_oauth_success(self, client_with_auth, mock_supabase_client) -> None:
         """Test successful OAuth flow initiation."""
         with patch.dict(os.environ, {
             "SHAREPOINT_CLIENT_ID": "test-client-id",
@@ -215,7 +215,7 @@ class TestAPIRoutes:
             # Should succeed (200) or fail with config error (500)
             assert response.status_code in [status.HTTP_200_OK, status.HTTP_500_INTERNAL_SERVER_ERROR]
     
-    def test_oauth_callback_public_endpoint(self):
+    def test_oauth_callback_public_endpoint(self) -> None:
         """Test public OAuth callback endpoint."""
         client = TestClient(app)
         
@@ -231,14 +231,14 @@ class TestAPIRoutes:
             status.HTTP_500_INTERNAL_SERVER_ERROR,
         ]
     
-    def test_list_sites_requires_auth(self, client_with_auth):
+    def test_list_sites_requires_auth(self, client_with_auth) -> None:
         """Test that listing sites requires authentication."""
         app.dependency_overrides.clear()
         
         response = client_with_auth.post("/api/v1/connectors/sharepoint/sites")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
-    def test_configure_requires_auth(self, client_with_auth):
+    def test_configure_requires_auth(self, client_with_auth) -> None:
         """Test that configuring connector requires authentication."""
         app.dependency_overrides.clear()
         
@@ -300,7 +300,7 @@ class TestSharePointClient:
 class TestStateStore:
     """Test OAuth state storage."""
     
-    def test_state_storage_and_retrieval(self, mock_supabase_client):
+    def test_state_storage_and_retrieval(self, mock_supabase_client) -> None:
         """Test storing and retrieving OAuth state."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta
@@ -334,7 +334,7 @@ class TestStateStore:
         retrieved_tenant_id = asyncio.run(state_store.get_tenant_id(state))
         assert retrieved_tenant_id == tenant_id
     
-    def test_state_expired(self, mock_supabase_client):
+    def test_state_expired(self, mock_supabase_client) -> None:
         """Test expired state retrieval."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta

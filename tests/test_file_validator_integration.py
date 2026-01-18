@@ -7,11 +7,9 @@ Tests include:
 - Upload session management and cleanup
 """
 
-import pytest
 import hashlib
-import time
 from datetime import datetime, timedelta
-from src.services.file_validator import FileValidator, ValidationResult
+from src.services.file_validator import FileValidator
 
 
 class Test100MBFileBoundary:

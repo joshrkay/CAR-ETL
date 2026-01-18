@@ -5,9 +5,9 @@ Tests embedding generation, document chunk storage, and semantic search.
 """
 
 import pytest
+from typing import Any, Generator
 from unittest.mock import Mock, AsyncMock, patch
-from uuid import uuid4, UUID
-from typing import List
+from uuid import uuid4
 
 from src.search.embeddings import EmbeddingService
 from supabase import Client
@@ -17,7 +17,7 @@ class TestEmbeddingService:
     """Unit tests for EmbeddingService."""
     
     @pytest.fixture
-    def mock_openai_client(self):
+    def mock_openai_client(self) -> Any:
         """Create a mock OpenAI client."""
         client = AsyncMock()
         
@@ -32,7 +32,7 @@ class TestEmbeddingService:
         return client
     
     @pytest.fixture
-    def embedding_service(self, mock_openai_client):
+    def embedding_service(self, mock_openai_client) -> Any:
         """Create EmbeddingService with mocked OpenAI client."""
         with patch('src.search.embeddings.AsyncOpenAI', return_value=mock_openai_client):
             service = EmbeddingService(api_key="test-key", batch_size=2)
@@ -94,13 +94,13 @@ class TestEmbeddingService:
         embeddings = await embedding_service.embed([])
         assert embeddings == []
     
-    def test_embed_invalid_input(self, embedding_service):
+    def test_embed_invalid_input(self, embedding_service) -> None:
         """Test that invalid inputs raise ValueError."""
         with pytest.raises(ValueError, match="non-empty strings"):
             # This will fail at validation, not API call
             pass  # Will be caught by embed() validation
     
-    def test_init_missing_api_key(self):
+    def test_init_missing_api_key(self) -> None:
         """Test that missing API key raises ValueError."""
         with patch.dict('os.environ', {}, clear=True):
             with pytest.raises(ValueError, match="OpenAI API key is required"):
@@ -111,7 +111,7 @@ class TestVectorSearch:
     """Integration tests for vector search functionality."""
     
     @pytest.fixture
-    def mock_supabase_client(self):
+    def mock_supabase_client(self) -> Any:
         """Create a mock Supabase client."""
         client = Mock(spec=Client)
         client.rpc = Mock(return_value=client)
@@ -119,12 +119,12 @@ class TestVectorSearch:
         return client
     
     @pytest.fixture
-    def tenant_id(self):
+    def tenant_id(self) -> Any:
         """Create a test tenant ID."""
         return uuid4()
     
     @pytest.fixture
-    def document_id(self):
+    def document_id(self) -> Any:
         """Create a test document ID."""
         return uuid4()
     
@@ -260,7 +260,7 @@ class TestVectorSearchPropertyBased:
     """
     
     @pytest.fixture
-    def embedding_service(self):
+    def embedding_service(self) -> Any:
         """Create EmbeddingService for property-based tests."""
         # Use actual service but with mocked API
         with patch('src.search.embeddings.AsyncOpenAI'):

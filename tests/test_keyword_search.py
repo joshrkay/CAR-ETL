@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 import pytest
 from supabase import Client
 
+from typing import Any, Generator
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -19,7 +20,7 @@ class TestKeywordSearchService:
     """Unit tests for KeywordSearchService."""
 
     @pytest.fixture
-    def mock_supabase_client(self):
+    def mock_supabase_client(self) -> Any:
         """Create a mock Supabase client."""
         client = Mock(spec=Client)
         client.rpc = Mock(return_value=client)

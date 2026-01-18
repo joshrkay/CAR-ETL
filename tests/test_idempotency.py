@@ -16,7 +16,6 @@ from src.extraction.idempotency import (
     is_already_processed,
     ensure_idempotent_processing,
     cleanup_stale_locks,
-    DuplicateProcessingError,
 )
 
 
@@ -67,7 +66,7 @@ class TestCheckProcessingLock:
         document_id = uuid4()
 
         # Old extraction (2 hours ago)
-        old_extraction = {
+        {
             "id": str(uuid4()),
             "created_at": (datetime.utcnow() - timedelta(hours=2)).isoformat(),
         }

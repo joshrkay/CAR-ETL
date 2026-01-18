@@ -1,5 +1,4 @@
 """Test login flow with real Supabase user."""
-import os
 import sys
 from pathlib import Path
 
@@ -19,7 +18,6 @@ try:
 except ImportError:
     pass  # dotenv not installed, will use system env vars
 
-import asyncio
 from supabase import create_client, Client
 from src.auth.config import get_auth_config
 from src.auth.middleware import AuthMiddleware
@@ -80,7 +78,7 @@ def test_real_login_flow() -> None:
                 print("   Attempting to refresh schema cache via SQL...")
                 try:
                     # Try to refresh schema cache using SQL
-                    refresh_result = supabase.rpc("exec_sql", {
+                    supabase.rpc("exec_sql", {
                         "query": "NOTIFY pgrst, 'reload schema';"
                     }).execute()
                     print("   Schema cache refresh triggered!")
@@ -160,7 +158,7 @@ def test_real_login_flow() -> None:
         # Clean up user
         try:
             supabase.auth.admin.delete_user(user_id)
-        except:
+        except Exception:
             pass
         return False
     
@@ -246,7 +244,7 @@ def test_real_login_flow() -> None:
         
         if response.status_code == 200:
             data = response.json()
-            print(f"   ✅ Middleware extracted auth context:")
+            print("   ✅ Middleware extracted auth context:")
             print(f"      User ID: {data['user_id']}")
             print(f"      Email: {data['email']}")
             print(f"      Tenant ID: {data['tenant_id']}")

@@ -16,7 +16,7 @@ class TestEffectiveRentAPIIntegration:
     """Integration tests for effective rent API endpoints."""
 
     @pytest.fixture
-    def client(self):
+    def client(self) -> TestClient:
         """Create test client."""
         return TestClient(app)
 
