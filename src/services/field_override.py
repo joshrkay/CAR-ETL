@@ -3,13 +3,12 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Optional, Dict, cast
+from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import UUID
 
-from supabase import Client
-
 from src.learning.events import emit_field_override_event
+from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -26,10 +25,10 @@ class FieldOverrideResult:
     is_override: bool
     overridden_by: str
     overridden_at: str
-    field_name: Optional[str]
-    document_type: Optional[str]
-    extraction_source: Optional[str]
-    original_confidence: Optional[float]
+    field_name: str | None
+    document_type: str | None
+    extraction_source: str | None
+    original_confidence: float | None
 
 
 class FieldOverrideService:
@@ -58,7 +57,7 @@ class FieldOverrideService:
         field_id: UUID,
         new_value: str,
         user_id: UUID,
-        notes: Optional[str] = None,
+        notes: str | None = None,
     ) -> FieldOverrideResult:
         """
         Override an extraction field value and emit learning event.
@@ -82,12 +81,12 @@ class FieldOverrideService:
         if not field_result.data:
             raise FieldOverrideNotFoundError("Extraction field not found")
 
-        field_data = cast(Dict[str, Any], field_result.data)
+        field_data = cast(dict[str, Any], field_result.data)
         existing_value = field_data.get("field_value")
         old_display_value = self._display_value(existing_value)
         updated_field_value = self._updated_field_value(existing_value, new_value)
 
-        overridden_at = datetime.now(timezone.utc).isoformat()
+        overridden_at = datetime.now(UTC).isoformat()
 
         update_payload = {
             "field_value": updated_field_value,
@@ -113,7 +112,7 @@ class FieldOverrideService:
             .maybe_single()
             .execute()
         )
-        extraction_data = cast(Optional[Dict[str, Any]], extraction_result.data)
+        extraction_data = cast(dict[str, Any] | None, extraction_result.data)
 
         event_payload = {
             "event_type": "field_override",

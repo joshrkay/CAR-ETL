@@ -12,12 +12,11 @@ Usage:
     python scripts/mypy_regression_check.py check     # Check for regressions
 """
 
+import json
 import subprocess
 import sys
-import json
-from pathlib import Path
-from typing import Dict, List, Set
 from collections import defaultdict
+from pathlib import Path
 
 
 class MypyRegressionChecker:
@@ -26,7 +25,16 @@ class MypyRegressionChecker:
         self.current_errors_file = Path("mypy_current.txt")
 
     def run_mypy(self) -> str:
-        """Run mypy and return the output."""
+        """Run mypy and return the output.
+
+        Note: Clears mypy cache before running to avoid stale cache issues.
+        """
+        # Clear mypy cache to avoid false positives from stale cache
+        cache_dir = Path(".mypy_cache")
+        if cache_dir.exists():
+            import shutil
+            shutil.rmtree(cache_dir, ignore_errors=True)
+
         result = subprocess.run(
             ["python", "-m", "mypy", "src", "tests"],
             capture_output=True,
@@ -34,9 +42,9 @@ class MypyRegressionChecker:
         )
         return result.stdout + result.stderr
 
-    def parse_mypy_output(self, output: str) -> Dict[str, List[Dict[str, str]]]:
+    def parse_mypy_output(self, output: str) -> dict[str, list[dict[str, str]]]:
         """Parse mypy output into structured format."""
-        errors_by_type: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+        errors_by_type: dict[str, list[dict[str, str]]] = defaultdict(list)
 
         for line in output.split('\n'):
             if 'error:' in line:
@@ -79,9 +87,9 @@ class MypyRegressionChecker:
         with open(self.baseline_file, 'w') as f:
             json.dump(baseline_data, f, indent=2)
 
-        print(f"\nBaseline created:")
+        print("\nBaseline created:")
         print(f"  Total errors: {baseline_data['total_errors']}")
-        print(f"  Error types:")
+        print("  Error types:")
         for error_type, count in sorted(baseline_data['errors_by_type'].items(),
                                        key=lambda x: x[1], reverse=True):
             print(f"    {error_type}: {count}")
@@ -97,7 +105,7 @@ class MypyRegressionChecker:
         print("Checking for mypy regressions...")
 
         # Load baseline
-        with open(self.baseline_file, 'r') as f:
+        with open(self.baseline_file) as f:
             baseline = json.load(f)
 
         # Run current mypy
@@ -110,7 +118,7 @@ class MypyRegressionChecker:
         total_current = sum(current_totals.values())
 
         # Compare
-        print(f"\nComparison:")
+        print("\nComparison:")
         print(f"  Baseline errors: {baseline['total_errors']}")
         print(f"  Current errors:  {total_current}")
 
@@ -121,12 +129,12 @@ class MypyRegressionChecker:
             print(f"  ✅ IMPROVEMENT: {baseline['total_errors'] - total_current} fewer errors!")
             has_regression = False
         else:
-            print(f"  ✓ No change in error count")
+            print("  ✓ No change in error count")
             has_regression = False
 
         # Show changes by error type
         all_error_types = set(baseline['errors_by_type'].keys()) | set(current_totals.keys())
-        print(f"\nChanges by error type:")
+        print("\nChanges by error type:")
 
         for error_type in sorted(all_error_types):
             baseline_count = baseline['errors_by_type'].get(error_type, 0)
@@ -162,13 +170,13 @@ class MypyRegressionChecker:
             print("No baseline found. Run 'baseline' command first.")
             return
 
-        with open(self.baseline_file, 'r') as f:
+        with open(self.baseline_file) as f:
             baseline = json.load(f)
 
         print("Mypy Error Summary")
         print("="*60)
         print(f"Total errors: {baseline['total_errors']}")
-        print(f"\nBreakdown by error type:")
+        print("\nBreakdown by error type:")
 
         for error_type, count in sorted(baseline['errors_by_type'].items(),
                                        key=lambda x: x[1], reverse=True):

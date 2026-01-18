@@ -15,7 +15,7 @@ def main():
     print("COMPLEX LEASES TEST SUITE - ALL ASSET CLASSES")
     print("=" * 80)
     print("\nTest Coverage Summary\n")
-    
+
     asset_classes = {
         "Office": {
             "tests": 3,
@@ -63,34 +63,34 @@ def main():
             "fields": "52+"
         }
     }
-    
+
     total_tests = 0
     total_fields = 0
-    
+
     for asset_class, info in asset_classes.items():
         print(f"{asset_class} ({info['tests']} tests, {info['fields']} fields)")
         for i, scenario in enumerate(info['scenarios'], 1):
             print(f"  {i}. {scenario}")
         print()
         total_tests += info['tests']
-    
+
     print("=" * 80)
     print(f"TOTAL: {total_tests} tests across 5 asset classes")
-    print(f"TOTAL FIELDS VALIDATED: 263+ unique fields")
+    print("TOTAL FIELDS VALIDATED: 263+ unique fields")
     print("=" * 80)
-    
+
     print("\nTest Structure Validated")
     print("   - All 15 test scenarios defined")
     print("   - Property-type-specific fields covered")
     print("   - Tenant quality metrics included")
     print("   - Risk flags and security measures tested")
     print("   - Complex lease structures validated")
-    
+
     print("\nTo Run Tests:")
     print("   1. Install dependencies: pip install pytest pytest-asyncio openai")
     print("   2. Set API key: export OPENAI_API_KEY=your_key")
     print("   3. Run: pytest tests/test_complex_leases_all_asset_classes.py -v")
-    
+
     print("\n" + "=" * 80)
 
 if __name__ == "__main__":
