@@ -296,7 +296,7 @@ class GoogleDriveSync:
                             },
                         )
                         errors_list = cast(List[str], stats["errors"])
-                    errors_list.append(error_msg)
+                        errors_list.append(error_msg)
                 
                 # Update checkpoint
                 if next_page_token:

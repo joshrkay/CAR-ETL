@@ -2,8 +2,8 @@
 import os
 import sys
 import time
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -20,14 +20,14 @@ try:
 except ImportError:
     pass
 
-from supabase import create_client, Client
 from src.auth.config import get_auth_config
+from supabase import Client, create_client
 
 
 def monitor_recent_ingestions(supabase: Client, minutes: int = 5) -> list:
     """Get recent email ingestions from the last N minutes."""
     cutoff_time = datetime.utcnow() - timedelta(minutes=minutes)
-    
+
     try:
         result = (
             supabase.table("email_ingestions")
@@ -39,7 +39,7 @@ def monitor_recent_ingestions(supabase: Client, minutes: int = 5) -> list:
             .order("received_at", desc=True)
             .execute()
         )
-        
+
         return result.data or []
     except Exception as e:
         print(f"[ERROR] Failed to query email ingestions: {e}")
@@ -56,7 +56,7 @@ def get_tenant_slug(supabase: Client, tenant_id: str) -> str:
             .maybe_single()
             .execute()
         )
-        
+
         if result.data:
             return f"{result.data['slug']} ({result.data.get('name', 'N/A')})"
         return tenant_id
@@ -74,7 +74,7 @@ def get_document_info(supabase: Client, document_id: str) -> dict:
             .maybe_single()
             .execute()
         )
-        
+
         if result.data:
             return result.data
         return {}
@@ -96,16 +96,16 @@ def print_ingestion_summary(ingestions: list, supabase: Client):
     if not ingestions:
         print("\n[INFO] No recent email ingestions found")
         return
-    
+
     print(f"\n{'='*80}")
     print(f"Email Ingestion Summary ({len(ingestions)} recent ingestion(s))")
     print(f"{'='*80}\n")
-    
+
     for idx, ingestion in enumerate(ingestions, 1):
         tenant_info = get_tenant_slug(supabase, ingestion["tenant_id"])
         received_at = datetime.fromisoformat(ingestion["received_at"].replace("Z", "+00:00"))
         local_time = received_at.strftime("%Y-%m-%d %H:%M:%S UTC")
-        
+
         print(f"[{idx}] Email Ingestion ID: {ingestion['id']}")
         print(f"     Received: {local_time}")
         print(f"     Tenant: {tenant_info}")
@@ -113,17 +113,17 @@ def print_ingestion_summary(ingestions: list, supabase: Client):
         print(f"     To: {ingestion['to_address']}")
         print(f"     Subject: {ingestion.get('subject', '(no subject)')}")
         print(f"     Attachments: {ingestion.get('attachment_count', 0)}")
-        
+
         # Get body document info
         if ingestion.get("body_document_id"):
             doc_info = get_document_info(supabase, ingestion["body_document_id"])
             if doc_info:
-                print(f"     Body Document:")
+                print("     Body Document:")
                 print(f"       - ID: {doc_info['id']}")
                 print(f"       - Status: {doc_info.get('status', 'N/A')}")
                 print(f"       - Size: {format_size(doc_info.get('file_size_bytes', 0))}")
                 print(f"       - Type: {doc_info.get('mime_type', 'N/A')}")
-        
+
         # Get attachment documents
         if ingestion.get("attachment_count", 0) > 0:
             try:
@@ -133,15 +133,15 @@ def print_ingestion_summary(ingestions: list, supabase: Client):
                     .eq("parent_id", ingestion["body_document_id"])
                     .execute()
                 )
-                
+
                 if attachments.data:
-                    print(f"     Attachment Documents:")
+                    print("     Attachment Documents:")
                     for att in attachments.data:
                         print(f"       - {att.get('original_filename', 'N/A')}")
                         print(f"         ID: {att['id']}, Size: {format_size(att.get('file_size_bytes', 0))}, Status: {att.get('status', 'N/A')}")
             except Exception as e:
                 print(f"     [WARNING] Could not fetch attachment details: {e}")
-        
+
         print()
 
 
@@ -150,18 +150,18 @@ def monitor_loop(supabase: Client, interval_seconds: int = 10, lookback_minutes:
     print("="*80)
     print("Email Ingestion Monitor")
     print("="*80)
-    print(f"\nMonitoring for new email ingestions...")
+    print("\nMonitoring for new email ingestions...")
     print(f"Check interval: {interval_seconds} seconds")
     print(f"Looking back: {lookback_minutes} minutes")
-    print(f"\nPress Ctrl+C to stop\n")
-    
+    print("\nPress Ctrl+C to stop\n")
+
     last_count = 0
-    
+
     try:
         while True:
             ingestions = monitor_recent_ingestions(supabase, lookback_minutes)
             current_count = len(ingestions)
-            
+
             if current_count > last_count:
                 new_count = current_count - last_count
                 print(f"\n[{datetime.now().strftime('%H:%M:%S')}] {new_count} new email(s) ingested!")
@@ -169,9 +169,9 @@ def monitor_loop(supabase: Client, interval_seconds: int = 10, lookback_minutes:
                 last_count = current_count
             elif current_count > 0:
                 print(f"[{datetime.now().strftime('%H:%M:%S')}] Monitoring... ({current_count} ingestion(s) in last {lookback_minutes} min)")
-            
+
             time.sleep(interval_seconds)
-            
+
     except KeyboardInterrupt:
         print("\n\n[INFO] Monitoring stopped")
 
@@ -181,17 +181,17 @@ def main():
     # Check environment variables
     required_vars = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY"]
     missing_vars = [var for var in required_vars if not os.getenv(var)]
-    
+
     if missing_vars:
         print(f"[ERROR] Missing required environment variables: {', '.join(missing_vars)}")
         sys.exit(1)
-    
+
     try:
         config = get_auth_config()
     except Exception as e:
         print(f"[ERROR] Failed to load auth config: {e}")
         sys.exit(1)
-    
+
     # Initialize Supabase client
     try:
         supabase: Client = create_client(
@@ -202,7 +202,7 @@ def main():
     except Exception as e:
         print(f"[ERROR] Failed to connect to Supabase: {e}")
         sys.exit(1)
-    
+
     # Check command line arguments
     if len(sys.argv) > 1 and sys.argv[1] == "--watch":
         # Continuous monitoring mode
@@ -214,7 +214,7 @@ def main():
         lookback = int(sys.argv[1]) if len(sys.argv) > 1 else 5
         ingestions = monitor_recent_ingestions(supabase, lookback)
         print_ingestion_summary(ingestions, supabase)
-        
+
         if ingestions:
             print(f"\n[SUCCESS] Found {len(ingestions)} email ingestion(s) in the last {lookback} minutes")
         else:

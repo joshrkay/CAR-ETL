@@ -256,10 +256,10 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
     tenant_insert_data = {}
 
     # Cache mock tables so test can override them later
-    mock_tables = {}
+    mock_tables: dict[str, Any] = {}
 
     # Configure table chain for tenant operations
-    def table_side_effect(table_name):
+    def table_side_effect(table_name: str) -> Any:
         # Return cached mock if it exists (allows test to override)
         if table_name in mock_tables:
             return mock_tables[table_name]
@@ -275,14 +275,14 @@ def setup_tenant_responses(mock_client: Mock, tenant_id: UUID) -> None:
 
         if table_name == "tenants":
             # Capture insert data
-            def insert_side_effect(data):
+            def insert_side_effect(data: Any) -> Any:
                 tenant_insert_data.update(data)
                 return mock_table
 
             mock_table.insert = Mock(side_effect=insert_side_effect)
 
             # Track execute calls across multiple table("tenants") invocations
-            def execute_side_effect():
+            def execute_side_effect() -> Any:
                 count = execute_call_count["tenants"]
                 execute_call_count["tenants"] += 1
                 if count == 0:
@@ -390,8 +390,8 @@ class TestFullTenantWorkflow:
     @pytest.mark.asyncio
     async def test_complete_tenant_workflow(
         self,
-        lease_documents,
-        offering_memo_documents
+        lease_documents: Any,
+        offering_memo_documents: Any
     ) -> None:
         """
         Test complete tenant workflow: provision → connect → ingest → extract.

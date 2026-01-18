@@ -2,6 +2,7 @@
 from hypothesis import given, strategies as st, settings
 from src.extraction.pii_detector import detect_pii
 from src.extraction.redactor import redact_pii, RedactionMode, RedactedEntity
+from typing import Any
 
 
 class TestPIIDetection:

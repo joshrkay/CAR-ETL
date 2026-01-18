@@ -18,24 +18,24 @@ except ImportError:
     # `python-dotenv` is optional; if it's not installed, continue without loading a .env file.
     sys.stderr.write("Warning: python-dotenv not installed; skipping loading .env file.\n")
 
-from supabase import create_client
 from src.auth.config import get_auth_config
+from supabase import create_client
 
 
 def seed_flags():
     """Create seed feature flags for testing."""
     config = get_auth_config()
-    
+
     # Initialize Supabase client with service key (admin access)
     supabase = create_client(
         config.supabase_url,
         config.supabase_service_key,
     )
-    
+
     print("=" * 60)
     print("Seeding Feature Flags")
     print("=" * 60)
-    
+
     # Define seed flags
     seed_flags_data = [
         {
@@ -69,9 +69,9 @@ def seed_flags():
             "enabled_default": False,
         },
     ]
-    
+
     created_flags = []
-    
+
     for flag_data in seed_flags_data:
         print(f"\nCreating flag: {flag_data['name']}...")
         try:
@@ -83,7 +83,7 @@ def seed_flags():
                 .limit(1)
                 .execute()
             )
-            
+
             if existing.data:
                 flag_id = existing.data[0]["id"]
                 print(f"  [SKIP] Flag '{flag_data['name']}' already exists (ID: {flag_id})")
@@ -103,7 +103,7 @@ def seed_flags():
                     })
                     .execute()
                 )
-                
+
                 if result.data:
                     flag_id = result.data[0]["id"]
                     print(f"  [OK] Created flag '{flag_data['name']}' (ID: {flag_id})")
@@ -115,14 +115,14 @@ def seed_flags():
                     })
                 else:
                     print(f"  [ERROR] Failed to create flag '{flag_data['name']}'")
-                    
+
         except Exception as e:
             print(f"  [ERROR] Failed to create flag '{flag_data['name']}': {e}")
-    
+
     print("\n" + "=" * 60)
     print(f"Created/Found {len(created_flags)} feature flags")
     print("=" * 60)
-    
+
     # List all flags
     print("\nAll Feature Flags:")
     try:
@@ -132,7 +132,7 @@ def seed_flags():
             .order("name")
             .execute()
         )
-        
+
         if all_flags.data:
             for flag in all_flags.data:
                 status = "✓ Enabled" if flag.get("enabled_default") else "✗ Disabled"
@@ -143,7 +143,7 @@ def seed_flags():
             print("  No flags found")
     except Exception as e:
         print(f"  [ERROR] Failed to list flags: {e}")
-    
+
     print("\n" + "=" * 60)
     print("Seed complete!")
     print("=" * 60)
@@ -152,7 +152,7 @@ def seed_flags():
     print("2. Set tenant overrides: PUT /api/v1/admin/flags/{name}/tenants/{tenant_id}")
     print("3. Check flag details: GET /api/v1/admin/flags/{name}")
     print("=" * 60)
-    
+
     return created_flags
 
 
@@ -167,13 +167,13 @@ def set_tenant_override_example(supabase, flag_name: str, tenant_id: str, enable
             .limit(1)
             .execute()
         )
-        
+
         if not flag_result.data:
             print(f"  [ERROR] Flag '{flag_name}' not found")
             return False
-        
+
         flag_id = flag_result.data[0]["id"]
-        
+
         # Check if override exists
         existing = (
             supabase.table("tenant_feature_flags")
@@ -183,7 +183,7 @@ def set_tenant_override_example(supabase, flag_name: str, tenant_id: str, enable
             .limit(1)
             .execute()
         )
-        
+
         if existing.data:
             # Update
             supabase.table("tenant_feature_flags") \
@@ -201,9 +201,9 @@ def set_tenant_override_example(supabase, flag_name: str, tenant_id: str, enable
                 }) \
                 .execute()
             print(f"  [OK] Created tenant override for '{flag_name}'")
-        
+
         return True
-        
+
     except Exception as e:
         print(f"  [ERROR] Failed to set tenant override: {e}")
         return False
@@ -219,22 +219,22 @@ if __name__ == "__main__":
         print("  SUPABASE_SERVICE_KEY=...")
         print(f"\nError: {e}")
         exit(1)
-    
+
     if not all([
         config.supabase_url,
         config.supabase_service_key,
     ]):
         print("ERROR: Missing required environment variables.")
         exit(1)
-    
+
     flags = seed_flags()
-    
+
     # Optional: Set example tenant overrides
     # Uncomment and modify to test tenant-specific overrides
     # print("\n" + "=" * 60)
     # print("Setting Example Tenant Overrides")
     # print("=" * 60)
-    # 
+    #
     # example_tenant_id = "your-tenant-id-here"
     # set_tenant_override_example(
     #     supabase,

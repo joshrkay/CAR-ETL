@@ -25,9 +25,10 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 import jwt
 from uuid import uuid4
+from typing import Any
 
 
-def test_real_login_flow() -> None:
+def test_real_login_flow() -> bool:
     """Test the complete login flow with a real Supabase user."""
     config = get_auth_config()
     
@@ -223,10 +224,10 @@ def test_real_login_flow() -> None:
     print("\n6. Testing FastAPI middleware with real token...")
     try:
         app = FastAPI()
-        app.add_middleware(AuthMiddleware, config=config)
+        app.add_middleware(AuthMiddleware, config=config)  # type: ignore[arg-type]
         
         @app.get("/test")
-        async def test_endpoint(request: Request):
+        async def test_endpoint(request: Request) -> Any:
             auth = request.state.auth
             return {
                 "user_id": str(auth.user_id),

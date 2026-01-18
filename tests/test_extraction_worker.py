@@ -10,6 +10,7 @@ Comprehensive test coverage for ExtractionWorker class including:
 - Graceful shutdown
 - Error handling and sanitization
 """
+from typing import Any
 
 import pytest
 import asyncio
@@ -108,10 +109,10 @@ class TestExtractionWorkerLifecycle:
                     with patch.object(worker, "_cleanup_stale_extraction_locks", new_callable=AsyncMock):
                         with patch.object(worker, "_process_batch", new_callable=AsyncMock):
                             # Stop worker after first iteration
-                            async def stop_after_batch():
+                            async def stop_after_batch() -> None:
                                 await worker.stop()
 
-                            worker._process_batch.side_effect = stop_after_batch
+                            worker._process_batch.side_effect = stop_after_batch  # type: ignore[attr-defined]
 
                             await worker.start()
 
@@ -132,10 +133,10 @@ class TestExtractionWorkerLifecycle:
                     with patch.object(worker, "_cleanup_stale_extraction_locks", new_callable=AsyncMock):
                         with patch.object(worker, "_process_batch", new_callable=AsyncMock):
                             # Stop immediately
-                            async def stop_now():
+                            async def stop_now() -> None:
                                 await worker.stop()
 
-                            worker._process_batch.side_effect = stop_now
+                            worker._process_batch.side_effect = stop_now  # type: ignore[attr-defined]
 
                             await worker.start()
 
@@ -155,10 +156,10 @@ class TestExtractionWorkerLifecycle:
                     with patch.object(worker, "_cleanup_stale_extraction_locks", new_callable=AsyncMock) as mock_cleanup:
                         with patch.object(worker, "_process_batch", new_callable=AsyncMock):
                             # Stop immediately
-                            async def stop_now():
+                            async def stop_now() -> None:
                                 await worker.stop()
 
-                            worker._process_batch.side_effect = stop_now
+                            worker._process_batch.side_effect = stop_now  # type: ignore[attr-defined]
 
                             await worker.start()
 
@@ -756,7 +757,7 @@ class TestShutdown:
         worker.processing_ids = {"id1", "id2"}
 
         # Simulate items completing during shutdown
-        async def remove_items():
+        async def remove_items() -> None:
             await asyncio.sleep(0.1)
             worker.processing_ids.clear()
 
@@ -884,9 +885,9 @@ class TestConcurrencyControl:
             "attempts": 0,
         }
 
-        processing_ids_during_processing = None
+        processing_ids_during_processing: set[str] | None = None
 
-        async def capture_processing_ids(*args, **kwargs):
+        async def capture_processing_ids(*args: Any, **kwargs: Any) -> Any:
             nonlocal processing_ids_during_processing
             processing_ids_during_processing = worker.processing_ids.copy()
             return (False, "skip")
@@ -898,6 +899,7 @@ class TestConcurrencyControl:
                 await worker._process_queue_item(item)
 
                 # Should have been in processing set during execution
+                assert processing_ids_during_processing is not None
                 assert item_id in processing_ids_during_processing
                 # Should be removed after completion
                 assert item_id not in worker.processing_ids

@@ -1,5 +1,4 @@
 """
-from typing import Any, Generator
 End-to-End Tests for Google Drive Connector
 
 Tests cover:
@@ -12,9 +11,11 @@ Tests cover:
 - Folder selection
 - Changes API incremental sync
 """
+from typing import Any, Generator
 import os
 import sys
 from pathlib import Path
+from typing import Any, Generator
 from unittest.mock import Mock, patch, AsyncMock
 from uuid import uuid4
 
@@ -96,7 +97,7 @@ def mock_supabase_client() -> Mock:
     documents_query.insert = Mock(return_value=documents_response)
     documents_query.update = Mock(return_value=documents_response)
     
-    def table_side_effect(table_name):
+    def table_side_effect(table_name: str) -> Any:
         if table_name == "connectors":
             return connector_query
         elif table_name == "oauth_states":
@@ -111,12 +112,12 @@ def mock_supabase_client() -> Mock:
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client) -> Generator:
+def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any) -> Generator:
     """Create test client with mocked auth."""
-    def override_get_current_user():
+    def override_get_current_user() -> Any:
         return mock_auth_context
     
-    def override_get_supabase_client():
+    def override_get_supabase_client() -> Any:
         return mock_supabase_client
     
     from src.dependencies import get_current_user, get_supabase_client
@@ -377,7 +378,7 @@ class TestGoogleDriveSync:
     """Test Google Drive sync functionality."""
     
     @pytest.mark.asyncio
-    async def test_sync_drive_with_changes(self, mock_supabase_client) -> None:
+    async def test_sync_drive_with_changes(self, mock_supabase_client: Any) -> None:
         """Test sync using Changes API."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -405,11 +406,11 @@ class TestGoogleDriveSync:
         emitted_files = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs):
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 emitted_files.append(kwargs["file_id"])
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs):
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
         
         mock_emitter = MockEmitter()
@@ -450,7 +451,7 @@ class TestGoogleDriveSync:
         assert len(stats["errors"]) == 0
     
     @pytest.mark.asyncio
-    async def test_sync_handles_deleted_files(self, mock_supabase_client) -> None:
+    async def test_sync_handles_deleted_files(self, mock_supabase_client: Any) -> None:
         """Test sync handles deleted files correctly."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -478,10 +479,10 @@ class TestGoogleDriveSync:
         deletions_emitted = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs):
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs):
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 deletions_emitted.append(kwargs["file_id"])
         
         mock_emitter = MockEmitter()
@@ -518,7 +519,7 @@ class TestGoogleDriveSync:
         assert len(stats["errors"]) == 0
     
     @pytest.mark.asyncio
-    async def test_sync_with_shared_drive(self, mock_supabase_client) -> None:
+    async def test_sync_with_shared_drive(self, mock_supabase_client: Any) -> None:
         """Test sync with shared drive support."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -543,16 +544,16 @@ class TestGoogleDriveSync:
         mock_state_store.get_page_token = AsyncMock(return_value=None)
         mock_state_store.save_page_token = AsyncMock()
         mock_state_store.update_last_sync = AsyncMock()
-        
+
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs):
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs):
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
-        
+
         mock_emitter = MockEmitter()
-        
+
         # Mock client with shared drive
         mock_client = AsyncMock(spec=GoogleDriveClient)
         mock_client.get_start_page_token = AsyncMock(return_value="start-token")
@@ -592,7 +593,7 @@ class TestGoogleDriveSync:
         assert call_args[1]["drive_id"] == drive_id
     
     @pytest.mark.asyncio
-    async def test_sync_filters_by_folder_id(self, mock_supabase_client) -> None:
+    async def test_sync_filters_by_folder_id(self, mock_supabase_client: Any) -> None:
         """Test sync filters files by folder_id."""
         from src.connectors.google_drive.sync import GoogleDriveSync
         from src.connectors.google_drive.interfaces import (
@@ -621,11 +622,11 @@ class TestGoogleDriveSync:
         emitted_files = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs):
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 emitted_files.append(kwargs["file_id"])
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs):
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
         
         mock_emitter = MockEmitter()
@@ -682,7 +683,7 @@ class TestGoogleDriveSync:
 class TestStateStore:
     """Test OAuth state storage."""
     
-    def test_state_storage_and_retrieval(self, mock_supabase_client) -> None:
+    def test_state_storage_and_retrieval(self, mock_supabase_client: Any) -> None:
         """Test storing and retrieving OAuth state."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta
@@ -729,7 +730,7 @@ class TestStateStore:
         retrieved_tenant_id = asyncio.run(state_store.get_tenant_id(state))
         assert retrieved_tenant_id == tenant_id
     
-    def test_state_expired(self, mock_supabase_client) -> None:
+    def test_state_expired(self, mock_supabase_client: Any) -> None:
         """Test expired state retrieval."""
         from src.connectors.sharepoint.state_store import OAuthStateStore
         from datetime import datetime, timezone, timedelta
@@ -787,11 +788,11 @@ class TestIdempotency:
         emitted_file_ids = []
         
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs):
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 emitted_file_ids.append(kwargs["file_id"])
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs):
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
         
         mock_emitter = MockEmitter()
@@ -873,18 +874,18 @@ class TestIdempotency:
         
         tenant_id = uuid4()
         connector_id = uuid4()
-        
+
         # Mock stores
-        saved_tokens = {}
+        saved_tokens: dict[Any, Any] = {}
         
         class MockStateStore(SyncStateStore):
-            async def get_page_token(self, tenant_id, connector_id, drive_id):
+            async def get_page_token(self, tenant_id: Any, connector_id: Any, drive_id: Any) -> Any:
                 return saved_tokens.get((str(tenant_id), str(connector_id), drive_id))
             
-            async def save_page_token(self, tenant_id, connector_id, page_token, drive_id):
+            async def save_page_token(self, tenant_id: Any, connector_id: Any, page_token: Any, drive_id: Any) -> None:
                 saved_tokens[(str(tenant_id), str(connector_id), drive_id)] = page_token
             
-            async def update_last_sync(self, tenant_id, connector_id, status, error_message=None):
+            async def update_last_sync(self, tenant_id: Any, connector_id: Any, status: Any, error_message: Any = None) -> None:
                 pass
         
         mock_token_store = AsyncMock(spec=TokenStore)
@@ -893,16 +894,16 @@ class TestIdempotency:
         mock_config_store.get_shared_drive_ids = AsyncMock(return_value=[])
         
         mock_state_store = MockStateStore()
-        
+
         class MockEmitter(IngestionEmitter):
-            async def emit_file_reference(self, **kwargs):
+            async def emit_file_reference(self, **kwargs: Any) -> Any:  # type: ignore[override]
                 return str(uuid4())
-            
-            async def emit_deletion_reference(self, **kwargs):
+
+            async def emit_deletion_reference(self, **kwargs: Any) -> None:  # type: ignore[override]
                 pass
-        
+
         mock_emitter = MockEmitter()
-        
+
         # Simulate rapid token updates
         tokens = ["token-1", "token-2", "token-3", "token-4"]
         token_index = [0]

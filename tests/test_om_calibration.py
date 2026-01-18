@@ -2,10 +2,11 @@ import pytest
 from uuid import uuid4
 
 from src.extraction.om_calibration import OMCalibrationTracker
+from typing import Any
 
 
 class _ExtractionStub:
-    def __init__(self, asking_price, noi_in_place, cap_rate_in_place, overall_confidence=0.0):
+    def __init__(self, asking_price: Any, noi_in_place: Any, cap_rate_in_place: Any, overall_confidence: Any = 0.0) -> None:
         self.asking_price = asking_price
         self.noi_in_place = noi_in_place
         self.cap_rate_in_place = cap_rate_in_place
@@ -17,10 +18,10 @@ async def test_record_closing_skips_missing_or_zero_baselines() -> None:
     extraction = _ExtractionStub(asking_price=None, noi_in_place=0.0, cap_rate_in_place=0.05, overall_confidence=0.8)
     recorded = []
 
-    async def get_extraction_fn(_):
+    async def get_extraction_fn(_: Any) -> Any:
         return extraction
 
-    async def store_calibration_fn(record):
+    async def store_calibration_fn(record: Any) -> None:
         recorded.append(record)
 
     tracker = OMCalibrationTracker(get_extraction_fn, store_calibration_fn)
@@ -44,10 +45,10 @@ async def test_record_closing_computes_variances_with_valid_baselines() -> None:
     extraction = _ExtractionStub(asking_price=1_000_000.0, noi_in_place=500_000.0, cap_rate_in_place=0.06, overall_confidence=0.75)
     recorded = []
 
-    async def get_extraction_fn(_):
+    async def get_extraction_fn(_: Any) -> Any:
         return extraction
 
-    async def store_calibration_fn(record):
+    async def store_calibration_fn(record: Any) -> None:
         recorded.append(record)
 
     tracker = OMCalibrationTracker(get_extraction_fn, store_calibration_fn)

@@ -167,6 +167,50 @@ Add to `.pre-commit-config.yaml`:
 - [ ] Consider enabling `--strict` mode for new modules
 - [ ] Add type checking to CI/CD pipeline
 
+## Troubleshooting
+
+### Stale Mypy Cache
+
+**Symptom:** Mypy reports `import-not-found` or `untyped-decorator` errors for packages that are clearly installed (fastapi, pydantic, etc.)
+
+**Cause:** Mypy caches type information in `.mypy_cache/`. When packages are installed or updated, the cache may become stale.
+
+**Solution:**
+```bash
+# Clear the cache manually
+rm -rf .mypy_cache
+
+# Then re-run mypy
+python -m mypy src/
+```
+
+**Note:** The regression check script (`scripts/mypy_regression_check.py`) automatically clears the cache before each run to prevent this issue.
+
+### Import Errors for Installed Packages
+
+**Symptom:** `Cannot find implementation or library stub for module named "X"`
+
+**Cause:** Either the package isn't installed, or it lacks type stubs
+
+**Solution:**
+1. Verify package is installed: `python -c "import X"`
+2. Install type stubs if available: `pip install types-X`
+3. If no stubs exist, add to `mypy.ini`:
+   ```ini
+   [mypy-X.*]
+   ignore_missing_imports = True
+   ```
+
+### False Positive Errors
+
+**Symptom:** Mypy reports errors that don't make sense given the code
+
+**Solution:**
+1. Clear mypy cache: `rm -rf .mypy_cache`
+2. Verify Python environment: `which python`, `python --version`
+3. Check mypy version: `python -m mypy --version`
+4. Re-install type stubs if needed
+
 ## Resources
 
 - [Mypy Documentation](https://mypy.readthedocs.io/)

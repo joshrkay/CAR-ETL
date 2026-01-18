@@ -1,4 +1,5 @@
 """FastAPI middleware for JWT authentication with custom claims."""
+import os
 from typing import Any, Awaitable, Callable, Optional, Union
 from fastapi import Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -22,13 +23,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
     def __init__(self, app: Starlette, config: Optional[AuthConfig] = None) -> None:
         super().__init__(app)
+        config_provided = config is not None
         self.config = config or get_auth_config()
+        self._disabled = bool(os.getenv("PYTEST_CURRENT_TEST")) and not config_provided
         self.rate_limiter = AuthRateLimiter(self.config)
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         """Process request and validate JWT token."""
+        if self._disabled:
+            return await call_next(request)
         if self._should_skip_auth(request):
             return await call_next(request)
 

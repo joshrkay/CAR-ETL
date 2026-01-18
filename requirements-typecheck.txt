@@ -1,0 +1,29 @@
+# Minimal dependencies needed for mypy type checking
+# Only includes packages with type stubs that mypy needs to import
+
+# Core web framework (must have for type checking)
+fastapi>=0.109.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+uvicorn[standard]>=0.27.0
+
+# Core dependencies mypy needs to resolve imports
+supabase>=2.0.0
+pyjwt>=2.8.0
+python-multipart>=0.0.6
+httpx>=0.25.0
+cachetools>=5.3.0
+cryptography>=41.0.0
+openai>=1.0.0
+tiktoken>=0.5.0
+pyyaml>=6.0.0
+
+# Type stubs (from requirements-dev.txt)
+mypy>=1.7.0
+types-pyjwt>=1.7.0
+types-PyYAML>=6.0.0
+types-cachetools>=5.3.0
+
+# Note: Skipping spacy, presidio (heavy packages) since:
+# - They're ignored in mypy.ini anyway
+# - Mypy only needs to see the imports, not run the code
