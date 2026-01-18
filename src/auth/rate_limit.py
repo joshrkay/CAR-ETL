@@ -3,7 +3,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, cast
-from supabase import create_client, Client
+from supabase import create_client
 from src.auth.config import AuthConfig, get_auth_config
 from src.exceptions import RateLimitError
 

@@ -1,7 +1,7 @@
 """FastAPI dependencies for RBAC permission enforcement."""
 import inspect
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Awaitable, Callable
 from fastapi import Depends, HTTPException, Request, status
 
 from src.auth.models import AuthContext
