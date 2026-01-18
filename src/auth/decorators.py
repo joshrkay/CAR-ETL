@@ -1,7 +1,7 @@
 """FastAPI dependencies for RBAC permission enforcement."""
 import inspect
 import logging
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, cast
 from fastapi import Depends, HTTPException, Request, status
 
 from src.auth.models import AuthContext
@@ -110,8 +110,8 @@ def require_permission_dependency(permission: str) -> Callable[[Request], Awaita
         else:
             result = checker()
         if inspect.isawaitable(result):
-            return await result
-        return result
+            return cast(AuthContext, await result)
+        return cast(AuthContext, result)
 
     return dependency
 
