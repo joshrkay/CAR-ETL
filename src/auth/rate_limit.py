@@ -37,6 +37,7 @@ class AuthRateLimiter:
         window_start = now - timedelta(seconds=self.config.auth_rate_limit_window_seconds)
 
         try:
+            assert self.supabase is not None
             result = (
                 self.supabase.table("auth_rate_limits")
                 .select("*")
@@ -100,6 +101,7 @@ class AuthRateLimiter:
         if self._disabled:
             return
         try:
+            assert self.supabase is not None
             self.supabase.table("auth_rate_limits").update({
                 "attempt_count": new_count,
                 "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -125,6 +127,7 @@ class AuthRateLimiter:
         if self._disabled:
             return
         try:
+            assert self.supabase is not None
             self.supabase.table("auth_rate_limits").insert({
                 "ip_address": ip_address,
                 "attempt_count": 1,
@@ -151,6 +154,7 @@ class AuthRateLimiter:
         if self._disabled:
             return
         try:
+            assert self.supabase is not None
             self.supabase.table("auth_rate_limits").delete().eq("ip_address", ip_address).execute()
         except Exception as e:
             logger.warning(

@@ -6,7 +6,7 @@ Provides portfolio analytics for effective rent calculations.
 
 import inspect
 import logging
-from typing import Optional
+from typing import Any, Callable, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from supabase import Client
 
@@ -32,9 +32,9 @@ router = APIRouter(
 )
 
 
-def _permission_dependency(permission: str):
+def _permission_dependency(permission: str) -> Callable[[Request], Any]:
     async def dependency(request: Request) -> AuthContext:
-        checker = require_permission(permission)
+        checker: Any = require_permission(permission)
         parameters = inspect.signature(checker).parameters
         if parameters and all(
             param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
@@ -42,7 +42,7 @@ def _permission_dependency(permission: str):
         ):
             result = checker()
         elif len(parameters) >= 2:
-            auth = get_current_user(request)
+            auth = await get_current_user(request)
             result = checker(request, auth)
         elif len(parameters) == 1:
             result = checker(request)

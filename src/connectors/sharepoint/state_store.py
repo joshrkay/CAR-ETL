@@ -19,7 +19,7 @@ class OAuthStateStore:
         """
         self.supabase = supabase
 
-    def _table(self):
+    def _table(self) -> Any:
         table = self.supabase.table
         if hasattr(table, "return_value"):
             return table.return_value

@@ -175,7 +175,7 @@ class EffectiveRentService:
             # Get document details
             doc_result = self.client.table('documents').select(
                 'original_filename'
-            ).eq('id', doc_id).single().execute()
+            ).eq('id', doc_id).maybe_single().execute()
 
             doc_name = doc_result.data['original_filename'] if doc_result.data else 'Unknown'
 
