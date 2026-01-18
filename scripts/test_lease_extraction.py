@@ -30,7 +30,7 @@ from tests.test_lease_extraction_integration import TestLeaseExtractionIntegrati
 async def run_all_tests():
     """Run all lease extraction tests and print summary."""
     test_class = TestLeaseExtractionIntegration()
-    
+
     # Create mock fixtures
     mock_client = type('MockClient', (), {
         'chat': type('Chat', (), {
@@ -39,12 +39,12 @@ async def run_all_tests():
             })()
         })()
     })()
-    
+
     extractor = type('Extractor', (), {
         'client': mock_client,
         'model': 'gpt-4o-mini'
     })()
-    
+
     tests = [
         ("Simple Short Lease", test_class.test_simple_short_lease),
         ("Medium Complexity Office", test_class.test_medium_complexity_lease),
@@ -57,12 +57,12 @@ async def run_all_tests():
         ("Lease with Abbreviations", test_class.test_lease_with_abbreviations),
         ("Multi-Family Lease", test_class.test_multi_family_lease),
     ]
-    
+
     print("=" * 80)
     print("CRE LEASE EXTRACTION TEST SUITE")
     print("=" * 80)
     print(f"\nRunning {len(tests)} lease extraction tests...\n")
-    
+
     results = []
     for name, test_func in tests:
         try:
@@ -74,20 +74,20 @@ async def run_all_tests():
         except Exception as e:
             print(f"✗ Failed: {e}")
             results.append((name, False, str(e)))
-    
+
     print("\n" + "=" * 80)
     print("TEST SUMMARY")
     print("=" * 80)
-    
+
     passed = sum(1 for _, success, _ in results if success)
     failed = len(results) - passed
-    
+
     for name, success, error in results:
         status = "✓ PASS" if success else "✗ FAIL"
         print(f"{status}: {name}")
         if error:
             print(f"    Error: {error}")
-    
+
     print(f"\nTotal: {len(results)} tests")
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")

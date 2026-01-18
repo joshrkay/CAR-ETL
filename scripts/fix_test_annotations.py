@@ -9,7 +9,6 @@ Handles both test functions and pytest fixtures.
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 
 def fix_test_function_annotations(content: str) -> str:
@@ -25,7 +24,6 @@ def fix_test_function_annotations(content: str) -> str:
         indent = match.group(1) or ''
         decorators = match.group(2) or ''
         func_def = match.group(3)
-        func_name = match.group(4)
         colon = match.group(5)
 
         # Don't add annotation if it's a fixture
@@ -46,22 +44,14 @@ def fix_test_function_annotations(content: str) -> str:
 
 
 def fix_fixture_annotations(content: str) -> str:
-    """Add return type annotations to pytest fixtures missing them."""
+    """Add return type annotations to pytest fixtures missing them.
 
-    # Pattern for fixtures without return type annotation
-    # Matches: @pytest.fixture\ndef something(...):
-    pattern = r'(@pytest\.fixture[^\n]*\n)(def \w+\([^)]*\))(\s*:)'
+    Currently, fixtures are skipped because they may require specific
+    non-None return types, which would need analysis of the function body.
+    """
 
-    def replace_func(match: re.Match[str]) -> str:
-        decorator = match.group(1)
-        func_def = match.group(2)
-        colon = match.group(3)
-
-        # For now, we'll skip fixtures since they need specific return types
-        # This would require analyzing the function body
-        return match.group(0)
-
-    return content  # Skip for now - fixtures need careful analysis
+    # No changes are applied to fixtures at this time.
+    return content
 
 
 def count_annotations_added(original: str, fixed: str) -> int:
@@ -71,15 +61,15 @@ def count_annotations_added(original: str, fixed: str) -> int:
     return fixed_count - original_count
 
 
-def process_file(file_path: Path) -> Tuple[bool, int]:
+def process_file(file_path: Path) -> tuple[bool, int]:
     """
     Process a single file to add type annotations.
 
     Returns:
-        Tuple of (was_modified, num_changes)
+        tuple of (was_modified, num_changes)
     """
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             original_content = f.read()
 
         # Apply all fixes
@@ -127,7 +117,7 @@ def main() -> None:
             total_changes += num_changes
             print(f"  ✓ {file_path.name}: {num_changes} functions annotated")
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Files modified: {total_modified}/{len(test_files)}")
     print(f"  Total functions annotated: {total_changes}")
 

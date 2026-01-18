@@ -1,5 +1,4 @@
 """Test that toggling feature flags affects endpoint behavior."""
-import os
 import sys
 from pathlib import Path
 
@@ -18,14 +17,14 @@ try:
 except ImportError:
     pass
 
-from fastapi.testclient import TestClient
-from fastapi import HTTPException
-from src.main import app
-from src.features.models import FeatureFlagCreate, TenantFeatureFlagUpdate
-import jwt
-from uuid import uuid4
 from datetime import datetime, timedelta
+from uuid import uuid4
+
+import jwt
+from fastapi.testclient import TestClient
+
 from src.auth.config import get_auth_config
+from src.main import app
 
 
 def create_admin_jwt(tenant_id: str, tenant_slug: str = "test-tenant"):
@@ -33,7 +32,7 @@ def create_admin_jwt(tenant_id: str, tenant_slug: str = "test-tenant"):
     config = get_auth_config()
     user_id = str(uuid4())
     email = f"admin-{uuid4().hex[:8]}@example.com"
-    
+
     payload = {
         "sub": user_id,
         "email": email,
@@ -44,7 +43,7 @@ def create_admin_jwt(tenant_id: str, tenant_slug: str = "test-tenant"):
         },
         "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
     }
-    
+
     return jwt.encode(payload, config.supabase_jwt_secret, algorithm="HS256")
 
 
@@ -53,7 +52,7 @@ def create_user_jwt(tenant_id: str, tenant_slug: str = "test-tenant"):
     config = get_auth_config()
     user_id = str(uuid4())
     email = f"user-{uuid4().hex[:8]}@example.com"
-    
+
     payload = {
         "sub": user_id,
         "email": email,
@@ -64,7 +63,7 @@ def create_user_jwt(tenant_id: str, tenant_slug: str = "test-tenant"):
         },
         "exp": int((datetime.utcnow() + timedelta(hours=1)).timestamp()),
     }
-    
+
     return jwt.encode(payload, config.supabase_jwt_secret, algorithm="HS256")
 
 
@@ -72,29 +71,29 @@ async def test_flag_toggle_behavior():
     """Test that toggling flags affects endpoint behavior."""
     config = get_auth_config()
     client = TestClient(app)
-    
+
     # Create test tenant and tokens
     tenant_id = str(uuid4())
     admin_token = create_admin_jwt(tenant_id)
     user_token = create_user_jwt(tenant_id)
-    
+
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
     user_headers = {"Authorization": f"Bearer {user_token}"}
-    
+
     flag_name = "experimental_search"
-    
+
     print("=" * 60)
     print("Testing Feature Flag Toggle Behavior")
     print("=" * 60)
-    
+
     # Step 1: Ensure flag exists (create if needed)
     print(f"\n1. Ensuring flag '{flag_name}' exists...")
     response = client.get("/api/v1/admin/flags", headers=admin_headers)
-    
+
     if response.status_code == 200:
         flags = response.json()
         flag_exists = any(f["name"] == flag_name for f in flags)
-        
+
         if not flag_exists:
             print(f"   Creating flag '{flag_name}'...")
             response = client.post(
@@ -107,33 +106,33 @@ async def test_flag_toggle_behavior():
                 headers=admin_headers,
             )
             if response.status_code == 201:
-                print(f"   [OK] Created flag")
+                print("   [OK] Created flag")
             else:
                 print(f"   [ERROR] Failed to create: {response.status_code}")
                 return
         else:
-            print(f"   [OK] Flag already exists")
+            print("   [OK] Flag already exists")
     else:
         print(f"   [ERROR] Failed to list flags: {response.status_code}")
         return
-    
+
     # Step 2: Test endpoint with flag DISABLED (default)
-    print(f"\n2. Testing endpoint with flag DISABLED (default)...")
-    print(f"   Calling GET /experimental-feature...")
-    
+    print("\n2. Testing endpoint with flag DISABLED (default)...")
+    print("   Calling GET /experimental-feature...")
+
     response = client.get("/experimental-feature", headers=user_headers)
-    
+
     if response.status_code == 404:
         error_detail = response.json().get("detail", {})
         if error_detail.get("code") == "FEATURE_NOT_AVAILABLE":
-            print(f"   [OK] Endpoint correctly returned 404 (feature disabled)")
+            print("   [OK] Endpoint correctly returned 404 (feature disabled)")
             print(f"        Message: {error_detail.get('message', '')}")
         else:
-            print(f"   [WARNING] Got 404 but unexpected error code")
+            print("   [WARNING] Got 404 but unexpected error code")
     else:
         print(f"   [FAIL] Expected 404, got {response.status_code}")
         print(f"        Response: {response.json()}")
-    
+
     # Step 3: Enable flag for this tenant
     print(f"\n3. Enabling flag for tenant {tenant_id[:8]}...")
     response = client.put(
@@ -141,7 +140,7 @@ async def test_flag_toggle_behavior():
         json={"enabled": True},
         headers=admin_headers,
     )
-    
+
     if response.status_code == 200:
         result = response.json()
         print(f"   [OK] Flag enabled: {result['enabled']}")
@@ -149,72 +148,72 @@ async def test_flag_toggle_behavior():
         print(f"   [ERROR] Failed to enable flag: {response.status_code}")
         print(f"        Response: {response.json()}")
         return
-    
+
     # Step 4: Test endpoint with flag ENABLED
-    print(f"\n4. Testing endpoint with flag ENABLED...")
-    print(f"   Calling GET /experimental-feature...")
-    
+    print("\n4. Testing endpoint with flag ENABLED...")
+    print("   Calling GET /experimental-feature...")
+
     # Wait a moment for cache to potentially expire (in real scenario)
     # In test, cache might still be valid, so we'll test both scenarios
     response = client.get("/experimental-feature", headers=user_headers)
-    
+
     if response.status_code == 200:
         data = response.json()
-        print(f"   [OK] Endpoint correctly returned 200 (feature enabled)")
+        print("   [OK] Endpoint correctly returned 200 (feature enabled)")
         print(f"        Response: {data}")
     else:
         print(f"   [WARNING] Got {response.status_code}, might be cache issue")
         print(f"        Response: {response.json()}")
-        print(f"        Note: Cache TTL is 5 minutes, might need to wait")
-    
+        print("        Note: Cache TTL is 5 minutes, might need to wait")
+
     # Step 5: Disable flag again
-    print(f"\n5. Disabling flag for tenant...")
+    print("\n5. Disabling flag for tenant...")
     response = client.put(
         f"/api/v1/admin/flags/{flag_name}/tenants/{tenant_id}",
         json={"enabled": False},
         headers=admin_headers,
     )
-    
+
     if response.status_code == 200:
         result = response.json()
         print(f"   [OK] Flag disabled: {result['enabled']}")
     else:
         print(f"   [ERROR] Failed to disable flag: {response.status_code}")
-    
+
     # Step 6: Test endpoint with flag DISABLED again
-    print(f"\n6. Testing endpoint with flag DISABLED again...")
-    print(f"   Calling GET /experimental-feature...")
-    
+    print("\n6. Testing endpoint with flag DISABLED again...")
+    print("   Calling GET /experimental-feature...")
+
     response = client.get("/experimental-feature", headers=user_headers)
-    
+
     if response.status_code == 404:
         error_detail = response.json().get("detail", {})
-        print(f"   [OK] Endpoint correctly returned 404 (feature disabled)")
+        print("   [OK] Endpoint correctly returned 404 (feature disabled)")
         print(f"        Message: {error_detail.get('message', '')}")
     else:
         print(f"   [WARNING] Got {response.status_code}, cache might still be valid")
         print(f"        Response: {response.json()}")
-        print(f"        Note: Cache TTL is 5 minutes")
-    
+        print("        Note: Cache TTL is 5 minutes")
+
     # Step 7: Test flag evaluation directly
-    print(f"\n7. Testing flag evaluation directly via service...")
+    print("\n7. Testing flag evaluation directly via service...")
     from src.features.service import FeatureFlagService
     from supabase import create_client
-    
+
     supabase = create_client(config.supabase_url, config.supabase_service_key)
     flags_service = FeatureFlagService(supabase, tenant_id)
-    
+
     # Invalidate cache to get fresh value
     flags_service.invalidate_cache()
-    
+
     is_enabled = await flags_service.is_enabled(flag_name)
     print(f"   Flag '{flag_name}' is: {'ENABLED' if is_enabled else 'DISABLED'}")
-    
+
     if is_enabled:
-        print(f"   [WARNING] Flag should be disabled, but cache might not have refreshed")
+        print("   [WARNING] Flag should be disabled, but cache might not have refreshed")
     else:
-        print(f"   [OK] Flag correctly evaluated as disabled")
-    
+        print("   [OK] Flag correctly evaluated as disabled")
+
     # Summary
     print("\n" + "=" * 60)
     print("Test Summary")
@@ -238,11 +237,11 @@ if __name__ == "__main__":
         print("Please ensure you have a .env file with required variables.")
         print(f"\nError: {e}")
         exit(1)
-    
+
     # Run the test
     import asyncio
-    
+
     async def run_test():
         await test_flag_toggle_behavior()
-    
+
     asyncio.run(run_test())
