@@ -5,20 +5,20 @@ Ingestion Plane: Emits normalized ingestion references/events.
 Does NOT download file bytes - downstream will fetch.
 """
 import logging
-from typing import Any, cast
+from typing import Dict, Any, List, Optional, Set, cast
 from uuid import UUID
 
 from src.connectors.google_drive.client import (
     GoogleDriveClient,
     GoogleDriveClientError,
-    RateLimitError,
     TokenRevokedError,
+    RateLimitError,
 )
 from src.connectors.google_drive.interfaces import (
-    ConnectorConfigStore,
-    IngestionEmitter,
-    SyncStateStore,
     TokenStore,
+    ConnectorConfigStore,
+    SyncStateStore,
+    IngestionEmitter,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ class GoogleDriveSyncError(Exception):
 
 class GoogleDriveSync:
     """Handles delta sync of Google Drive files using Changes API."""
-
+    
     def __init__(
         self,
         tenant_id: UUID,
@@ -43,7 +43,7 @@ class GoogleDriveSync:
     ):
         """
         Initialize Google Drive sync handler.
-
+        
         Args:
             tenant_id: Tenant identifier
             connector_id: Connector identifier
@@ -58,14 +58,14 @@ class GoogleDriveSync:
         self.config_store = config_store
         self.state_store = state_store
         self.emitter = emitter
-
+    
     async def sync(
         self,
         client: GoogleDriveClient,
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """
         Perform delta sync using Changes API.
-
+        
         Handles:
         - Multiple folder selection
         - Shared drive support
@@ -74,7 +74,7 @@ class GoogleDriveSync:
         - Token revocation detection
         - Rate limit handling
         - Invalid token fallback to full resync
-
+        
         Returns:
             Dictionary with sync statistics
         """
@@ -85,7 +85,7 @@ class GoogleDriveSync:
             "errors": [],
             "needs_reauth": False,
         }
-
+        
         try:
             # Get configuration
             folder_ids = await self.config_store.get_folder_ids(
@@ -96,22 +96,22 @@ class GoogleDriveSync:
                 self.tenant_id,
                 self.connector_id,
             )
-
+            
             # If no folders selected, sync root of all drives
             if not folder_ids:
-                folder_ids_with_none: list[str | None] = [None]  # None means root
+                folder_ids_with_none: List[Optional[str]] = [None]  # None means root
             else:
                 folder_ids_with_none = folder_ids  # type: ignore[assignment]
-
+            
             # If no shared drives specified, sync all (empty list)
             if shared_drive_ids:
-                drives_to_sync: list[str | None] = shared_drive_ids  # type: ignore[assignment]
+                drives_to_sync: List[Optional[str]] = shared_drive_ids  # type: ignore[assignment]
             else:
                 drives_to_sync = [None]
-
+            
             # Track processed file IDs for idempotency
-            processed_file_ids: set[str] = set()
-
+            processed_file_ids: Set[str] = set()
+            
             for drive_id in drives_to_sync:
                 try:
                     drive_stats = await self._sync_drive(
@@ -123,8 +123,8 @@ class GoogleDriveSync:
                     stats["files_emitted"] += drive_stats["files_emitted"]
                     stats["deletions_emitted"] += drive_stats["deletions_emitted"]
                     stats["files_skipped"] += drive_stats["files_skipped"]
-                    errors_list = cast(list[str], stats["errors"])
-                    drive_errors = cast(list[str], drive_stats["errors"])
+                    errors_list = cast(List[str], stats["errors"])
+                    drive_errors = cast(List[str], drive_stats["errors"])
                     errors_list.extend(drive_errors)
                 except TokenRevokedError:
                     logger.error(
@@ -140,7 +140,7 @@ class GoogleDriveSync:
                         self.connector_id,
                     )
                     stats["needs_reauth"] = True
-                    errors_list = cast(list[str], stats["errors"])
+                    errors_list = cast(List[str], stats["errors"])
                     errors_list.append(f"Token revoked for drive {drive_id}")
                     break
                 except RateLimitError as e:
@@ -152,7 +152,7 @@ class GoogleDriveSync:
                             "drive_id": drive_id,
                         },
                     )
-                    errors_list = cast(list[str], stats["errors"])
+                    errors_list = cast(List[str], stats["errors"])
                     errors_list.append(f"Rate limit exceeded for drive {drive_id}: {str(e)}")
                     # Continue with other drives
                     continue
@@ -166,10 +166,10 @@ class GoogleDriveSync:
                             "drive_id": drive_id,
                         },
                     )
-                    errors_list = cast(list[str], stats["errors"])
+                    errors_list = cast(List[str], stats["errors"])
                     errors_list.append(error_msg)
                     continue
-
+            
             # Update sync status
             if stats["needs_reauth"]:
                 await self.state_store.update_last_sync(
@@ -179,7 +179,7 @@ class GoogleDriveSync:
                     "Token revoked, re-authentication required",
                 )
             elif stats["errors"]:
-                errors_list = cast(list[str], stats["errors"])
+                errors_list = cast(List[str], stats["errors"])
                 await self.state_store.update_last_sync(
                     self.tenant_id,
                     self.connector_id,
@@ -192,7 +192,7 @@ class GoogleDriveSync:
                     self.connector_id,
                     "success",
                 )
-
+            
         except Exception as e:
             logger.error(
                 "Unexpected error during sync",
@@ -209,36 +209,36 @@ class GoogleDriveSync:
                 str(e),
             )
             raise GoogleDriveSyncError(f"Sync failed: {str(e)}")
-
+        
         return stats
-
+    
     async def _sync_drive(
         self,
         client: GoogleDriveClient,
-        drive_id: str | None,
-        folder_ids: list[str | None],
-        processed_file_ids: set[str],
-    ) -> dict[str, Any]:
+        drive_id: Optional[str],
+        folder_ids: List[Optional[str]],
+        processed_file_ids: Set[str],
+    ) -> Dict[str, Any]:
         """
         Sync a single drive (or my_drive if drive_id is None).
-
+        
         Returns:
             Statistics for this drive
         """
-        stats: dict[str, Any] = {
+        stats: Dict[str, Any] = {
             "files_emitted": 0,
             "deletions_emitted": 0,
             "files_skipped": 0,
             "errors": [],
         }
-
+        
         # Get or initialize page token
         page_token = await self.state_store.get_page_token(
             self.tenant_id,
             self.connector_id,
             drive_id,
         )
-
+        
         if not page_token:
             try:
                 start_token = await client.get_start_page_token(drive_id=drive_id)
@@ -259,7 +259,7 @@ class GoogleDriveSync:
                     page_token = start_token
                 else:
                     raise
-
+        
         # Process changes
         while page_token:
             try:
@@ -267,11 +267,11 @@ class GoogleDriveSync:
                     page_token=page_token,
                     drive_id=drive_id,
                 )
-
+                
                 changes = result.get("changes", [])
                 next_page_token = result.get("next_page_token")
                 new_start_token = result.get("start_page_token")
-
+                
                 for change in changes:
                     try:
                         change_stats = await self._process_change(
@@ -295,9 +295,9 @@ class GoogleDriveSync:
                                 "file_id": file_id,
                             },
                         )
-                        errors_list = cast(list[str], stats["errors"])
+                        errors_list = cast(List[str], stats["errors"])
                     errors_list.append(error_msg)
-
+                
                 # Update checkpoint
                 if next_page_token:
                     page_token = next_page_token
@@ -312,7 +312,7 @@ class GoogleDriveSync:
                     break
                 else:
                     break
-
+                    
             except (TokenRevokedError, RateLimitError):
                 raise
             except GoogleDriveClientError as e:
@@ -331,7 +331,7 @@ class GoogleDriveSync:
                     page_token = start_token
                 else:
                     raise
-
+        
         # Save final checkpoint
         if page_token:
             await self.state_store.save_page_token(
@@ -340,39 +340,39 @@ class GoogleDriveSync:
                 page_token,
                 drive_id,
             )
-
+        
         return stats
-
+    
     async def _process_change(
         self,
         client: GoogleDriveClient,
-        change: dict[str, Any],
-        folder_ids: list[str | None],
-        drive_id: str | None,
-        processed_file_ids: set[str],
-    ) -> dict[str, int]:
+        change: Dict[str, Any],
+        folder_ids: List[Optional[str]],
+        drive_id: Optional[str],
+        processed_file_ids: Set[str],
+    ) -> Dict[str, int]:
         """
         Process a single change event (idempotent).
-
+        
         Returns:
             Dictionary with emitted, deleted, skipped counts
         """
         change_type = change.get("changeType")
         file_data = change.get("file")
-
+        
         if not file_data:
             return {"emitted": 0, "deleted": 0, "skipped": 0}
-
+        
         file_id = file_data.get("id")
         if not file_id:
             return {"emitted": 0, "deleted": 0, "skipped": 0}
-
+        
         # Idempotency: skip if already processed in this sync run
         if file_id in processed_file_ids:
             return {"emitted": 0, "deleted": 0, "skipped": 1}
-
+        
         processed_file_ids.add(file_id)
-
+        
         # Handle deletions
         if change_type == "remove" or change.get("removed", False) or file_data.get("trashed", False):
             source_path = self._build_source_path(drive_id, file_id)
@@ -383,12 +383,12 @@ class GoogleDriveSync:
                 source_path=source_path,
             )
             return {"emitted": 0, "deleted": 1, "skipped": 0}
-
+        
         # Skip folders
         mime_type = file_data.get("mimeType", "")
         if mime_type == "application/vnd.google-apps.folder":
             return {"emitted": 0, "deleted": 0, "skipped": 0}
-
+        
         # Filter by folder selection
         file_parents = file_data.get("parents", [])
         if folder_ids and not any(
@@ -396,17 +396,17 @@ class GoogleDriveSync:
             for folder_id in folder_ids
         ):
             return {"emitted": 0, "deleted": 0, "skipped": 0}
-
+        
         # Emit file reference (no download - downstream will fetch)
         file_name = file_data.get("name", "")
         file_size = int(file_data.get("size", 0))
         modified_time = file_data.get("modifiedTime", "")
-
+        
         if not file_name or not modified_time:
             return {"emitted": 0, "deleted": 0, "skipped": 0}
-
+        
         source_path = self._build_source_path(drive_id, file_id)
-
+        
         await self.emitter.emit_file_reference(
             tenant_id=self.tenant_id,
             file_id=file_id,
@@ -418,10 +418,10 @@ class GoogleDriveSync:
             folder_ids=file_parents,
             source_path=source_path,
         )
-
+        
         return {"emitted": 1, "deleted": 0, "skipped": 0}
-
-    def _build_source_path(self, drive_id: str | None, file_id: str) -> str:
+    
+    def _build_source_path(self, drive_id: Optional[str], file_id: str) -> str:
         """Build unique source path identifier."""
         drive_key = drive_id or "my_drive"
         return f"google_drive:{drive_key}:{file_id}"

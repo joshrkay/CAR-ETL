@@ -7,14 +7,15 @@ Part of Ingestion Plane - validates and buffers data only.
 
 import logging
 import zipfile
-from typing import Any, cast
+from typing import Any, Dict, Optional, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
+from supabase import Client
 
-from src.auth.decorators import require_permission
 from src.auth.models import AuthContext
+from src.auth.decorators import require_permission
 from src.dependencies import get_supabase_client
 from src.services.bulk_upload import (
     FileProcessingResult,
@@ -22,7 +23,6 @@ from src.services.bulk_upload import (
 )
 from src.services.file_storage import FileStorageService, StorageUploadError
 from src.services.redaction import presidio_redact_bytes
-from supabase import Client
 
 logger = logging.getLogger(__name__)
 
@@ -38,9 +38,9 @@ DEFAULT_MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 class FileResult(BaseModel):
     """Result for a single file in bulk upload."""
     filename: str
-    document_id: str | None
+    document_id: Optional[str]
     status: str
-    error: str | None = None
+    error: Optional[str] = None
 
 
 class BulkUploadResponse(BaseModel):
@@ -59,20 +59,20 @@ class BulkUploadResponse(BaseModel):
     summary="Bulk upload documents from ZIP",
     description="""
     Upload multiple documents at once via a ZIP file.
-
+    
     Security:
     - Requires authentication and 'documents:write' permission
     - Each file is validated independently
     - Tenant isolation enforced via RLS
     - Maximum ZIP size: 500MB
     - Maximum files per ZIP: 1000
-
+    
     Processing:
     - Extracts ZIP file
     - Validates each file (magic bytes, structure, size)
     - Creates document records for valid files
     - Returns summary with per-file results
-
+    
     The operation is atomic per-file: failures are tracked but
     don't prevent processing of other files in the batch.
     """,
@@ -85,22 +85,22 @@ async def upload_bulk_documents(
 ) -> BulkUploadResponse:
     """
     Upload multiple documents from a ZIP file.
-
+    
     This endpoint:
     1. Validates ZIP file structure and size
     2. Extracts and validates each file independently
     3. Creates document records for valid files
     4. Returns detailed results for each file
-
+    
     Args:
         request: FastAPI request object
         file: ZIP file containing documents
         auth: Authenticated user context
         supabase: Supabase client with user JWT
-
+        
     Returns:
         BulkUploadResponse with batch summary and per-file results
-
+        
     Raises:
         HTTPException 400: ZIP validation failed
         HTTPException 401: User not authenticated
@@ -111,7 +111,7 @@ async def upload_bulk_documents(
     tenant_id = str(auth.tenant_id)
     user_id = str(auth.user_id)
     batch_id = str(uuid4())
-
+    
     logger.info(
         "Bulk upload initiated",
         extra={
@@ -122,11 +122,11 @@ async def upload_bulk_documents(
             "filename": file.filename,
         },
     )
-
+    
     # Step 1: Read ZIP file content
     try:
         zip_content = await file.read()
-    except (OSError, RuntimeError) as e:
+    except (IOError, OSError, RuntimeError) as e:
         logger.error(
             "Failed to read ZIP file",
             extra={
@@ -164,21 +164,21 @@ async def upload_bulk_documents(
                 "message": "Failed to read uploaded ZIP file",
             },
         )
-
+    
     # Step 2: Get tenant configuration
     tenant_max_size = await fetch_tenant_max_file_size(
         supabase=supabase,
         tenant_id=tenant_id,
     )
-
+    
     # Step 3: Create bulk upload service
     bulk_service = create_bulk_upload_service(
         max_file_size=tenant_max_size or DEFAULT_MAX_FILE_SIZE_BYTES,
     )
-
+    
     # Step 4: Validate ZIP file
     zip_errors = bulk_service.validate_zip_file(zip_content)
-
+    
     if zip_errors:
         logger.warning(
             "ZIP validation failed",
@@ -189,12 +189,12 @@ async def upload_bulk_documents(
                 "errors": zip_errors,
             },
         )
-
+        
         # Return 413 for size errors, 400 for other validation errors
         status_code = status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
         if not any("exceeds maximum" in err for err in zip_errors):
             status_code = status.HTTP_400_BAD_REQUEST
-
+        
         raise HTTPException(
             status_code=status_code,
             detail={
@@ -203,7 +203,7 @@ async def upload_bulk_documents(
                 "errors": zip_errors,
             },
         )
-
+    
     # Step 5: Extract files from ZIP
     try:
         extracted_files = bulk_service.extract_and_validate_files(
@@ -211,7 +211,7 @@ async def upload_bulk_documents(
             tenant_id=tenant_id,
             request_id=request_id,
         )
-    except (zipfile.BadZipFile, OSError, MemoryError) as e:
+    except (zipfile.BadZipFile, IOError, OSError, MemoryError) as e:
         logger.error(
             "Failed to extract files from ZIP",
             extra={
@@ -249,12 +249,12 @@ async def upload_bulk_documents(
                 "message": "Unexpected error extracting files",
             },
         )
-
+    
     # Step 6: Process each file
     results: list[FileResult] = []
     successful_count = 0
     failed_count = 0
-
+    
     for filename, content, mime_type in extracted_files:
         # Validate and process file
         processing_result = bulk_service.process_file(
@@ -262,7 +262,7 @@ async def upload_bulk_documents(
             content=content,
             mime_type=mime_type,
         )
-
+        
         # If validation succeeded, redact and store document metadata
         if processing_result.status == "processing":
             # Ensure required fields are present
@@ -270,17 +270,17 @@ async def upload_bulk_documents(
                 processing_result.status = "failed"
                 processing_result.error = "Missing required fields (mime_type or document_id)"
                 continue
-
+            
             try:
                 # SECURITY: Redact PII before storage (defense in depth)
                 redacted_content = presidio_redact_bytes(content, processing_result.mime_type)
-
+                
                 storage_service = FileStorageService(supabase)
                 file_hash = storage_service.calculate_file_hash(redacted_content)
-
+                
                 # Generate storage path
                 storage_path = f"bulk/{batch_id}/{filename}"
-
+                
                 # Upload file to storage before creating document record
                 try:
                     storage_service.upload_file(
@@ -320,7 +320,7 @@ async def upload_bulk_documents(
                         )
                     )
                     continue
-
+                
                 if processing_result.document_id is None or processing_result.mime_type is None:
                     raise ValueError("Processed document metadata is incomplete")
 
@@ -338,9 +338,9 @@ async def upload_bulk_documents(
                     storage_path=storage_path,
                     batch_id=batch_id,
                 )
-
+                
                 successful_count += 1
-
+                
                 logger.info(
                     "File processed successfully",
                     extra={
@@ -351,7 +351,7 @@ async def upload_bulk_documents(
                         "filename": filename,
                     },
                 )
-
+            
             except StorageUploadError as e:
                 # This should not happen as upload is handled above, but keep for safety
                 logger.error(
@@ -365,7 +365,7 @@ async def upload_bulk_documents(
                     },
                     exc_info=True,
                 )
-
+                
                 processing_result = FileProcessingResult(
                     filename=filename,
                     document_id=None,
@@ -388,7 +388,7 @@ async def upload_bulk_documents(
                     },
                     exc_info=True,
                 )
-
+                
                 processing_result = FileProcessingResult(
                     filename=filename,
                     document_id=None,
@@ -400,7 +400,7 @@ async def upload_bulk_documents(
                 failed_count += 1
         else:
             failed_count += 1
-
+        
         # Add to results
         results.append(
             FileResult(
@@ -410,7 +410,7 @@ async def upload_bulk_documents(
                 error=processing_result.error,
             )
         )
-
+    
     logger.info(
         "Bulk upload completed",
         extra={
@@ -422,7 +422,7 @@ async def upload_bulk_documents(
             "failed": failed_count,
         },
     )
-
+    
     return BulkUploadResponse(
         batch_id=batch_id,
         total_files=len(extracted_files),
@@ -438,11 +438,11 @@ async def fetch_tenant_max_file_size(
 ) -> int:
     """
     Fetch tenant-specific maximum file size from Control Plane.
-
+    
     Args:
         supabase: Supabase client with user JWT
         tenant_id: Tenant identifier
-
+        
     Returns:
         Maximum file size in bytes
     """
@@ -454,17 +454,17 @@ async def fetch_tenant_max_file_size(
             .maybe_single()
             .execute()
         )
-
+        
         if result and result.data:
-            tenant_dict = cast(dict[str, Any], result.data)
+            tenant_dict = cast(Dict[str, Any], result.data)
             settings = tenant_dict.get("settings")
             if isinstance(settings, dict):
                 max_size = settings.get("max_file_size_bytes", DEFAULT_MAX_FILE_SIZE_BYTES)
                 if isinstance(max_size, int):
                     return max_size
-
+        
         return DEFAULT_MAX_FILE_SIZE_BYTES
-
+    
     except Exception as e:
         logger.warning(
             "Failed to fetch tenant max file size, using default",
@@ -495,13 +495,13 @@ async def store_document_metadata(
 ) -> None:
     """
     Store document metadata in database.
-
+    
     Note: File should already be uploaded to storage before calling this function.
-
+    
     This function:
     1. Creates a record in the documents table which automatically
        triggers document processing via database trigger.
-
+    
     Args:
         supabase: Supabase client with user JWT
         storage_service: File storage service (unused, kept for compatibility)
@@ -515,15 +515,15 @@ async def store_document_metadata(
         file_hash: SHA-256 hash of file content
         storage_path: Storage path where file was uploaded
         batch_id: Batch identifier for bulk upload
-
+        
     Raises:
         Exception: If database insert fails
     """
     # SECURITY: Content is already redacted before this function is called
     # File is already uploaded to storage before this function is called
-
+    
     # Store document metadata
-    document_data: dict[str, Any] = {
+    document_data: Dict[str, Any] = {
         "id": document_id,
         "tenant_id": tenant_id,
         "uploaded_by": user_id,
@@ -536,9 +536,9 @@ async def store_document_metadata(
         "source_path": f"bulk_upload_batch:{batch_id}",
         "status": "pending",
     }
-
+    
     result = supabase.table("documents").insert(document_data).execute()
-
+    
     # Verify insert succeeded
     if not result.data:
         raise Exception("Database insert returned no data")

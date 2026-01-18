@@ -6,9 +6,9 @@ Required by .cursorrules: "All ingestion and workflow steps must be idempotent."
 """
 
 import logging
-from datetime import datetime, timedelta
-from typing import Any, cast
+from typing import Optional, Dict, Any, cast
 from uuid import UUID
+from datetime import datetime, timedelta
 
 from supabase import Client
 
@@ -27,7 +27,7 @@ async def check_processing_lock(
     supabase: Client,
     document_id: UUID,
     timeout: timedelta = DEFAULT_PROCESSING_TIMEOUT,
-) -> dict[str, Any] | None:
+) -> Optional[Dict[str, Any]]:
     """
     Check if document already has an active extraction in progress.
 
@@ -63,7 +63,7 @@ async def check_processing_lock(
         )
 
         if response.data and len(response.data) > 0:
-            active_extraction = cast(dict[str, Any], response.data[0])
+            active_extraction = cast(Dict[str, Any], response.data[0])
             logger.warning(
                 "Found active extraction in progress",
                 extra={
@@ -145,7 +145,7 @@ async def acquire_processing_lock(
 async def check_duplicate_queue_items(
     supabase: Client,
     document_id: UUID,
-) -> list[dict[str, Any]]:
+) -> list[Dict[str, Any]]:
     """
     Check for duplicate pending queue items for same document.
 
@@ -260,7 +260,7 @@ async def ensure_idempotent_processing(
     document_id: UUID,
     skip_if_completed: bool = True,
     skip_if_processing: bool = True,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, Optional[str]]:
     """
     Comprehensive idempotency check before processing.
 

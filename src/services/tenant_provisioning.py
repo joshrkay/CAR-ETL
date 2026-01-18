@@ -1,12 +1,12 @@
 """Tenant provisioning service with rollback support."""
-import logging
-from typing import Any, cast
 from uuid import UUID
-
-from src.auth.config import get_auth_config
-from src.services.storage_setup import StorageSetupError, StorageSetupService
-from src.utils.pii_protection import hash_email
+from typing import Any, Dict, Optional, cast
+import logging
 from supabase import Client
+
+from src.services.storage_setup import StorageSetupService, StorageSetupError
+from src.auth.config import get_auth_config
+from src.utils.pii_protection import hash_email
 
 logger = logging.getLogger(__name__)
 
@@ -18,11 +18,11 @@ class ProvisioningError(Exception):
 
 class TenantProvisioningService:
     """Service for provisioning new tenants with storage and admin user."""
-
+    
     def __init__(self, supabase_client: Client):
         """
         Initialize tenant provisioning service.
-
+        
         Args:
             supabase_client: Supabase client with service_role key
         """
@@ -33,7 +33,7 @@ class TenantProvisioningService:
             config.supabase_url,
             config.supabase_service_key,
         )
-
+    
     def provision_tenant(
         self,
         name: str,
@@ -43,23 +43,23 @@ class TenantProvisioningService:
     ) -> dict[str, Any]:
         """
         Provision a new tenant with storage bucket and admin user.
-
+        
         Args:
             name: Tenant name
             slug: Tenant slug (URL-safe, unique)
             admin_email: Email for admin user
             environment: Environment (prod, staging, dev)
-
+            
         Returns:
             Dictionary with tenant details
-
+            
         Raises:
             ProvisioningError: If provisioning fails (with rollback)
         """
-        tenant_id: UUID | None = None
-        user_id: str | None = None
+        tenant_id: Optional[UUID] = None
+        user_id: Optional[str] = None
         bucket_created = False
-
+        
         try:
             # Step 1: Validate slug uniqueness
             logger.info(f"Validating slug uniqueness: {slug}")
@@ -70,10 +70,10 @@ class TenantProvisioningService:
                 .limit(1)
                 .execute()
             )
-
+            
             if existing.data:
                 raise ProvisioningError(f"Tenant with slug '{slug}' already exists")
-
+            
             # Step 2: Create tenant row
             logger.info(f"Creating tenant: {name} ({slug})")
             tenant_result = (
@@ -86,14 +86,14 @@ class TenantProvisioningService:
                 })
                 .execute()
             )
-
+            
             if not tenant_result.data:
                 raise ProvisioningError("Failed to create tenant")
-
-            tenant_data = cast(dict[str, Any], tenant_result.data[0])
+            
+            tenant_data = cast(Dict[str, Any], tenant_result.data[0])
             tenant_id = UUID(str(tenant_data["id"]))
             logger.info(f"Created tenant: {tenant_id}")
-
+            
             # Step 3: Create storage bucket
             logger.info(f"Creating storage bucket for tenant {tenant_id}")
             try:
@@ -102,11 +102,11 @@ class TenantProvisioningService:
                 logger.info(f"Created storage bucket: {bucket_name}")
             except StorageSetupError as e:
                 raise ProvisioningError(f"Failed to create storage bucket: {str(e)}")
-
+            
             # Step 4: Setup bucket policies (documented, actual setup via migration)
             logger.info("Bucket policies should be set via migration")
             self.storage_service.setup_bucket_policies(tenant_id, bucket_name)
-
+            
             # Step 5: Invite admin user via Supabase Auth
             logger.info(f"Inviting admin user: {admin_email}")
             try:
@@ -125,7 +125,7 @@ class TenantProvisioningService:
                     # User might already exist, check error message
                     error_str = str(create_error).lower()
                     error_type = type(create_error).__name__
-
+                    
                     if "already" in error_str or "exists" in error_str or "duplicate" in error_str:
                         logger.info(
                             f"User {admin_email} already exists, will link to tenant",
@@ -153,7 +153,7 @@ class TenantProvisioningService:
                         raise ProvisioningError(
                             f"Failed to create admin user: {str(create_error)}"
                         ) from create_error
-
+                
             except ProvisioningError:
                 raise
             except Exception as e:
@@ -168,7 +168,7 @@ class TenantProvisioningService:
                     exc_info=True,
                 )
                 raise ProvisioningError(f"Failed to create admin user: {str(e)}") from e
-
+            
             # Step 6: Create tenant_users row linking admin
             logger.info("Linking admin user to tenant")
             try:
@@ -181,12 +181,12 @@ class TenantProvisioningService:
                     })
                     .execute()
                 )
-
+                
                 if not tenant_user_result.data:
                     raise ProvisioningError("Failed to link admin user to tenant")
-
+                
                 logger.info("Linked admin user to tenant")
-
+                
             except ProvisioningError:
                 raise
             except Exception as e:
@@ -201,7 +201,7 @@ class TenantProvisioningService:
                     exc_info=True,
                 )
                 raise ProvisioningError(f"Failed to link admin user: {str(e)}") from e
-
+            
             # Step 7: Return success
             return {
                 "tenant_id": str(tenant_id),
@@ -212,7 +212,7 @@ class TenantProvisioningService:
                 "admin_invite_sent": True,
                 "created_at": tenant_data.get("created_at"),
             }
-
+            
         except ProvisioningError:
             # Rollback on failure
             logger.error(
@@ -240,25 +240,25 @@ class TenantProvisioningService:
             )
             self._rollback(tenant_id, user_id, bucket_created)
             raise ProvisioningError(f"Unexpected error: {str(e)}") from e
-
+    
     def _rollback(
         self,
-        tenant_id: UUID | None,
-        user_id: str | None,
+        tenant_id: Optional[UUID],
+        user_id: Optional[str],
         bucket_created: bool,
     ) -> None:
         """
         Rollback provisioning steps on failure.
-
+        
         Args:
             tenant_id: Tenant ID to rollback (if created)
             user_id: User ID to rollback (if created)
             bucket_created: Whether bucket was created
         """
         logger.info("Starting rollback...")
-
+        
         # Rollback in reverse order
-
+        
         # 1. Delete tenant_users row (if created)
         if tenant_id and user_id:
             try:
@@ -277,7 +277,7 @@ class TenantProvisioningService:
                     },
                     exc_info=True,
                 )
-
+        
         # 2. Delete storage bucket (if created)
         if bucket_created and tenant_id:
             try:
@@ -303,11 +303,11 @@ class TenantProvisioningService:
                     },
                     exc_info=True,
                 )
-
+        
         # 3. Delete user (if created - be careful, might be existing user)
         # Note: We don't delete existing users, only ones we created
         # For now, we'll skip user deletion in rollback
-
+        
         # 4. Delete tenant row (if created)
         if tenant_id:
             try:
@@ -323,5 +323,5 @@ class TenantProvisioningService:
                     },
                     exc_info=True,
                 )
-
+        
         logger.info("Rollback complete")

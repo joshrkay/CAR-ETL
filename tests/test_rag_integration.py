@@ -4,10 +4,9 @@ Integration tests for RAG Q&A API endpoint.
 Tests the complete flow from HTTP request to answer generation with citations.
 """
 
-from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
-
 import pytest
+from uuid import uuid4
+from unittest.mock import Mock, AsyncMock, patch
 from fastapi.testclient import TestClient
 
 from src.main import app

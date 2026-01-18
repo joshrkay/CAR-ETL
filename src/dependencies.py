@@ -1,13 +1,10 @@
 """FastAPI dependencies for authentication and feature flags."""
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Annotated
-
-from fastapi import Depends, HTTPException, Request, status
-
-from src.audit.logger import AuditLogger
+from fastapi import Request, HTTPException, status, Depends
+from typing import Annotated, Callable, Union
 from src.auth.models import AuthContext
+from src.audit.logger import AuditLogger
 from src.features.service import FeatureFlagService
 from supabase import Client
 
@@ -15,12 +12,12 @@ from supabase import Client
 def get_current_user(request: Request) -> AuthContext:
     """
     Dependency to get current authenticated user from request state.
-
+    
     Raises:
         HTTPException: If user is not authenticated
     """
     auth: AuthContext | None = getattr(request.state, "auth", None)
-
+    
     if not auth:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -29,14 +26,14 @@ def get_current_user(request: Request) -> AuthContext:
                 "message": "User is not authenticated",
             },
         )
-
+    
     return auth
 
 
 def require_role(role: str) -> Callable[[], AuthContext]:
     """
     Dependency factory to require a specific role.
-
+    
     Usage:
         @app.get("/admin")
         async def admin_endpoint(user: Annotated[AuthContext, Depends(require_role("Admin"))]):
@@ -52,14 +49,14 @@ def require_role(role: str) -> Callable[[], AuthContext]:
                 },
             )
         return user
-
+    
     return role_checker
 
 
 def require_any_role(roles: list[str]) -> Callable[[], AuthContext]:
     """
     Dependency factory to require any of the specified roles.
-
+    
     Usage:
         @app.get("/manager")
         async def manager_endpoint(user: Annotated[AuthContext, Depends(require_any_role(["Admin", "Manager"]))]):
@@ -75,22 +72,22 @@ def require_any_role(roles: list[str]) -> Callable[[], AuthContext]:
                 },
             )
         return user
-
+    
     return role_checker
 
 
 def get_supabase_client(request: Request) -> Client:
     """
     Get Supabase client from request state (created by middleware with user's JWT).
-
+    
     This client uses the user's JWT token and respects RLS policies.
     The client is created by AuthMiddleware and attached to request.state.supabase.
-
+    
     Raises:
         HTTPException: If client is not in request state (user not authenticated)
     """
-    client: Client | None = getattr(request.state, "supabase", None)
-
+    client: Union[Client, None] = getattr(request.state, "supabase", None)
+    
     if not client:
         # Client should be created by AuthMiddleware
         # If it's missing, user is not authenticated
@@ -101,7 +98,7 @@ def get_supabase_client(request: Request) -> Client:
                 "message": "Supabase client not available. User must be authenticated.",
             },
         )
-
+    
     return client
 
 
@@ -111,7 +108,7 @@ def get_feature_flags(
 ) -> FeatureFlagService:
     """
     Dependency to get feature flag service for current tenant.
-
+    
     Usage:
         @app.get("/experimental-feature")
         async def experimental(flags: FeatureFlagService = Depends(get_feature_flags)):
@@ -126,14 +123,14 @@ def get_feature_flags(
 def get_service_client() -> Client:
     """
     Get Supabase client with service_role key (bypasses RLS).
-
+    
     WARNING: This client bypasses RLS and should ONLY be used for:
     - Admin operations (tenant provisioning, system configuration)
     - Background jobs
     - Operations that require cross-tenant access
-
+    
     NEVER use this for regular user requests.
-
+    
     Returns:
         Supabase client with service_role key (bypasses RLS)
     """
@@ -147,11 +144,11 @@ def get_audit_logger(
 ) -> AuditLogger:
     """
     Dependency to get audit logger for current tenant and user.
-
+    
     Usage:
         from src.audit.logger import AuditLogger
         from src.audit.models import EventType, ActionType, ResourceType
-
+        
         @app.post("/documents")
         async def upload_document(
             logger: AuditLogger = Depends(get_audit_logger),

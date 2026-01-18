@@ -4,19 +4,19 @@ Tests for idempotency guards - prevent duplicate processing.
 Critical for data integrity - .cursorrules requirement.
 """
 
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
-
 import pytest
+from unittest.mock import Mock, AsyncMock, patch
+from uuid import uuid4
+from datetime import datetime, timedelta
 
 from src.extraction.idempotency import (
+    check_processing_lock,
     acquire_processing_lock,
     check_duplicate_queue_items,
-    check_processing_lock,
-    cleanup_stale_locks,
-    ensure_idempotent_processing,
     is_already_processed,
+    ensure_idempotent_processing,
+    cleanup_stale_locks,
+    DuplicateProcessingError,
 )
 
 
@@ -67,7 +67,7 @@ class TestCheckProcessingLock:
         document_id = uuid4()
 
         # Old extraction (2 hours ago)
-        {
+        old_extraction = {
             "id": str(uuid4()),
             "created_at": (datetime.utcnow() - timedelta(hours=2)).isoformat(),
         }

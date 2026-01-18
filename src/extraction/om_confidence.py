@@ -4,23 +4,25 @@ Offering Memorandum confidence calculation.
 
 from __future__ import annotations
 
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
-from .om_fields import OMFieldDefinition, get_om_fields
+from .om_fields import get_om_fields, OMFieldDefinition
 
 
 class OMExtractedField(BaseModel):
     """Extracted OM field with metadata for scoring."""
 
     name: str
-    value: object | None
+    value: Optional[object]
     confidence: float = Field(..., ge=0.0, le=1.0)
-    source_section: str | None = None
-    value_type: str | None = None
+    source_section: Optional[str] = None
+    value_type: Optional[str] = None
 
 
 # Source and value factors
-SOURCE_RELIABILITY: dict[str, float] = {
+SOURCE_RELIABILITY: Dict[str, float] = {
     "executive_summary": 0.95,
     "financial_summary_page": 0.92,
     "detailed_exhibits": 0.98,
@@ -30,7 +32,7 @@ SOURCE_RELIABILITY: dict[str, float] = {
     "broker_assumptions": 0.65,
 }
 
-VALUE_TYPE_FACTORS: dict[str, float] = {
+VALUE_TYPE_FACTORS: Dict[str, float] = {
     "actual": 1.0,
     "trailing_12": 0.98,
     "annualized": 0.92,
@@ -40,12 +42,12 @@ VALUE_TYPE_FACTORS: dict[str, float] = {
 }
 
 
-def check_om_consistency(fields: dict[str, float]) -> dict[str, float]:
+def check_om_consistency(fields: Dict[str, float]) -> Dict[str, float]:
     """
     Check internal consistency of extracted OM fields.
     Returns per-field penalty multipliers (<1.0) when inconsistencies are found.
     """
-    issues: dict[str, float] = {}
+    issues: Dict[str, float] = {}
 
     if all(k in fields for k in ["cap_rate_in_place", "noi_in_place", "asking_price"]):
         asking = fields["asking_price"]
@@ -86,10 +88,10 @@ def check_om_consistency(fields: dict[str, float]) -> dict[str, float]:
 def calculate_om_field_confidence(
     field_name: str,
     base_confidence: float,
-    source_section: str | None,
-    value_type: str | None,
-    fields: dict[str, float],
-    field_definitions: dict[str, OMFieldDefinition] | None = None,
+    source_section: Optional[str],
+    value_type: Optional[str],
+    fields: Dict[str, float],
+    field_definitions: Optional[Dict[str, OMFieldDefinition]] = None,
 ) -> float:
     """
     Calculate marketing-aware confidence for a single field.
@@ -115,7 +117,7 @@ def calculate_om_field_confidence(
 
 
 def calculate_om_document_confidence(
-    fields: list[OMExtractedField], field_definitions: dict[str, OMFieldDefinition] | None = None
+    fields: List[OMExtractedField], field_definitions: Optional[Dict[str, OMFieldDefinition]] = None
 ) -> float:
     """
     Compute document-level confidence with critical field emphasis.
@@ -144,5 +146,5 @@ def calculate_om_document_confidence(
     return max(0.0, min(1.0, base_confidence))
 
 
-OM_FIELDS: dict[str, OMFieldDefinition] = get_om_fields()
+OM_FIELDS: Dict[str, OMFieldDefinition] = get_om_fields()
 

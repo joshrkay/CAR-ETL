@@ -1,7 +1,6 @@
 """Context builder for RAG pipeline with token limits."""
-
 import tiktoken
-
+from typing import List
 from .models import ChunkMatch
 
 
@@ -20,7 +19,7 @@ def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
     return len(encoding.encode(text))
 
 
-def build_context(chunks: list[ChunkMatch], max_tokens: int = 6000) -> str:
+def build_context(chunks: List[ChunkMatch], max_tokens: int = 6000) -> str:
     """
     Build context string from chunks, respecting token limit.
 
@@ -31,7 +30,7 @@ def build_context(chunks: list[ChunkMatch], max_tokens: int = 6000) -> str:
     Returns:
         Formatted context string with citations
     """
-    context_parts: list[str] = []
+    context_parts: List[str] = []
     current_tokens = 0
 
     for chunk in chunks:

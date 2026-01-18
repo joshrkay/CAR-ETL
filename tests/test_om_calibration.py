@@ -1,6 +1,5 @@
-from uuid import uuid4
-
 import pytest
+from uuid import uuid4
 
 from src.extraction.om_calibration import OMCalibrationTracker
 

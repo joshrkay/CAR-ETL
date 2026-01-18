@@ -1,16 +1,16 @@
 """Tests for RAG Q&A pipeline."""
-from unittest.mock import AsyncMock, Mock, patch
-from uuid import uuid4
-
 import pytest
+from uuid import uuid4
+from unittest.mock import Mock, AsyncMock, patch
 
-from src.rag.citations import build_citations, extract_citations, validate_citations
-from src.rag.context_builder import build_context, count_tokens
-from src.rag.generator import Generator
-from src.rag.models import AskRequest, AskResponse, ChunkMatch
-from src.rag.pipeline import RAGPipeline
+from src.rag.models import ChunkMatch, AskRequest, AskResponse
+from src.rag.citations import extract_citations, validate_citations, build_citations
+from src.rag.context_builder import count_tokens, build_context
 from src.rag.prompts import format_system_prompt, format_user_prompt
 from src.rag.retriever import Retriever
+from src.rag.generator import Generator
+from src.rag.pipeline import RAGPipeline
+
 
 # ========== Citation Tests ==========
 

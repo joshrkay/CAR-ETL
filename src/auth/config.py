@@ -27,16 +27,16 @@ class AuthConfig(BaseSettings):
     def is_production(self) -> bool:
         """Check if running in production environment."""
         return self.app_env.lower() == "production"
-
+    
     def validate_environment(self) -> list[str]:
         """
         Validate all required environment variables are set and not placeholders.
-
+        
         Returns:
             List of validation error messages (empty if validation passes)
         """
         errors: list[str] = []
-
+        
         # Common placeholder values to reject
         placeholder_values = [
             "your-project.supabase.co",
@@ -51,7 +51,7 @@ class AuthConfig(BaseSettings):
             "TODO",
             "",
         ]
-
+        
         # Required variables and their display names
         required_vars = {
             "supabase_url": "SUPABASE_URL",
@@ -59,28 +59,28 @@ class AuthConfig(BaseSettings):
             "supabase_service_key": "SUPABASE_SERVICE_KEY",
             "supabase_jwt_secret": "SUPABASE_JWT_SECRET",
         }
-
+        
         for attr_name, env_name in required_vars.items():
             value = getattr(self, attr_name, None)
-
+            
             # Check if missing
             if value is None:
                 errors.append(f"{env_name} is not set")
                 continue
-
+            
             # Convert to string for comparison
             value_str = str(value).strip()
-
+            
             # Check if empty
             if not value_str:
                 errors.append(f"{env_name} is empty")
                 continue
-
+            
             # Check if placeholder
             if value_str.lower() in [p.lower() for p in placeholder_values]:
                 errors.append(f"{env_name} contains placeholder value: '{value_str}'")
                 continue
-
+        
         return errors
 
 

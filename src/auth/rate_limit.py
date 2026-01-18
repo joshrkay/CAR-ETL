@@ -1,11 +1,10 @@
 """Rate limiting for authentication attempts."""
 import logging
-from datetime import UTC, datetime, timedelta
-from typing import Any, cast
-
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, cast
+from supabase import create_client, Client
 from src.auth.config import AuthConfig, get_auth_config
 from src.exceptions import RateLimitError
-from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
@@ -23,11 +22,11 @@ class AuthRateLimiter:
     def check_rate_limit(self, ip_address: str) -> None:
         """
         Check if IP address has exceeded rate limit.
-
+        
         Raises:
             RateLimitError: If rate limit is exceeded
         """
-        now = datetime.now(UTC)
+        now = datetime.now(timezone.utc)
         window_start = now - timedelta(seconds=self.config.auth_rate_limit_window_seconds)
 
         try:
@@ -42,7 +41,7 @@ class AuthRateLimiter:
             )
 
             if result.data:
-                record = cast(dict[str, Any], result.data[0])
+                record = cast(Dict[str, Any], result.data[0])
                 attempt_count_raw = record.get("attempt_count")
                 try:
                     attempt_count = int(attempt_count_raw) if attempt_count_raw is not None else 0
@@ -58,10 +57,10 @@ class AuthRateLimiter:
                     else:
                         # Fallback: use current time if invalid
                         window_start_dt = now
-
+                    
                     # Ensure both datetimes are timezone-aware for comparison
                     if window_start_dt.tzinfo is None:
-                        window_start_dt = window_start_dt.replace(tzinfo=UTC)
+                        window_start_dt = window_start_dt.replace(tzinfo=timezone.utc)
                     elapsed = (now - window_start_dt).total_seconds()
                     retry_after = max(1, int(self.config.auth_rate_limit_window_seconds - elapsed))
                     raise RateLimitError(retry_after)
@@ -94,7 +93,7 @@ class AuthRateLimiter:
         try:
             self.supabase.table("auth_rate_limits").update({
                 "attempt_count": new_count,
-                "updated_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             }).eq("id", record_id).execute()
         except Exception as e:
             logger.error(
