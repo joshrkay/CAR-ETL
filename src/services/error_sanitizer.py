@@ -14,7 +14,7 @@ PII_PATTERNS = [
     (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[EMAIL]'),
     # Phone numbers (various formats)
     (r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE]'),
-    (r'\b\(\d{3}\)\s*\d{3}[-.]?\d{4}\b', '[PHONE]'),
+    (r'\(\d{3}\)\s*\d{3}[-.]?\d{4}\b', '[PHONE]'),
     # SSN
     (r'\b\d{3}-\d{2}-\d{4}\b', '[SSN]'),
     # Credit card (simple pattern)

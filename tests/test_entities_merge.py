@@ -75,7 +75,7 @@ def mock_auth_config() -> Any:
 
 
 @pytest.fixture
-def valid_jwt_token(mock_auth_context, mock_auth_config) -> Any:
+def valid_jwt_token(mock_auth_context: Any, mock_auth_config: Any) -> Any:
     """Create a valid JWT token for testing."""
     exp = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
@@ -101,17 +101,17 @@ def mock_audit_logger() -> Generator:
 
 
 @pytest.fixture
-def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger) -> Generator:
+def client_with_auth(mock_auth_context: Any, mock_supabase_client: Any, valid_jwt_token: Any, mock_auth_config: Any, mock_audit_logger: Any) -> Generator:
     """Create test client with mocked auth and dependencies."""
     from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
     
-    def override_get_current_user():
+    def override_get_current_user() -> Any:
         return mock_auth_context
     
-    def override_get_supabase_client():
+    def override_get_supabase_client() -> Any:
         return mock_supabase_client
     
-    def override_get_audit_logger():
+    def override_get_audit_logger() -> Any:
         return mock_audit_logger
     
     # Patch rate limiter
@@ -125,7 +125,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
     config_patcher2.start()
     
     # Patch the middleware's _validate_token to bypass validation
-    async def mock_validate_token(self, request):
+    async def mock_validate_token(self: Any, request: Any) -> None:
         # Set auth context directly
         request.state.auth = mock_auth_context
         request.state.supabase = mock_supabase_client
@@ -155,7 +155,7 @@ def client_with_auth(mock_auth_context, mock_supabase_client, valid_jwt_token, m
 class TestEntityMergeEndpoint:
     """Test entity merge endpoint."""
 
-    def test_successful_merge(self, client_with_auth) -> None:
+    def test_successful_merge(self, client_with_auth: Any) -> None:
         """Test successful entity merge."""
         client, token, auth_context = client_with_auth
         
@@ -189,7 +189,7 @@ class TestEntityMergeEndpoint:
         assert call_kwargs["target_entity_id"] == merge_into_id
         assert call_kwargs["reviewed_by"] == auth_context.user_id
 
-    def test_merge_same_entity_returns_400(self, client_with_auth) -> None:
+    def test_merge_same_entity_returns_400(self, client_with_auth: Any) -> None:
         """Test merging entity with itself returns validation error."""
         client, token, _ = client_with_auth
         
@@ -206,7 +206,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "INVALID_MERGE"
         assert "merge_into_id must be different from entity_id" in data["detail"]["message"]
 
-    def test_source_entity_not_found(self, client_with_auth) -> None:
+    def test_source_entity_not_found(self, client_with_auth: Any) -> None:
         """Test merge with non-existent source entity returns 404."""
         client, token, _ = client_with_auth
         
@@ -231,7 +231,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "NOT_FOUND"
         assert str(entity_id) in data["detail"]["message"]
 
-    def test_target_entity_not_found(self, client_with_auth) -> None:
+    def test_target_entity_not_found(self, client_with_auth: Any) -> None:
         """Test merge with non-existent target entity returns 404."""
         client, token, _ = client_with_auth
         
@@ -256,7 +256,7 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "NOT_FOUND"
         assert str(merge_into_id) in data["detail"]["message"]
 
-    def test_permission_required(self, mock_supabase_client, valid_jwt_token, mock_auth_config, mock_audit_logger) -> None:
+    def test_permission_required(self, mock_supabase_client: Any, valid_jwt_token: Any, mock_auth_config: Any, mock_audit_logger: Any) -> None:
         """Test that entities:merge permission is required."""
         from src.dependencies import get_current_user, get_supabase_client, get_audit_logger
         
@@ -269,13 +269,13 @@ class TestEntityMergeEndpoint:
         auth_without_permission.tenant_slug = "test-tenant"
         auth_without_permission.has_permission = Mock(return_value=False)
         
-        def override_get_current_user():
+        def override_get_current_user() -> Any:
             return auth_without_permission
         
-        def override_get_supabase_client():
+        def override_get_supabase_client() -> Any:
             return mock_supabase_client
         
-        def override_get_audit_logger():
+        def override_get_audit_logger() -> Any:
             return mock_audit_logger
         
         # Patch rate limiter
@@ -289,7 +289,7 @@ class TestEntityMergeEndpoint:
         config_patcher2.start()
         
         # Patch the middleware's _validate_token to bypass validation
-        async def mock_validate_token(self, request):
+        async def mock_validate_token(self: Any, request: Any) -> None:
             # Set auth context directly
             request.state.auth = auth_without_permission
             request.state.supabase = mock_supabase_client
@@ -324,7 +324,7 @@ class TestEntityMergeEndpoint:
             config_patcher1.stop()
             rate_limiter_patcher.stop()
 
-    def test_general_exception_handling(self, client_with_auth) -> None:
+    def test_general_exception_handling(self, client_with_auth: Any) -> None:
         """Test that general exceptions are handled and return 500."""
         client, token, _ = client_with_auth
         
@@ -346,11 +346,11 @@ class TestEntityMergeEndpoint:
         assert data["detail"]["code"] == "MERGE_FAILED"
         assert data["detail"]["message"] == "Failed to merge entities"
 
-    def test_missing_authorization_header(self, mock_supabase_client, mock_auth_config) -> None:
+    def test_missing_authorization_header(self, mock_supabase_client: Any, mock_auth_config: Any) -> None:
         """Test request without Authorization header returns 401."""
         from src.dependencies import get_supabase_client
         
-        def override_get_supabase_client():
+        def override_get_supabase_client() -> Any:
             return mock_supabase_client
         
         # Patch rate limiter
@@ -384,7 +384,7 @@ class TestEntityMergeEndpoint:
             config_patcher1.stop()
             rate_limiter_patcher.stop()
 
-    def test_invalid_uuid_format(self, client_with_auth) -> None:
+    def test_invalid_uuid_format(self, client_with_auth: Any) -> None:
         """Test that invalid UUID format in request returns 400 or 422."""
         client, token, _ = client_with_auth
         

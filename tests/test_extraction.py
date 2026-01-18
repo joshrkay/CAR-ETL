@@ -281,16 +281,16 @@ class TestFieldExtractor:
         return client
     
     @pytest.fixture
-    def extractor(self, mock_openai_client) -> Any:
+    def extractor(self, mock_openai_client: Any) -> Any:
         """Create FieldExtractor with mocked OpenAI client."""
-        with patch('src.extraction.extractor.AsyncOpenAI', return_value=mock_openai_client):
+        with patch('openai.AsyncOpenAI', return_value=mock_openai_client):
             with patch('src.extraction.extractor.presidio_redact', return_value="redacted"):
                 extractor = FieldExtractor(api_key="test-key")
                 extractor.client = mock_openai_client
                 return extractor
     
     @pytest.mark.asyncio
-    async def test_detect_document_type(self, extractor, mock_openai_client) -> None:
+    async def test_detect_document_type(self, extractor: Any, mock_openai_client: Any) -> None:
         """Test document type detection."""
         mock_response = Mock()
         mock_response.choices = [Mock()]
@@ -309,7 +309,7 @@ class TestFieldExtractor:
         assert "reasoning" in result
     
     @pytest.mark.asyncio
-    async def test_detect_document_type_error_handling(self, extractor, mock_openai_client) -> None:
+    async def test_detect_document_type_error_handling(self, extractor: Any, mock_openai_client: Any) -> None:
         """Test document type detection error handling."""
         mock_openai_client.chat.completions.create = AsyncMock(side_effect=Exception("API error"))
         
@@ -319,7 +319,7 @@ class TestFieldExtractor:
         assert result["confidence"] == 0.0
     
     @pytest.mark.asyncio
-    async def test_extract_fields(self, extractor, mock_openai_client) -> None:
+    async def test_extract_fields(self, extractor: Any, mock_openai_client: Any) -> None:
         """Test field extraction."""
         mock_response = Mock()
         mock_response.choices = [Mock()]
@@ -350,7 +350,7 @@ class TestFieldExtractor:
         assert result.fields["tenant_name"].confidence <= 0.99  # Never 1.0
         assert result.overall_confidence <= 0.99  # Never 1.0
     
-    def test_compute_overall_confidence(self, extractor) -> None:
+    def test_compute_overall_confidence(self, extractor: Any) -> None:
         """Test overall confidence calculation."""
         fields = {
             "field1": ExtractedField(value="test", confidence=0.9, page=1),
@@ -367,7 +367,7 @@ class TestFieldExtractor:
         assert 0.0 <= confidence <= 0.99  # Never 1.0
         assert confidence > 0.0
     
-    def test_compute_overall_confidence_empty(self, extractor) -> None:
+    def test_compute_overall_confidence_empty(self, extractor: Any) -> None:
         """Test overall confidence with empty fields."""
         confidence = extractor._compute_overall_confidence({}, {})
         assert confidence == 0.0
@@ -382,7 +382,7 @@ class TestPropertyBasedNormalization:
         "1/15/2024",
         "2024/01/15",
     ])
-    def test_normalize_date_formats(self, date_str) -> None:
+    def test_normalize_date_formats(self, date_str: Any) -> None:
         """Test various date formats normalize correctly."""
         result = normalize_date(date_str)
         assert result is None or (isinstance(result, str) and len(result) == 10)
@@ -396,7 +396,7 @@ class TestPropertyBasedNormalization:
         "($1,234.56)",
         "1,234",
     ])
-    def test_normalize_currency_formats(self, currency_str) -> None:
+    def test_normalize_currency_formats(self, currency_str: Any) -> None:
         """Test various currency formats normalize correctly."""
         result = normalize_currency(currency_str)
         assert result is None or isinstance(result, float)
@@ -406,7 +406,7 @@ class TestPropertyBasedNormalization:
         ("MONTHLY", ["monthly", "annual"]),
         ("Monthly", ["monthly", "annual"]),
     ])
-    def test_normalize_enum_case_variations(self, enum_value, allowed) -> None:
+    def test_normalize_enum_case_variations(self, enum_value: Any, allowed: Any) -> None:
         """Test enum normalization handles case variations."""
         result = normalize_enum(enum_value, allowed)
         assert result in allowed or result is None

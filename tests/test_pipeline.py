@@ -23,6 +23,7 @@ from src.extraction.pipeline import (
 )
 from src.extraction.extractor import ExtractionResult, ExtractedField
 from src.exceptions import ParserError
+from typing import Any
 
 
 class TestGetDocument:

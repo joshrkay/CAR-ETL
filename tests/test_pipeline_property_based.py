@@ -4,6 +4,7 @@ Property-Based Tests for Extraction Pipeline - Critical Paths
 Uses hypothesis for fuzzing critical security paths (redaction, versioning).
 Required by .cursorrules for all critical paths.
 """
+from typing import Any
 
 import pytest
 from hypothesis import given, strategies as st, settings, HealthCheck
@@ -19,7 +20,7 @@ from src.extraction.pipeline import (
 
 # Custom strategies for realistic test data
 @st.composite
-def pii_text(draw):
+def pii_text(draw: Any) -> Any:
     """Generate text that may contain PII-like patterns."""
     components = []
 
@@ -58,7 +59,7 @@ class TestRedactionPropertyBased:
     @given(st.text(min_size=0, max_size=10000))
     @settings(max_examples=100, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redact_pii_always_returns_string(self, text) -> None:
+    async def test_redact_pii_always_returns_string(self, text: Any) -> None:
         """Redaction must always return a string, never fail."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             mock_redact.return_value = text  # Passthrough
@@ -71,7 +72,7 @@ class TestRedactionPropertyBased:
     @given(st.text(min_size=0, max_size=1000))
     @settings(max_examples=50)
     @pytest.mark.asyncio
-    async def test_redact_pii_disabled_is_identity(self, text) -> None:
+    async def test_redact_pii_disabled_is_identity(self, text: Any) -> None:
         """When disabled, redaction must return input unchanged."""
         result = await redact_pii(text, enabled=False)
         assert result == text, "Disabled redaction must be identity function"
@@ -79,7 +80,7 @@ class TestRedactionPropertyBased:
     @given(st.text(alphabet=st.characters(blacklist_categories=('Cs',)), min_size=0, max_size=5000))
     @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redact_pii_preserves_length_order(self, text) -> None:
+    async def test_redact_pii_preserves_length_order(self, text: Any) -> None:
         """Redacted text length should be reasonable (not explode or vanish)."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             # Mock redaction to replace patterns with placeholders
@@ -94,7 +95,7 @@ class TestRedactionPropertyBased:
     @given(pii_text())
     @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redact_pii_with_realistic_patterns(self, text) -> None:
+    async def test_redact_pii_with_realistic_patterns(self, text: Any) -> None:
         """Test redaction with realistic PII patterns."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             # Simulate redaction by masking patterns
@@ -112,7 +113,7 @@ class TestRedactionPropertyBased:
     @given(st.text(min_size=0, max_size=100))
     @settings(max_examples=50, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redact_pii_idempotent(self, text) -> None:
+    async def test_redact_pii_idempotent(self, text: Any) -> None:
         """Redacting twice should give same result as once."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             mock_redact.return_value = "REDACTED"
@@ -127,7 +128,7 @@ class TestRedactionPropertyBased:
     @given(st.lists(st.text(min_size=1, max_size=50), min_size=0, max_size=20))
     @settings(max_examples=30)
     @pytest.mark.asyncio
-    async def test_redact_pii_batch_consistency(self, text_list) -> None:
+    async def test_redact_pii_batch_consistency(self, text_list: Any) -> None:
         """Redacting multiple texts should be consistent."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             mock_redact.side_effect = [f"REDACTED_{i}" for i in range(len(text_list))]
@@ -152,7 +153,7 @@ class TestParseAndRedactPropertyBased:
     )
     @settings(max_examples=30, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_parse_and_redact_returns_tuple(self, storage_path, mime_type) -> None:
+    async def test_parse_and_redact_returns_tuple(self, storage_path: Any, mime_type: Any) -> None:
         """Parse and redact must always return (text, parser_used) tuple."""
         tenant_id = uuid4()
         mock_document = {
@@ -198,7 +199,7 @@ class TestExtractionVersioningPropertyBased:
     )
     @settings(max_examples=30)
     @pytest.mark.asyncio
-    async def test_multiple_extractions_confidence_bounds(self, confidence_scores) -> None:
+    async def test_multiple_extractions_confidence_bounds(self, confidence_scores: Any) -> None:
         """Multiple extractions must respect confidence bounds (0-1)."""
         # Simulate multiple extraction versions
         for score in confidence_scores:
@@ -209,7 +210,7 @@ class TestExtractionVersioningPropertyBased:
 
     @given(st.integers(min_value=1, max_value=100))
     @settings(max_examples=20)
-    def test_version_increment_sequence(self, num_extractions) -> None:
+    def test_version_increment_sequence(self, num_extractions: Any) -> None:
         """Version numbers should increment sequentially."""
         versions = list(range(1, num_extractions + 1))
 
@@ -227,7 +228,7 @@ class TestDocumentProcessingPropertyBased:
     @given(st.uuids())
     @settings(max_examples=20, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_process_document_always_returns_result_dict(self, document_uuid) -> None:
+    async def test_process_document_always_returns_result_dict(self, document_uuid: Any) -> None:
         """Processing must always return a result dict with required keys."""
         document_id = UUID(str(document_uuid))
         mock_supabase = Mock()
@@ -261,7 +262,7 @@ class TestDocumentProcessingPropertyBased:
     @given(st.floats(min_value=0.0, max_value=0.99, allow_nan=False, allow_infinity=False))
     @settings(max_examples=30, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_process_document_confidence_invariant(self, confidence) -> None:
+    async def test_process_document_confidence_invariant(self, confidence: Any) -> None:
         """Successful processing must have valid confidence score."""
         document_id = uuid4()
         extraction_id = uuid4()
@@ -294,7 +295,7 @@ class TestUnicodeAndEdgeCases:
     @given(st.text(alphabet=st.characters(min_codepoint=0x0000, max_codepoint=0x1000), min_size=0, max_size=500))
     @settings(max_examples=30, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redact_unicode_safe(self, unicode_text) -> None:
+    async def test_redact_unicode_safe(self, unicode_text: Any) -> None:
         """Redaction must handle Unicode safely."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             mock_redact.return_value = unicode_text
@@ -306,7 +307,7 @@ class TestUnicodeAndEdgeCases:
     @given(st.text(alphabet=st.characters(whitelist_categories=('Zs', 'Cc')), min_size=0, max_size=100))
     @settings(max_examples=20, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redact_whitespace_only(self, whitespace_text) -> None:
+    async def test_redact_whitespace_only(self, whitespace_text: Any) -> None:
         """Redaction must handle whitespace-only text."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             mock_redact.return_value = whitespace_text
@@ -317,7 +318,7 @@ class TestUnicodeAndEdgeCases:
 
     @given(st.binary(min_size=0, max_size=1000))
     @settings(max_examples=20)
-    def test_binary_data_handling(self, binary_data) -> None:
+    def test_binary_data_handling(self, binary_data: Any) -> None:
         """Test that binary data is handled appropriately."""
         # Binary data should not be passed to text redaction
         # This is a guard test to ensure type safety
@@ -339,7 +340,7 @@ class TestErrorInvariants:
     @given(st.text(min_size=1, max_size=200))
     @settings(max_examples=20, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_redaction_error_propagates(self, text) -> None:
+    async def test_redaction_error_propagates(self, text: Any) -> None:
         """Redaction errors must propagate, not be silently swallowed."""
         with patch("src.extraction.pipeline.presidio_redact") as mock_redact:
             mock_redact.side_effect = RuntimeError("Redaction failed")
@@ -350,7 +351,7 @@ class TestErrorInvariants:
     @given(st.uuids())
     @settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture])
     @pytest.mark.asyncio
-    async def test_process_document_never_raises(self, document_uuid) -> None:
+    async def test_process_document_never_raises(self, document_uuid: Any) -> None:
         """process_document must never raise, always return result."""
         document_id = UUID(str(document_uuid))
         mock_supabase = Mock()

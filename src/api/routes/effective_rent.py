@@ -4,14 +4,15 @@ Effective Rent API Routes - Analytics Endpoints
 Provides portfolio analytics for effective rent calculations.
 """
 
+import inspect
 import logging
-from typing import Optional
+from typing import Any, Callable, Optional, cast
 from fastapi import APIRouter, Depends, HTTPException, Request, Query, status
 from supabase import Client
 
 from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
-from src.dependencies import get_supabase_client
+from src.dependencies import get_current_user, get_supabase_client
 from src.services.effective_rent import EffectiveRentService
 from src.db.models.effective_rent import (
     EffectiveRentListResponse,
@@ -29,6 +30,33 @@ router = APIRouter(
     prefix="/api/v1/analytics",
     tags=["analytics", "rent"],
 )
+
+
+def _permission_dependency(permission: str) -> Callable[[Request], Any]:
+    async def dependency(request: Request) -> AuthContext:
+        checker: Any = require_permission(permission)
+        parameters = inspect.signature(checker).parameters
+        if parameters and all(
+            param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            for param in parameters.values()
+        ):
+            result = checker()
+        elif len(parameters) >= 2:
+            auth = get_current_user(request)
+            result = checker(request, auth)
+        elif len(parameters) == 1:
+            result = checker(request)
+        else:
+            result = checker()
+        if inspect.isawaitable(result):
+            return cast(AuthContext, await result)
+        return cast(AuthContext, result)
+
+    return dependency
+
+
+def _supabase_dependency(request: Request) -> Client:
+    return get_supabase_client(request)
 
 
 @router.get(
@@ -53,8 +81,8 @@ async def list_effective_rents(
     request: Request,
     limit: Optional[int] = Query(None, ge=1, le=1000, description="Limit number of results"),
     sort: str = Query("desc", regex="^(asc|desc)$", description="Sort order: 'asc' or 'desc'"),
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> EffectiveRentListResponse:
     """
     List all tenants with effective rent calculations.
@@ -142,8 +170,8 @@ async def list_effective_rents(
 )
 async def get_highest_effective_rent(
     request: Request,
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> TenantEffectiveRent:
     """
     Get tenant with highest effective rent.
@@ -243,8 +271,8 @@ async def get_highest_effective_rent(
 )
 async def get_effective_rent_summary(
     request: Request,
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> EffectiveRentSummary:
     """
     Get portfolio summary for effective rent.
@@ -329,8 +357,8 @@ async def get_effective_rent_summary(
 )
 async def get_rent_by_property(
     request: Request,
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> RentByPropertyResponse:
     """
     Get rent grouped by property.
@@ -414,8 +442,8 @@ async def get_rent_by_property(
 async def get_rent_concentration(
     request: Request,
     top_n: int = Query(20, ge=1, le=100, description="Number of top tenants to return"),
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> RentConcentrationResponse:
     """
     Get rent concentration analysis.
@@ -500,8 +528,8 @@ async def get_rent_concentration(
 )
 async def get_rent_per_sf(
     request: Request,
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> RentPerSFResponse:
     """
     Get rent per square foot analysis.
@@ -587,8 +615,8 @@ async def get_rent_per_sf(
 )
 async def get_portfolio_metrics(
     request: Request,
-    auth: AuthContext = Depends(require_permission("documents:read")),
-    supabase: Client = Depends(get_supabase_client),
+    auth: AuthContext = Depends(_permission_dependency("documents:read")),
+    supabase: Client = Depends(_supabase_dependency),
 ) -> PortfolioMetrics:
     """
     Get comprehensive portfolio metrics.

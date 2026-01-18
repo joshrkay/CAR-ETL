@@ -68,7 +68,8 @@ This project enforces a strict Layered Architecture. You must respect these boun
 - Derived data must always reference provenance.
 
 ## DETERMINISM & IDEMPOTENCY
-
+- Ensure that there are no lint issues including ruff mypy errors, ruff check src 
 - All ingestion and workflow steps must be idempotent.
 - Temporal workflows must be deterministic.
 - Retries must not create duplicate records or side effects.
+

@@ -22,9 +22,10 @@ from src.entities.resolution import (
     select_merge_plan,
 )
 from src.exceptions import NotFoundError
+from typing import Any
 
 
-def _build_query_mock(data):
+def _build_query_mock(data: Any) -> Any:
     query = MagicMock()
     query.eq.return_value = query
     query.limit.return_value = query
@@ -32,7 +33,7 @@ def _build_query_mock(data):
     return query
 
 
-def _build_update_query_mock(data):
+def _build_update_query_mock(data: Any) -> Any:
     query = MagicMock()
     query.eq.return_value = query
     query.execute.return_value = MagicMock(data=data)
@@ -55,6 +56,7 @@ def test_calculate_match_score_full_match() -> None:
         canonical_name="Acme Holdings",
         attributes={"address": "123 Main St"},
         external_id="EXT-1",
+        updated_at=None,
     )
     entity2 = EntityRecord(
         id=uuid4(),
@@ -62,6 +64,7 @@ def test_calculate_match_score_full_match() -> None:
         canonical_name="Acme Holdings",
         attributes={"address": "123 Main St"},
         external_id="EXT-1",
+        updated_at=None,
     )
 
     assert calculate_match_score(entity1, entity2) == 1.0

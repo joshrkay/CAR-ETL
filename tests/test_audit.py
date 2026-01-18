@@ -51,7 +51,7 @@ def user_id() -> Any:
 
 
 @pytest.fixture
-def audit_logger(mock_supabase_client, tenant_id, user_id) -> Any:
+def audit_logger(mock_supabase_client: Any, tenant_id: Any, user_id: Any) -> Any:
     """Create AuditLogger instance for testing."""
     return AuditLogger(
         supabase=mock_supabase_client,
@@ -64,7 +64,7 @@ class TestAuditLogger:
     """Test AuditLogger service."""
     
     @pytest.mark.asyncio
-    async def test_log_single_event(self, audit_logger, mock_supabase_client) -> None:
+    async def test_log_single_event(self, audit_logger: Any, mock_supabase_client: Any) -> None:
         """Test logging a single event."""
         await audit_logger.log(
             event_type=EventType.AUTH_LOGIN,
@@ -77,7 +77,7 @@ class TestAuditLogger:
         mock_supabase_client.table.assert_not_called()
     
     @pytest.mark.asyncio
-    async def test_log_auto_flush_on_threshold(self, audit_logger, mock_supabase_client) -> None:
+    async def test_log_auto_flush_on_threshold(self, audit_logger: Any, mock_supabase_client: Any) -> None:
         """Test automatic flush when buffer reaches threshold."""
         # Log 10 events (buffer size)
         for i in range(10):
@@ -92,13 +92,13 @@ class TestAuditLogger:
         assert len(audit_logger._buffer) == 0
     
     @pytest.mark.asyncio
-    async def test_flush_empty_buffer(self, audit_logger, mock_supabase_client) -> None:
+    async def test_flush_empty_buffer(self, audit_logger: Any, mock_supabase_client: Any) -> None:
         """Test flushing empty buffer does nothing."""
         await audit_logger.flush()
         mock_supabase_client.table.assert_not_called()
     
     @pytest.mark.asyncio
-    async def test_flush_with_events(self, audit_logger, mock_supabase_client) -> None:
+    async def test_flush_with_events(self, audit_logger: Any, mock_supabase_client: Any) -> None:
         """Test explicit flush with buffered events."""
         # Add events to buffer
         await audit_logger.log(
@@ -119,7 +119,7 @@ class TestAuditLogger:
         assert len(audit_logger._buffer) == 0
     
     @pytest.mark.asyncio
-    async def test_flush_error_handling(self, audit_logger, mock_supabase_client) -> None:
+    async def test_flush_error_handling(self, audit_logger: Any, mock_supabase_client: Any) -> None:
         """Test that flush errors don't raise exceptions."""
         # Make insert fail
         mock_supabase_client.table.return_value.insert.return_value.execute.side_effect = Exception("DB error")
@@ -137,7 +137,7 @@ class TestAuditLogger:
         assert len(audit_logger._buffer) == 1
     
     @pytest.mark.asyncio
-    async def test_log_with_all_fields(self, audit_logger) -> None:
+    async def test_log_with_all_fields(self, audit_logger: Any) -> None:
         """Test logging with all optional fields."""
         await audit_logger.log(
             event_type=EventType.DOCUMENT_VIEW,
@@ -163,7 +163,7 @@ class TestAuditLogger:
         assert event["user_id"] == str(audit_logger.user_id)
     
     @pytest.mark.asyncio
-    async def test_log_without_user_id(self, mock_supabase_client, tenant_id) -> None:
+    async def test_log_without_user_id(self, mock_supabase_client: Any, tenant_id: Any) -> None:
         """Test logging system events without user_id."""
         logger = AuditLogger(
             supabase=mock_supabase_client,
@@ -185,7 +185,7 @@ class TestAuditLogger:
 class TestAuditEvent:
     """Test AuditEvent model."""
     
-    def test_to_dict(self, tenant_id, user_id) -> None:
+    def test_to_dict(self, tenant_id: Any, user_id: Any) -> None:
         """Test converting AuditEvent to dictionary."""
         event = AuditEvent(
             tenant_id=tenant_id,
@@ -205,7 +205,7 @@ class TestAuditEvent:
         assert data["metadata"] == {"test": "data"}
         assert data["ip_address"] == "127.0.0.1"
     
-    def test_to_dict_with_nulls(self, tenant_id) -> None:
+    def test_to_dict_with_nulls(self, tenant_id: Any) -> None:
         """Test converting AuditEvent with null user_id."""
         event = AuditEvent(
             tenant_id=tenant_id,
@@ -224,21 +224,21 @@ class TestAuditMiddleware:
     """Test AuditMiddleware."""
     
     @pytest.fixture
-    def app_with_audit(self, mock_config) -> Any:
+    def app_with_audit(self, mock_config: Any) -> Any:
         """Create FastAPI app with audit middleware."""
         app = FastAPI()
         app.add_middleware(AuditMiddleware)
-        app.add_middleware(AuthMiddleware, config=mock_config)
+        app.add_middleware(AuthMiddleware, config=mock_config)  # type: ignore[arg-type]
         
         @app.get("/test")
-        async def test_endpoint(request: Request) -> None:
+        async def test_endpoint(request: Request) -> Any:
             auth: AuthContext = request.state.auth
             return {"user_id": str(auth.user_id)}
         
         return app
     
     @pytest.fixture
-    def valid_token(self, mock_config) -> Any:
+    def valid_token(self, mock_config: Any) -> Any:
         """Create valid JWT token."""
         user_id = uuid4()
         tenant_id = uuid4()
@@ -256,7 +256,7 @@ class TestAuditMiddleware:
         
         return jwt.encode(payload, mock_config.supabase_jwt_secret, algorithm="HS256")
     
-    def test_skip_health_endpoint(self, app_with_audit) -> None:
+    def test_skip_health_endpoint(self, app_with_audit: Any) -> None:
         """Test that health endpoint is skipped."""
         client = TestClient(app_with_audit)
         response = client.get("/health")
@@ -264,7 +264,7 @@ class TestAuditMiddleware:
         assert response.status_code == 404  # Health endpoint not defined, but middleware should skip
     
     @pytest.mark.asyncio
-    async def test_log_authenticated_request(self, app_with_audit, valid_token, mock_config) -> None:
+    async def test_log_authenticated_request(self, app_with_audit: Any, valid_token: Any, mock_config: Any) -> None:
         """Test logging authenticated request."""
         with patch("src.middleware.audit.get_supabase_client") as mock_get_client:
             mock_client = MagicMock()
@@ -324,23 +324,23 @@ class TestEventTypes:
     
     def test_event_type_values(self) -> None:
         """Test all event types are defined."""
-        assert EventType.AUTH_LOGIN == "auth.login"
-        assert EventType.DOCUMENT_UPLOAD == "document.upload"
-        assert EventType.EXTRACTION_COMPLETE == "extraction.complete"
-        assert EventType.API_REQUEST == "api.request"
+        assert EventType.AUTH_LOGIN.value == "auth.login"
+        assert EventType.DOCUMENT_UPLOAD.value == "document.upload"
+        assert EventType.EXTRACTION_COMPLETE.value == "extraction.complete"
+        assert EventType.API_REQUEST.value == "api.request"
     
     def test_action_type_values(self) -> None:
         """Test all action types are defined."""
-        assert ActionType.CREATE == "create"
-        assert ActionType.READ == "read"
-        assert ActionType.UPDATE == "update"
-        assert ActionType.DELETE == "delete"
+        assert ActionType.CREATE.value == "create"
+        assert ActionType.READ.value == "read"
+        assert ActionType.UPDATE.value == "update"
+        assert ActionType.DELETE.value == "delete"
     
     def test_resource_type_values(self) -> None:
         """Test all resource types are defined."""
-        assert ResourceType.DOCUMENT == "document"
-        assert ResourceType.USER == "user"
-        assert ResourceType.TENANT == "tenant"
+        assert ResourceType.DOCUMENT.value == "document"
+        assert ResourceType.USER.value == "user"
+        assert ResourceType.TENANT.value == "tenant"
 
 
 class TestPropertyBasedAudit:
@@ -364,7 +364,7 @@ class TestPropertyBasedAudit:
     )
     @settings(max_examples=100, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_log_handles_arbitrary_inputs(
-        self, mock_supabase_client, tenant_id, user_id, event_type, action, metadata, resource_id
+        self, mock_supabase_client: Any, tenant_id: Any, user_id: Any, event_type: Any, action: Any, metadata: Any, resource_id: Any
     ) -> None:
         """Property-based test: Audit logger handles arbitrary inputs without errors."""
         logger = AuditLogger(
@@ -401,7 +401,7 @@ class TestPropertyBasedAudit:
     )
     @settings(max_examples=50, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_log_sanitizes_malicious_inputs(
-        self, mock_supabase_client, tenant_id, user_id, malicious_input
+        self, mock_supabase_client: Any, tenant_id: Any, user_id: Any, malicious_input: Any
     ) -> None:
         """Property-based test: Audit logger safely handles potentially malicious inputs."""
         logger = AuditLogger(
@@ -431,7 +431,7 @@ class TestPropertyBasedAudit:
     )
     @settings(max_examples=20, deadline=10000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_batch_flush_handles_large_batches(
-        self, mock_supabase_client, tenant_id, user_id, batch_size
+        self, mock_supabase_client: Any, tenant_id: Any, user_id: Any, batch_size: Any
     ) -> None:
         """Property-based test: Batch flushing handles various batch sizes correctly."""
         logger = AuditLogger(
@@ -464,7 +464,7 @@ class TestPropertyBasedAudit:
     )
     @settings(max_examples=20, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_tenant_isolation_property(
-        self, mock_supabase_client, tenant_id_1, tenant_id_2
+        self, mock_supabase_client: Any, tenant_id_1: Any, tenant_id_2: Any
     ) -> None:
         """Property-based test: Tenant isolation is preserved across different tenants."""
         # Create two loggers for different tenants
@@ -502,7 +502,7 @@ class TestPropertyBasedAudit:
     )
     @settings(max_examples=20, deadline=5000, suppress_health_check=[HealthCheck.function_scoped_fixture])
     async def test_metadata_size_handling(
-        self, mock_supabase_client, tenant_id, user_id, metadata_size
+        self, mock_supabase_client: Any, tenant_id: Any, user_id: Any, metadata_size: Any
     ) -> None:
         """Property-based test: Handles metadata of various sizes."""
         logger = AuditLogger(
@@ -529,7 +529,7 @@ class TestSensitiveDataProtection:
     """Tests to ensure sensitive data is not logged in audit trails."""
     
     @pytest.mark.asyncio
-    async def test_middleware_does_not_log_request_body(self, mock_supabase_client, tenant_id, user_id) -> None:
+    async def test_middleware_does_not_log_request_body(self, mock_supabase_client: Any, tenant_id: Any, user_id: Any) -> None:
         """Test that middleware does not log request body (may contain sensitive data)."""
         # This is verified by checking that middleware only logs metadata fields
         # and never includes request.body or request.json()
@@ -548,7 +548,7 @@ class TestSensitiveDataProtection:
     
     @pytest.mark.asyncio
     async def test_audit_logger_metadata_should_not_contain_passwords(
-        self, mock_supabase_client, tenant_id, user_id
+        self, mock_supabase_client: Any, tenant_id: Any, user_id: Any
     ) -> None:
         """Test that audit logger doesn't accidentally log passwords in metadata."""
         logger = AuditLogger(

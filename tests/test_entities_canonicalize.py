@@ -3,6 +3,7 @@
 import pytest
 
 from src.entities.canonicalize import canonicalize
+from typing import Any
 
 
 @pytest.mark.parametrize(

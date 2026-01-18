@@ -28,9 +28,9 @@ def mock_config() -> Any:
 
 
 @pytest.fixture
-def create_jwt_token(mock_config) -> Any:
+def create_jwt_token(mock_config: Any) -> Any:
     """Factory to create JWT tokens with specified roles."""
-    def _create_token(roles: list[str]):
+    def _create_token(roles: list[str]) -> Any:
         user_id = uuid4()
         tenant_id = uuid4()
         exp = datetime.utcnow() + timedelta(hours=1)
@@ -52,10 +52,10 @@ def create_jwt_token(mock_config) -> Any:
 
 
 @pytest.fixture
-def app_with_auth(mock_config) -> Any:
+def app_with_auth(mock_config: Any) -> Any:
     """Create FastAPI app with auth middleware."""
     app = FastAPI()
-    app.add_middleware(AuthMiddleware, config=mock_config)
+    app.add_middleware(AuthMiddleware, config=mock_config)  # type: ignore[arg-type]
     return app
 
 
@@ -179,7 +179,7 @@ class TestHasPermission:
 class TestRequirePermission:
     """Test require_permission FastAPI dependency."""
     
-    def test_admin_can_access_any_permission(self, app_with_auth, create_jwt_token) -> None:
+    def test_admin_can_access_any_permission(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test that Admin can access any permission-protected endpoint."""
         token = create_jwt_token(["Admin"])
         
@@ -188,7 +188,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -199,7 +199,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_analyst_can_delete_document(self, app_with_auth, create_jwt_token) -> None:
+    def test_analyst_can_delete_document(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test that Analyst can delete documents."""
         token = create_jwt_token(["Analyst"])
         
@@ -208,7 +208,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -219,7 +219,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_viewer_cannot_delete_document(self, app_with_auth, create_jwt_token) -> None:
+    def test_viewer_cannot_delete_document(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test that Viewer cannot delete documents."""
         token = create_jwt_token(["Viewer"])
         
@@ -228,7 +228,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -243,7 +243,7 @@ class TestRequirePermission:
         assert "documents:delete" in data["detail"]["message"]
         assert data["detail"]["your_roles"] == ["Viewer"]
     
-    def test_viewer_can_read_documents(self, app_with_auth, create_jwt_token) -> None:
+    def test_viewer_can_read_documents(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test that Viewer can read documents."""
         token = create_jwt_token(["Viewer"])
         
@@ -251,7 +251,7 @@ class TestRequirePermission:
         async def list_documents(
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:read")),
-        ):
+        ) -> Any:
             return {"documents": []}
         
         client = TestClient(app_with_auth)
@@ -262,7 +262,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_analyst_can_override_extractions(self, app_with_auth, create_jwt_token) -> None:
+    def test_analyst_can_override_extractions(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test that Analyst can override extractions."""
         token = create_jwt_token(["Analyst"])
         
@@ -271,7 +271,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("extractions:override")),
-        ):
+        ) -> Any:
             return {"message": "overridden", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -282,7 +282,7 @@ class TestRequirePermission:
         
         assert response.status_code == 200
     
-    def test_viewer_cannot_override_extractions(self, app_with_auth, create_jwt_token) -> None:
+    def test_viewer_cannot_override_extractions(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test that Viewer cannot override extractions."""
         token = create_jwt_token(["Viewer"])
         
@@ -291,7 +291,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("extractions:override")),
-        ):
+        ) -> Any:
             return {"message": "overridden", "id": str(id)}
         
         client = TestClient(app_with_auth)
@@ -302,7 +302,7 @@ class TestRequirePermission:
         
         assert response.status_code == 403
     
-    def test_permission_denial_logging(self, app_with_auth, create_jwt_token, caplog) -> None:
+    def test_permission_denial_logging(self, app_with_auth: Any, create_jwt_token: Any, caplog: Any) -> None:
         """Test that permission denials are logged."""
         token = create_jwt_token(["Viewer"])
         
@@ -311,7 +311,7 @@ class TestRequirePermission:
             id: UUID,
             request: Request,
             auth: AuthContext = Depends(require_permission("documents:delete")),
-        ):
+        ) -> Any:
             return {"message": "deleted"}
         
         with caplog.at_level(logging.WARNING):
@@ -344,7 +344,7 @@ class TestRequirePermission:
 class TestRoleShortcuts:
     """Test role shortcut dependencies."""
     
-    def test_require_admin_allows_admin(self, app_with_auth, create_jwt_token) -> None:
+    def test_require_admin_allows_admin(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test RequireAdmin shortcut allows Admin role."""
         token = create_jwt_token(["Admin"])
         
@@ -352,7 +352,7 @@ class TestRoleShortcuts:
         async def admin_endpoint(
             request: Request,
             auth: AuthContext = Depends(RequireAdmin),
-        ):
+        ) -> Any:
             return {"message": "admin access"}
         
         client = TestClient(app_with_auth)
@@ -363,7 +363,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 200
     
-    def test_require_admin_denies_viewer(self, app_with_auth, create_jwt_token) -> None:
+    def test_require_admin_denies_viewer(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test RequireAdmin shortcut denies Viewer role."""
         token = create_jwt_token(["Viewer"])
         
@@ -371,7 +371,7 @@ class TestRoleShortcuts:
         async def admin_endpoint(
             request: Request,
             auth: AuthContext = Depends(RequireAdmin),
-        ):
+        ) -> Any:
             return {"message": "admin access"}
         
         client = TestClient(app_with_auth)
@@ -382,7 +382,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 403
     
-    def test_require_analyst_allows_analyst(self, app_with_auth, create_jwt_token) -> None:
+    def test_require_analyst_allows_analyst(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test RequireAnalyst shortcut allows Analyst role."""
         token = create_jwt_token(["Analyst"])
         
@@ -390,7 +390,7 @@ class TestRoleShortcuts:
         async def create_document(
             request: Request,
             auth: AuthContext = Depends(RequireAnalyst),
-        ):
+        ) -> Any:
             return {"message": "created"}
         
         client = TestClient(app_with_auth)
@@ -401,7 +401,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 200
     
-    def test_require_analyst_allows_admin(self, app_with_auth, create_jwt_token) -> None:
+    def test_require_analyst_allows_admin(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test RequireAnalyst shortcut allows Admin role (hierarchical)."""
         token = create_jwt_token(["Admin"])
         
@@ -409,7 +409,7 @@ class TestRoleShortcuts:
         async def create_document(
             request: Request,
             auth: AuthContext = Depends(RequireAnalyst),
-        ):
+        ) -> Any:
             return {"message": "created"}
         
         client = TestClient(app_with_auth)
@@ -420,7 +420,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 200
     
-    def test_require_analyst_denies_viewer(self, app_with_auth, create_jwt_token) -> None:
+    def test_require_analyst_denies_viewer(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test RequireAnalyst shortcut denies Viewer role."""
         token = create_jwt_token(["Viewer"])
         
@@ -428,7 +428,7 @@ class TestRoleShortcuts:
         async def create_document(
             request: Request,
             auth: AuthContext = Depends(RequireAnalyst),
-        ):
+        ) -> Any:
             return {"message": "created"}
         
         client = TestClient(app_with_auth)
@@ -439,7 +439,7 @@ class TestRoleShortcuts:
         
         assert response.status_code == 403
     
-    def test_require_viewer_allows_all_roles(self, app_with_auth, create_jwt_token) -> None:
+    def test_require_viewer_allows_all_roles(self, app_with_auth: Any, create_jwt_token: Any) -> None:
         """Test RequireViewer shortcut allows all roles."""
         for role in ["Admin", "Analyst", "Viewer"]:
             token = create_jwt_token([role])
@@ -448,7 +448,7 @@ class TestRoleShortcuts:
             async def list_documents(
                 request: Request,
                 auth: AuthContext = Depends(RequireViewer),
-            ):
+            ) -> Any:
                 return {"documents": []}
             
             client = TestClient(app_with_auth)

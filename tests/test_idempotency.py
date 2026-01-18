@@ -3,6 +3,8 @@ Tests for idempotency guards - prevent duplicate processing.
 
 Critical for data integrity - .cursorrules requirement.
 """
+from typing import Any
+
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch

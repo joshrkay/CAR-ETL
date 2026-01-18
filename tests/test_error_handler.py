@@ -33,9 +33,9 @@ class TestErrorHandlerMiddleware:
         return request
 
     @pytest.mark.asyncio
-    async def test_validation_error_handling(self, middleware, mock_request) -> None:
+    async def test_validation_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of custom ValidationError."""
-        exc = ValidationError("Invalid input", details=["field1", "field2"])
+        exc = ValidationError("Invalid input", details=[{"field": "field1"}, {"field": "field2"}])
 
         response = middleware._handle_car_exception(exc, "test-request-123")
 
@@ -45,7 +45,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["message"] == "Invalid input"
 
     @pytest.mark.asyncio
-    async def test_authentication_error_handling(self, middleware, mock_request) -> None:
+    async def test_authentication_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of AuthenticationError."""
         exc = AuthenticationError("Invalid token")
 
@@ -57,7 +57,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["message"] == "Invalid token"
 
     @pytest.mark.asyncio
-    async def test_permission_error_handling(self, middleware, mock_request) -> None:
+    async def test_permission_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of PermissionError."""
         exc = PermissionError("Access denied")
 
@@ -69,7 +69,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["message"] == "Access denied"
 
     @pytest.mark.asyncio
-    async def test_not_found_error_handling(self, middleware, mock_request) -> None:
+    async def test_not_found_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of NotFoundError."""
         exc = NotFoundError("Resource")
 
@@ -81,7 +81,7 @@ class TestErrorHandlerMiddleware:
         assert "not found" in body["error"]["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_rate_limit_error_handling(self, middleware, mock_request) -> None:
+    async def test_rate_limit_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of RateLimitError."""
         exc = RateLimitError(retry_after=60, message="Rate limit exceeded")
 
@@ -94,7 +94,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["retry_after"] == 60
 
     @pytest.mark.asyncio
-    async def test_http_exception_with_string_detail(self, middleware, mock_request) -> None:
+    async def test_http_exception_with_string_detail(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of HTTPException with string detail."""
         exc = HTTPException(status_code=404, detail="Resource not found")
 
@@ -106,7 +106,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["message"] == "Resource not found"
 
     @pytest.mark.asyncio
-    async def test_http_exception_with_dict_detail(self, middleware, mock_request) -> None:
+    async def test_http_exception_with_dict_detail(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of HTTPException with dict detail."""
         exc = HTTPException(
             status_code=400,
@@ -126,7 +126,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["details"] == [{"field": "test", "issue": "invalid"}]
 
     @pytest.mark.asyncio
-    async def test_http_exception_with_no_detail(self, middleware, mock_request) -> None:
+    async def test_http_exception_with_no_detail(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of HTTPException with no detail."""
         exc = HTTPException(status_code=500)
 
@@ -138,7 +138,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["message"] in ["Internal Server Error", "An error occurred"]
 
     @pytest.mark.asyncio
-    async def test_unhandled_exception_handling(self, middleware, mock_request) -> None:
+    async def test_unhandled_exception_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of unhandled exceptions."""
         exc = ValueError("Unexpected error")
 
@@ -154,15 +154,15 @@ class TestErrorHandlerMiddleware:
         assert "ValueError" not in body["error"]["message"]
 
     @pytest.mark.asyncio
-    async def test_request_validation_error_handling(self, middleware, mock_request) -> None:
+    async def test_request_validation_error_handling(self, middleware: Any, mock_request: Any) -> None:
         """Test handling of FastAPI validation errors."""
 
         # Create a mock RequestValidationError
         class MockValidationError:
-            def __init__(self):
+            def __init__(self) -> None:
                 pass
 
-            def errors(self):
+            def errors(self) -> Any:
                 return [
                     {"loc": ("body", "name"), "msg": "field required"},
                     {"loc": ("body", "price"), "msg": "value must be greater than 0"},
@@ -179,7 +179,7 @@ class TestErrorHandlerMiddleware:
         assert len(body["error"]["details"]) == 2
 
     @pytest.mark.asyncio
-    async def test_unknown_car_exception_returns_500(self, middleware, mock_request) -> None:
+    async def test_unknown_car_exception_returns_500(self, middleware: Any, mock_request: Any) -> None:
         """Test that unknown CARException types return 500."""
 
         class UnknownCARException(CARException):
@@ -196,7 +196,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["code"] == "UNKNOWN_ERROR"
 
     @pytest.mark.asyncio
-    async def test_http_exception_preserves_status_code(self, middleware, mock_request) -> None:
+    async def test_http_exception_preserves_status_code(self, middleware: Any, mock_request: Any) -> None:
         """Test that HTTPException status codes are preserved correctly."""
         test_cases = [
             (400, "Bad Request"),
@@ -215,7 +215,7 @@ class TestErrorHandlerMiddleware:
             assert response.status_code == status_code
 
     @pytest.mark.asyncio
-    async def test_request_id_included_in_error(self, middleware, mock_request) -> None:
+    async def test_request_id_included_in_error(self, middleware: Any, mock_request: Any) -> None:
         """Test that request ID is included in error responses."""
         exc = ValidationError("Test error")
         request_id = "custom-request-789"
@@ -226,7 +226,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["request_id"] == request_id
 
     @pytest.mark.asyncio
-    async def test_dispatch_successful_request(self, middleware, mock_request) -> None:
+    async def test_dispatch_successful_request(self, middleware: Any, mock_request: Any) -> None:
         """Test that successful requests pass through middleware."""
         mock_response = Mock()
         call_next = AsyncMock(return_value=mock_response)
@@ -237,7 +237,7 @@ class TestErrorHandlerMiddleware:
         call_next.assert_called_once_with(mock_request)
 
     @pytest.mark.asyncio
-    async def test_dispatch_handles_exception(self, middleware, mock_request) -> None:
+    async def test_dispatch_handles_exception(self, middleware: Any, mock_request: Any) -> None:
         """Test that dispatch handles exceptions from call_next."""
         exc = ValidationError("Test error")
         call_next = AsyncMock(side_effect=exc)
@@ -249,7 +249,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["code"] == "VALIDATION_ERROR"
 
     @pytest.mark.asyncio
-    async def test_request_id_from_request_state(self, middleware) -> None:
+    async def test_request_id_from_request_state(self, middleware: Any) -> None:
         """Test extracting request ID from request state."""
         request = Mock(spec=Request)
         request.state = Mock()
@@ -264,7 +264,7 @@ class TestErrorHandlerMiddleware:
         assert body["error"]["request_id"] == "state-request-id"
 
     @pytest.mark.asyncio
-    async def test_missing_request_id_handled(self, middleware) -> None:
+    async def test_missing_request_id_handled(self, middleware: Any) -> None:
         """Test handling when request doesn't have request_id in state."""
         request = Mock(spec=Request)
         request.state = Mock(spec=[])  # No request_id attribute
