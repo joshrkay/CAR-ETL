@@ -59,9 +59,11 @@ class PandasParser(BaseParser):
             text_parts.append(f"Sheet: {sheet_name}\n{df.to_string()}")
             
             # Extract as table
-            headers = df.columns.tolist()
+            headers = [str(col) for col in df.columns.tolist()]
             # Replace NaN with empty strings and convert to dict records
-            rows = df.fillna("").to_dict('records')
+            # Cast keys to str to ensure compatibility with ExtractedTable type
+            rows_raw = df.fillna("").to_dict('records')
+            rows = [{str(k): v for k, v in row.items()} for row in rows_raw]
             
             tables.append(ExtractedTable(
                 table_name=sheet_name,

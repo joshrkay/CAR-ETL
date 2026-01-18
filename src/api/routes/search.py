@@ -39,7 +39,7 @@ class SearchFilters(BaseModel):
         None,
         description="Filter by document types (e.g., 'lease', 'rent_roll')",
     )
-    date_range: Optional[Dict[str, str]] = Field(
+    date_range: Optional[dict[str, str]] = Field(
         None,
         description="Filter by date range (e.g., {'start': '2024-01-01', 'end': '2024-12-31'})",
     )
