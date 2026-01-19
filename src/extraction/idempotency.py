@@ -174,7 +174,7 @@ async def check_duplicate_queue_items(
             .execute()
         )
 
-        items = response.data if response.data else []
+        items = cast(list[Dict[str, Any]], response.data) if response.data else []
 
         if len(items) > 1:
             logger.warning(
