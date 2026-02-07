@@ -87,8 +87,9 @@ def _validate_bypass(bypass: GuardrailBypass, auth: AuthContext, request: AskReq
     violations: List[str] = []
     now = datetime.now(timezone.utc)
 
-    if REQUIRED_REQUESTER_ROLE not in _normalize_roles(auth.roles):
-        violations.append("Only Super Admin can request a guardrail bypass.")
+    if not bypass.from_exception:
+        if REQUIRED_REQUESTER_ROLE not in _normalize_roles(auth.roles):
+            violations.append("Only Super Admin can request a guardrail bypass.")
 
     if bypass.requested_by != auth.user_id:
         violations.append("Bypass requester must match the authenticated user.")
@@ -96,10 +97,11 @@ def _validate_bypass(bypass: GuardrailBypass, auth: AuthContext, request: AskReq
     if bypass.target_user_id != auth.user_id:
         violations.append("Bypass target user must match the authenticated user.")
 
-    if _normalize_role(bypass.approved_by_role) not in ALLOWED_APPROVER_ROLES:
-        violations.append(
-            "Guardrail bypass requires approval by Analytics Tech Lead or Security Engineer."
-        )
+    if not bypass.from_exception:
+        if _normalize_role(bypass.approved_by_role) not in ALLOWED_APPROVER_ROLES:
+            violations.append(
+                "Guardrail bypass requires approval by Analytics Tech Lead or Security Engineer."
+            )
 
     if bypass.approved_at > now:
         violations.append("Bypass approval time cannot be in the future.")

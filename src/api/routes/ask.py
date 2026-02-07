@@ -6,6 +6,7 @@ Handles question answering with mandatory citations.
 
 import inspect
 import logging
+from datetime import datetime, timezone
 from typing import Any, Callable, cast
 from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -21,7 +22,7 @@ from src.rag.context_builder import ContextLimitError
 from src.rag.guardrails import GuardrailViolation, enforce_explore_guardrails
 from src.rag.pipeline import RAGPipeline
 from src.rag.generator import Generator
-from src.rag.models import AskRequest, AskResponse
+from src.rag.models import AskRequest, AskResponse, GuardrailBypass
 
 logger = logging.getLogger(__name__)
 
@@ -132,11 +133,35 @@ async def ask_question(
 
     try:
         bypass_used = False
+        dataset_names = []
         if ask_request.mode == "explore":
+            dataset_names = _resolve_dataset_names(supabase, ask_request.document_ids or [])
+            exception_bypass = _load_guardrail_exception(
+                supabase=supabase,
+                auth=auth,
+                ask_request=ask_request,
+                dataset_names=dataset_names,
+            )
+            if exception_bypass:
+                ask_request.guardrail_bypass = exception_bypass
+
             bypass_used = enforce_explore_guardrails(ask_request, auth)
             if bypass_used:
-                await _log_guardrail_bypass(request, auth, ask_request)
-                await _record_guardrail_exception(request, auth, ask_request)
+                await _log_guardrail_bypass(
+                    request,
+                    auth,
+                    ask_request,
+                    dataset_names=dataset_names,
+                    query_id=request_id,
+                )
+                if not (ask_request.guardrail_bypass and ask_request.guardrail_bypass.from_exception):
+                    await _record_guardrail_exception(
+                        request,
+                        auth,
+                        ask_request,
+                        dataset_names=dataset_names,
+                        query_id=request_id,
+                    )
 
         # Initialize RAG pipeline components
         embedding_service = EmbeddingService()
@@ -222,6 +247,8 @@ async def _log_guardrail_bypass(
     request: Request,
     auth: AuthContext,
     ask_request: AskRequest,
+    dataset_names: list[str],
+    query_id: str,
 ) -> None:
     try:
         supabase = get_supabase_client(request)
@@ -235,17 +262,28 @@ async def _log_guardrail_bypass(
         user_id=auth.user_id,
     )
     bypass = ask_request.guardrail_bypass
+    timestamp = datetime.now(timezone.utc)
+    duration_minutes = _duration_minutes(bypass) if bypass else None
     metadata = {
         "mode": "explore",
         "user_id": str(auth.user_id),
         "dataset_count": len(ask_request.document_ids or []),
+        "dataset_ids": [str(doc_id) for doc_id in (ask_request.document_ids or [])],
+        "dataset_names": dataset_names,
+        "timestamp": timestamp.isoformat(),
+        "query_id": query_id,
+        "requestor": str(auth.user_id),
+        "user": str(auth.user_id),
     }
     if bypass:
         metadata.update(
             {
+                "approver": str(bypass.approved_by),
                 "approved_by": str(bypass.approved_by),
                 "approved_by_role": bypass.approved_by_role,
                 "expires_at": bypass.expires_at.isoformat(),
+                "duration_minutes": duration_minutes,
+                "reason": bypass.reason,
             }
         )
     await audit_logger.log(
@@ -273,6 +311,8 @@ async def _record_guardrail_exception(
     request: Request,
     auth: AuthContext,
     ask_request: AskRequest,
+    dataset_names: list[str],
+    query_id: str,
 ) -> None:
     bypass = ask_request.guardrail_bypass
     if not bypass:
@@ -284,8 +324,20 @@ async def _record_guardrail_exception(
         logger.warning("Failed to record guardrail exception: no Supabase client available")
         return
 
-    document_ids = ask_request.document_ids or []
-    dataset_names = _resolve_dataset_names(supabase, document_ids)
+    if not dataset_names:
+        dataset_names = _resolve_dataset_names(supabase, ask_request.document_ids or [])
+
+    existing_exception = _find_matching_exception(
+        supabase=supabase,
+        auth=auth,
+        dataset_names=dataset_names,
+    )
+    if existing_exception:
+        return
+
+    now = datetime.now(timezone.utc)
+    expires_at = bypass.expires_at
+    duration_minutes = _duration_minutes(bypass)
 
     supabase.table("explore_guardrail_exceptions").insert(
         {
@@ -293,10 +345,33 @@ async def _record_guardrail_exception(
             "user_id": str(auth.user_id),
             "approved_by": str(bypass.approved_by),
             "dataset_names": dataset_names,
-            "expires_at": bypass.expires_at.isoformat(),
+            "expires_at": expires_at.isoformat(),
             "reason": bypass.reason,
         }
     ).execute()
+
+    await _log_guardrail_exception_event(
+        request=request,
+        supabase=supabase,
+        auth=auth,
+        ask_request=ask_request,
+        dataset_names=dataset_names,
+        query_id=query_id,
+        event_type=EventType.EXPLORE_GUARDRAIL_EXCEPTION_CREATED,
+        timestamp=now,
+        duration_minutes=duration_minutes,
+    )
+    await _log_guardrail_exception_event(
+        request=request,
+        supabase=supabase,
+        auth=auth,
+        ask_request=ask_request,
+        dataset_names=dataset_names,
+        query_id=query_id,
+        event_type=EventType.EXPLORE_GUARDRAIL_EXCEPTION_APPROVED,
+        timestamp=now,
+        duration_minutes=duration_minutes,
+    )
 
 
 def _resolve_dataset_names(supabase: Client, document_ids: list[UUID]) -> list[str]:
@@ -313,3 +388,147 @@ def _resolve_dataset_names(supabase: Client, document_ids: list[UUID]) -> list[s
         UUID(row["id"]): row.get("original_filename", "Unknown") for row in response.data or []
     }
     return [names_by_id.get(doc_id, "Unknown") for doc_id in document_ids]
+
+
+def _load_guardrail_exception(
+    supabase: Client,
+    auth: AuthContext,
+    ask_request: AskRequest,
+    dataset_names: list[str],
+) -> GuardrailBypass | None:
+    if not dataset_names:
+        return None
+
+    exception = _find_matching_exception(
+        supabase=supabase,
+        auth=auth,
+        dataset_names=dataset_names,
+    )
+    if not exception:
+        return None
+
+    approved_by = exception.get("approved_by")
+    if approved_by is None:
+        return None
+
+    expires_at = _parse_datetime(exception.get("expires_at"))
+    approved_at = _parse_datetime(exception.get("created_at"))
+    return _build_exception_bypass(
+        auth=auth,
+        ask_request=ask_request,
+        approved_by=approved_by,
+        approved_at=approved_at,
+        expires_at=expires_at,
+        reason=exception.get("reason"),
+    )
+
+
+def _find_matching_exception(
+    supabase: Client,
+    auth: AuthContext,
+    dataset_names: list[str],
+) -> dict[str, object] | None:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    response = (
+        supabase.table("explore_guardrail_exceptions")
+        .select("id, user_id, approved_by, dataset_names, expires_at, reason, created_at")
+        .eq("user_id", str(auth.user_id))
+        .gt("expires_at", now_iso)
+        .execute()
+    )
+    if not response.data:
+        return None
+
+    requested = set(dataset_names)
+    for row in response.data:
+        approved_names = set(row.get("dataset_names") or [])
+        if requested.issubset(approved_names):
+            return row
+    return None
+
+
+def _build_exception_bypass(
+    auth: AuthContext,
+    ask_request: AskRequest,
+    approved_by: object,
+    approved_at: datetime,
+    expires_at: datetime,
+    reason: object,
+) -> GuardrailBypass:
+    return GuardrailBypass(
+        requested_by=auth.user_id,
+        approved_by=_parse_uuid(approved_by),
+        approved_by_role="approved_exception",
+        approved_at=approved_at,
+        expires_at=expires_at,
+        target_user_id=auth.user_id,
+        dataset_ids=ask_request.document_ids or [],
+        reason=str(reason),
+        from_exception=True,
+    )
+
+
+def _parse_datetime(value: object) -> datetime:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    if isinstance(value, str):
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
+
+
+def _parse_uuid(value: object) -> UUID:
+    if isinstance(value, UUID):
+        return value
+    return UUID(str(value))
+
+
+def _duration_minutes(bypass: GuardrailBypass | None) -> int | None:
+    if not bypass:
+        return None
+    duration = bypass.expires_at - bypass.approved_at
+    return max(int(duration.total_seconds() / 60), 0)
+
+
+async def _log_guardrail_exception_event(
+    request: Request,
+    supabase: Client,
+    auth: AuthContext,
+    ask_request: AskRequest,
+    dataset_names: list[str],
+    query_id: str,
+    event_type: EventType,
+    timestamp: datetime,
+    duration_minutes: int | None,
+) -> None:
+    bypass = ask_request.guardrail_bypass
+    if not bypass:
+        return
+
+    audit_logger = AuditLogger(
+        supabase=supabase,
+        tenant_id=auth.tenant_id,
+        user_id=auth.user_id,
+    )
+    metadata = {
+        "requestor": str(bypass.requested_by),
+        "approver": str(bypass.approved_by),
+        "user": str(auth.user_id),
+        "dataset_ids": [str(doc_id) for doc_id in (ask_request.document_ids or [])],
+        "dataset_names": dataset_names,
+        "duration_minutes": duration_minutes,
+        "expires_at": bypass.expires_at.isoformat(),
+        "reason": bypass.reason,
+        "timestamp": timestamp.isoformat(),
+        "query_id": query_id,
+    }
+    await audit_logger.log(
+        event_type=event_type,
+        action=ActionType.CREATE,
+        resource_type="explore",
+        resource_id="guardrail_exception",
+        metadata=metadata,
+        ip_address=_get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    await audit_logger.flush()

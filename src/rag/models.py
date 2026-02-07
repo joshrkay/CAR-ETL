@@ -72,3 +72,6 @@ class GuardrailBypass(BaseModel):
         ..., min_length=1, description="Datasets the bypass applies to"
     )
     reason: str = Field(..., min_length=1, description="Reason for the bypass request")
+    from_exception: bool = Field(
+        False, description="Whether the bypass was loaded from an approved exception"
+    )
