@@ -25,6 +25,7 @@ class EventType(str, Enum):
     # Search events
     SEARCH_QUERY = "search.query"
     ASK_QUERY = "ask.query"
+    EXPLORE_GUARDRAIL_BYPASS = "explore.guardrail_bypass"
     
     # Export events
     EXPORT_GENERATE = "export.generate"

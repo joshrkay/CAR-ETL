@@ -62,6 +62,7 @@ class RAGPipeline:
                 "question_length": len(request.question),
                 "max_chunks": request.max_chunks,
                 "document_filter": bool(request.document_ids),
+                "mode": request.mode,
             },
         )
 
@@ -79,7 +80,11 @@ class RAGPipeline:
             return self._no_context_response()
 
         # 4. Build context
-        context = build_context(chunks, max_tokens=6000)
+        context = build_context(
+            chunks,
+            max_tokens=6000,
+            strict=request.mode == "explore",
+        )
 
         # 5. Generate answer
         answer = await self.generator.generate(request.question, context)
