@@ -1,7 +1,13 @@
 """Context builder for RAG pipeline with token limits."""
-import tiktoken
 from typing import List
+
+import tiktoken
+
 from .models import ChunkMatch
+
+
+class ContextLimitError(ValueError):
+    """Raised when context exceeds the configured token limit."""
 
 
 def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
@@ -19,7 +25,11 @@ def count_tokens(text: str, model: str = "gpt-4o-mini") -> int:
     return len(encoding.encode(text))
 
 
-def build_context(chunks: List[ChunkMatch], max_tokens: int = 6000) -> str:
+def build_context(
+    chunks: List[ChunkMatch],
+    max_tokens: int = 6000,
+    strict: bool = False,
+) -> str:
     """
     Build context string from chunks, respecting token limit.
 
@@ -42,6 +52,10 @@ def build_context(chunks: List[ChunkMatch], max_tokens: int = 6000) -> str:
 
         # Stop if adding this chunk would exceed limit
         if current_tokens + chunk_tokens > max_tokens:
+            if strict:
+                raise ContextLimitError(
+                    "Context size exceeds token limit. Reduce scope or max_chunks."
+                )
             break
 
         context_parts.append(chunk_text)
