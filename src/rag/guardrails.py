@@ -24,7 +24,7 @@ class GuardrailViolation(Exception):
     message: str
     violations: List[str]
 
-    def to_detail(self) -> dict:
+    def to_detail(self) -> dict[str, object]:
         """Serialize violation for API response."""
         return {
             "code": "GUARDRAIL_VIOLATION",

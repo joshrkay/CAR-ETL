@@ -69,5 +69,5 @@ class GuardrailBypass(BaseModel):
     expires_at: datetime = Field(..., description="Timestamp when bypass expires")
     target_user_id: UUID = Field(..., description="User allowed to use the bypass")
     dataset_ids: List[UUID] = Field(
-        ..., min_items=1, description="Datasets the bypass applies to"
+        ..., min_length=1, description="Datasets the bypass applies to"
     )
