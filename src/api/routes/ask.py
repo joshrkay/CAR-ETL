@@ -14,6 +14,10 @@ from src.auth.models import AuthContext
 from src.auth.decorators import require_permission
 from src.dependencies import get_current_user, get_supabase_client
 from src.search.embeddings import EmbeddingService
+from src.audit.logger import AuditLogger
+from src.audit.models import ActionType, EventType
+from src.rag.context_builder import ContextLimitError
+from src.rag.guardrails import GuardrailViolation, enforce_explore_guardrails
 from src.rag.pipeline import RAGPipeline
 from src.rag.generator import Generator
 from src.rag.models import AskRequest, AskResponse
@@ -121,10 +125,17 @@ async def ask_question(
             "question_length": len(ask_request.question),
             "document_filter": bool(ask_request.document_ids),
             "max_chunks": ask_request.max_chunks,
+            "mode": ask_request.mode,
         },
     )
 
     try:
+        bypass_used = False
+        if ask_request.mode == "explore":
+            bypass_used = enforce_explore_guardrails(ask_request, auth)
+            if bypass_used:
+                await _log_guardrail_bypass(request, auth, ask_request)
+
         # Initialize RAG pipeline components
         embedding_service = EmbeddingService()
         generator = Generator()
@@ -146,6 +157,37 @@ async def ask_question(
 
         return response
 
+    except GuardrailViolation as e:
+        logger.warning(
+            "Explore guardrails blocked query",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "user_id": user_id,
+                "violations": e.violations,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=e.to_detail(),
+        )
+    except ContextLimitError as e:
+        logger.warning(
+            "Explore context exceeded token limit",
+            extra={
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "user_id": user_id,
+            },
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "GUARDRAIL_VIOLATION",
+                "message": str(e),
+                "violations": [str(e)],
+            },
+        )
     except ValueError as e:
         logger.error(
             "Invalid request",
@@ -172,3 +214,54 @@ async def ask_question(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to process question",
         )
+
+
+async def _log_guardrail_bypass(
+    request: Request,
+    auth: AuthContext,
+    ask_request: AskRequest,
+) -> None:
+    try:
+        supabase = get_supabase_client(request)
+    except Exception:
+        logger.warning("Failed to log guardrail bypass: no Supabase client available")
+        return
+
+    audit_logger = AuditLogger(
+        supabase=supabase,
+        tenant_id=auth.tenant_id,
+        user_id=auth.user_id,
+    )
+    bypass = ask_request.guardrail_bypass
+    metadata = {
+        "mode": "explore",
+        "user_id": str(auth.user_id),
+        "dataset_count": len(ask_request.document_ids or []),
+    }
+    if bypass:
+        metadata.update(
+            {
+                "approved_by": str(bypass.approved_by),
+                "approved_by_role": bypass.approved_by_role,
+                "expires_at": bypass.expires_at.isoformat(),
+            }
+        )
+    await audit_logger.log(
+        event_type=EventType.EXPLORE_GUARDRAIL_BYPASS,
+        action=ActionType.READ,
+        resource_type="explore",
+        resource_id="ask",
+        metadata=metadata,
+        ip_address=_get_client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    await audit_logger.flush()
+
+
+def _get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"

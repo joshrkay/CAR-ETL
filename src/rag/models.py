@@ -1,7 +1,10 @@
 """Pydantic models for RAG pipeline."""
-from pydantic import BaseModel, Field
-from typing import Optional, List
+from __future__ import annotations
+from datetime import datetime
+from typing import List, Optional, Literal
 from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class ChunkMatch(BaseModel):
@@ -25,11 +28,19 @@ class Citation(BaseModel):
 class AskRequest(BaseModel):
     """Request to ask a question about documents."""
     question: str = Field(..., min_length=1, description="Question to answer")
+    mode: Literal["standard", "explore"] = Field(
+        "standard",
+        description="Query mode for guardrail enforcement",
+    )
     document_ids: Optional[List[UUID]] = Field(
         None, description="Optional filter to specific documents"
     )
     max_chunks: int = Field(
         default=5, ge=1, le=20, description="Maximum chunks to use in context"
+    )
+    guardrail_bypass: Optional["GuardrailBypass"] = Field(
+        None,
+        description="Optional approval to bypass explore guardrails",
     )
 
 
@@ -45,4 +56,18 @@ class AskResponse(BaseModel):
     chunks_used: int = Field(..., ge=0, description="Number of chunks used")
     suggestion: Optional[str] = Field(
         None, description="Suggestion for improving query if no answer"
+    )
+
+
+class GuardrailBypass(BaseModel):
+    """Approval-based exception for explore guardrails."""
+
+    requested_by: UUID = Field(..., description="User requesting the bypass")
+    approved_by: UUID = Field(..., description="Approver user identifier")
+    approved_by_role: str = Field(..., description="Approver role")
+    approved_at: datetime = Field(..., description="Timestamp approval was granted")
+    expires_at: datetime = Field(..., description="Timestamp when bypass expires")
+    target_user_id: UUID = Field(..., description="User allowed to use the bypass")
+    dataset_ids: List[UUID] = Field(
+        ..., min_items=1, description="Datasets the bypass applies to"
     )
